@@ -92,11 +92,7 @@
 #define LOG_TAG "CameraHAL"
 
 #define DEFAULT_DCC 1
-#ifdef _Android
-#define DCC_PATH  "/data/misc/camera/"
-#else
-#define DCC_PATH  "/usr/share/omapcam/"
-#endif
+
 #define LINUX_PAGE_SIZE (4 * 1024)
 
 #define _PROXY_OMX_INIT_PARAM(param,type) do {		\
