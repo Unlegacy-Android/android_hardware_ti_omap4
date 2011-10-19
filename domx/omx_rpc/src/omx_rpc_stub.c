@@ -775,7 +775,7 @@ RPC_OMX_ERRORTYPE RPC_GetComponentVersion(OMX_HANDLETYPE hRPCCtx,
 		    OMX_VERSIONTYPE);
 		RPC_GETFIELDCOPYTYPE(pRetData, nPos, pSpecVersion,
 		    OMX_VERSIONTYPE);
-		//RPC_GETFIELDCOPYTYPE(pRetData, nPos, pComponentUUID, OMX_UUIDTYPE);
+		memcpy(pComponentUUID, (OMX_U32)pRetData + nPos, sizeof(OMX_UUIDTYPE));
 	}
 
       EXIT:
