@@ -242,37 +242,44 @@ OMX_ERRORTYPE OMX_GetHandle(OMX_HANDLETYPE * pHandle,
 	strcat(buf, postfix);	/* are safe to use in this context. */
 
 #ifdef CHECK_SECURE_STATE
-        //Dont return errors from misc driver to the user if any.
-        //Since this affects all usecases, secure and non-secure.
-        //Do log the errors though.
-        secure_misc_drv_fd = open("/dev/rproc_user", O_SYNC | O_RDONLY);
+	/* Don't return errors from misc driver to the user if any.
+	 * Since this affects all usecases, secure and non-secure.
+	 * Do log the errors though. */
+	secure_misc_drv_fd = open("/dev/rproc_user", O_SYNC | O_RDONLY);
 	if (secure_misc_drv_fd < 0)
 	{
 		TIMM_OSAL_Error("Can't open misc driver device 0x%x\n", errno);
 	}
+	else
+	{
+		ret = read(secure_misc_drv_fd, &mode, sizeof(mode));
+		if (ret != sizeof(mode))
+		{
+			TIMM_OSAL_Error("Can't read from the misc driver");
+		}
+		else
+		{
+			if(mode == enable && strstr(cComponentName,"secure") == NULL)
+			{
+				TIMM_OSAL_Error("non-secure component not supported in secure mode");
+				eError = OMX_ErrorComponentNotFound;
+			}
+		}
 
-	ret = read(secure_misc_drv_fd, &mode, sizeof(mode));
-	if (ret < 0)
-	{
-		TIMM_OSAL_Error("Can't read from the misc driver");
+		ret = close(secure_misc_drv_fd);
+		if (ret < 0)
+		{
+			TIMM_OSAL_Error("Can't close the misc driver");
+		}
 	}
-        if(mode == enable && strstr(cComponentName,"secure") == NULL)
+
+	/* Don't allow non-secure usecases if we are in secure state.
+	 * Else some of the memory regions will be unexpected firewalled.
+	 * This provides a clean exit in case we are in secure mode. */
+	if (eError == OMX_ErrorComponentNotFound)
 	{
-		TIMM_OSAL_Error("non-secure component not supported in secure mode");
-		eError = OMX_ErrorComponentNotFound;
+		goto EXIT;
 	}
-	ret = close(secure_misc_drv_fd);
-	if (ret < 0)
-	{
-		TIMM_OSAL_Error("Can't close the misc driver");
-	}
-        //Dont allow non-secure usecases if we are in secure state.
-        //Else some of the memory regions will be unexpected firewalled.
-        //This provides a clean exit in case we are in secure mode.
-        if(eError == OMX_ErrorComponentNotFound)
-        {
-                goto EXIT;
-        }
 #endif
 
 //#if 0
