@@ -102,7 +102,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../domx \
 	$(LOCAL_PATH)/../domx/omx_rpc/inc \
 	system/core/include/cutils \
-	$(LOCAL_PATH)/../../hwc \
+	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	frameworks/base/include/media/stagefright \
 
@@ -137,7 +137,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../domx \
 	$(LOCAL_PATH)/../domx/omx_rpc/inc \
 	system/core/include/cutils \
-	$(LOCAL_PATH)/../../hwc \
+	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	frameworks/base/include/media/stagefright \
 
