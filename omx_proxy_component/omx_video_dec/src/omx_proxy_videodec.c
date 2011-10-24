@@ -116,6 +116,8 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
     OMX_PTR pMarkData);
 
 #endif
+extern OMX_ERRORTYPE PrearrageEmptyThisBuffer(OMX_HANDLETYPE hComponent,
+	OMX_BUFFERHEADERTYPE * pBufferHdr);
 
 OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 {
@@ -231,6 +233,8 @@ OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent)
 	PROXY_assert(eError == OMX_ErrorNone,
 	    eError," Error in Proxy SetParameter for Enhanced port reconfig usage");
 #endif
+	/* This is required to handle WMV/VC-1 content */
+	pHandle->EmptyThisBuffer = PrearrageEmptyThisBuffer;
 
       EXIT:
 	if (eError != OMX_ErrorNone)

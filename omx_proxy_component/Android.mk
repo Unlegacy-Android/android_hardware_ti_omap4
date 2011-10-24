@@ -27,7 +27,9 @@ LOCAL_CFLAGS += -D_Android -DSET_STRIDE_PADDING_FROM_PROXY -DANDROID_QUIRK_CHANG
 LOCAL_CFLAGS += -DANDROID_QUIRK_LOCK_BUFFER -DUSE_ION -DENABLE_GRALLOC_BUFFERS
 LOCAL_MODULE_TAGS:= optional
 
-LOCAL_SRC_FILES:= omx_video_dec/src/omx_proxy_videodec.c
+LOCAL_SRC_FILES:= omx_video_dec/src/omx_proxy_videodec.c \
+                  omx_video_dec/src/omx_proxy_videodec_utils.c
+
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.DECODER
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
