@@ -127,6 +127,7 @@ int mmap_fd;
 MemAllocBlock *MemReqDescTiler;
 #endif
 
+OMX_BOOL check_DCCdir(OMX_STRING dir_path);
 OMX_S32 read_DCCdir(OMX_PTR, OMX_STRING *, OMX_U16);
 OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE);
 OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent);
@@ -350,7 +351,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 		PROXY_assert(eOsalError == TIMM_OSAL_ERR_NONE,
 		    OMX_ErrorInsufficientResources, "Mutex lock failed");
 
-		if (numofInstance == 0)
+		if ( ( numofInstance == 0 ) && check_DCCdir(DCC_PATH) )
 		{
 			dcc_eError = DCC_Init(hComponent);
 			if (dcc_eError != OMX_ErrorNone)
@@ -534,6 +535,52 @@ OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent)
 
 	DOMX_EXIT("EXIT");
 	return eError;
+}
+
+/* ===========================================================================*/
+/**
+ * @name check_DCCdir()
+ * @brief : Checks if the DCC directory exists and whether it contains
+ *          any useful data.
+ * @param OMX_STRING: dir_path Path to theDCC directory
+ * @return return = OMX_TRUE if data is available, otherwise OMX_FALSE
+ *
+ */
+/* ===========================================================================*/
+OMX_BOOL check_DCCdir(OMX_STRING dir_path)
+{
+   OMX_BOOL ret = OMX_FALSE;
+   struct dirent *dirEntry = NULL;
+   DIR *dccDir = NULL;
+   OMX_STRING dot = ".";
+
+   DOMX_ENTER("ENTER");
+
+   dccDir = opendir(dir_path);
+   if ( NULL != dccDir ) {
+       do {
+           dirEntry = readdir(dccDir);
+           if ( NULL != dirEntry ) {
+               if ( dot[0] == dirEntry->d_name[0] ) {
+                   DOMX_DEBUG("Skipping DCC directory: %s", dirEntry->d_name);
+                   continue;
+               } else {
+                   DOMX_DEBUG("Valid data found in DCC directory: %s", dirEntry->d_name);
+                   ret = OMX_TRUE;
+                   break;
+               }
+           } else {
+               DOMX_DEBUG("NO entries in the DCC Directory");
+           }
+       } while ( dirEntry != NULL );
+       closedir(dccDir);
+   } else {
+       DOMX_DEBUG("No DCC Directory !");
+   }
+
+   DOMX_EXIT("return %d", ret);
+
+   return ret;
 }
 
 /* ===========================================================================*/
