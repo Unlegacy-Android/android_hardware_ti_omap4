@@ -52,6 +52,7 @@
 /******************************************************************
  *   INCLUDE FILES
  ******************************************************************/
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -100,6 +101,7 @@
     RPC_freePacket(pPacket); \
     pPacket = NULL; \
     if(status < 0 ) DOMX_ERROR("DOMX Write failed 0x%x %d",status,status); \
+    RPC_assert(status >= 0 && errno != ENXIO, RPC_OMX_ErrorHardware, "Write failed due ducati in faulty state"); \
     RPC_assert(status >= 0, RPC_OMX_ErrorUndefined, "Write failed"); \
     eError = TIMM_OSAL_ReadFromPipe(hCtx->pMsgPipe[nFxnIdx], &pRetPacket, \
         RPC_MSG_SIZE_FOR_PIPE, (TIMM_OSAL_U32 *)(&nSize), TIMM_OSAL_SUSPEND); \
@@ -224,7 +226,7 @@ RPC_OMX_ERRORTYPE RPC_GetHandle(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -277,7 +279,7 @@ RPC_OMX_ERRORTYPE RPC_FreeHandle(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -346,7 +348,7 @@ RPC_OMX_ERRORTYPE RPC_SetParameter(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -425,7 +427,8 @@ RPC_OMX_ERRORTYPE RPC_GetParameter(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	//In case of Error Hardware this packet gets freed in omx_rpc.c
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -493,7 +496,7 @@ RPC_OMX_ERRORTYPE RPC_SetConfig(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -570,7 +573,7 @@ RPC_OMX_ERRORTYPE RPC_GetConfig(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -642,7 +645,7 @@ RPC_OMX_ERRORTYPE RPC_SendCommand(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -704,7 +707,7 @@ RPC_OMX_ERRORTYPE RPC_GetState(OMX_HANDLETYPE hRPCCtx, OMX_STATETYPE * pState,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -781,7 +784,7 @@ RPC_OMX_ERRORTYPE RPC_GetComponentVersion(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	return eRPCError;
@@ -846,7 +849,7 @@ RPC_OMX_ERRORTYPE RPC_GetExtensionIndex(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	return eRPCError;
@@ -975,7 +978,7 @@ RPC_OMX_ERRORTYPE RPC_AllocateBuffer(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -1138,7 +1141,7 @@ RPC_OMX_ERRORTYPE RPC_UseBuffer(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -1197,7 +1200,7 @@ RPC_OMX_ERRORTYPE RPC_FreeBuffer(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -1305,7 +1308,7 @@ RPC_OMX_ERRORTYPE RPC_EmptyThisBuffer(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");
@@ -1384,7 +1387,7 @@ RPC_OMX_ERRORTYPE RPC_FillThisBuffer(OMX_HANDLETYPE hRPCCtx,
       EXIT:
 	if (pPacket)
 		RPC_freePacket(pPacket);
-	if (pRetPacket)
+	if (pRetPacket && *eCompReturn != OMX_ErrorHardware)
 		RPC_freePacket(pRetPacket);
 
 	DOMX_EXIT("");

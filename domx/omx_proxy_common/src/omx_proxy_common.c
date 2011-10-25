@@ -1636,11 +1636,17 @@ static OMX_ERRORTYPE PROXY_GetState(OMX_IN OMX_HANDLETYPE hComponent,
 
 	eRPCError = RPC_GetState(pCompPrv->hRemoteComp, pState, &eCompReturn);
 
-	DOMX_DEBUG("Returned from RPC_GetState, state: ", *pState);
+	DOMX_DEBUG("Returned from RPC_GetState, state: = %x", *pState);
 
 	PROXY_checkRpcError();
 
       EXIT:
+	if (eError == OMX_ErrorHardware)
+	{
+		*pState = OMX_StateInvalid;
+		eError = OMX_ErrorNone;
+		DOMX_DEBUG("Invalid state returned from RPC_GetState, state due to ducati in faulty state");
+	}
 	DOMX_EXIT("eError: %d", eError);
 	return eError;
 }

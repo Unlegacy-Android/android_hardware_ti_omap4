@@ -84,7 +84,7 @@
     if(pPacket != NULL) TIMM_OSAL_Free(pPacket); \
     } while(0)
 
-
+OMX_U8 pBufferError[RPC_PACKET_SIZE];
 
 void *RPC_CallbackThread(void *data);
 
@@ -279,6 +279,7 @@ void *RPC_CallbackThread(void *data)
 	TIMM_OSAL_ERRORTYPE eError = TIMM_OSAL_ERR_NONE;
 	OMX_COMPONENTTYPE *hComp = NULL;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
+        OMX_PTR pBuff = pBufferError;
 
 	maxfd =
 	    (pRPCCtx->fd_killcb >
@@ -309,6 +310,13 @@ void *RPC_CallbackThread(void *data)
             {
                 if(errno == ENXIO)
                 {
+		    for(nFxnIdx = 0; nFxnIdx < RPC_OMX_MAX_FUNCTION_LIST; nFxnIdx++)
+		    {
+			((struct omx_packet *) pBufferError)->result = OMX_ErrorHardware;
+			TIMM_OSAL_WriteToPipe(pRPCCtx->pMsgPipe[nFxnIdx], &pBuff, RPC_MSG_SIZE_FOR_PIPE, TIMM_OSAL_SUSPEND);
+			if(eError != TIMM_OSAL_ERR_NONE)
+				DOMX_ERROR("Write to pipe failed");
+		    }
                     /*Indicate fatal error and exit*/
                     RPC_assert(0, RPC_OMX_ErrorHardware,
                     "Remote processor fatal error");
