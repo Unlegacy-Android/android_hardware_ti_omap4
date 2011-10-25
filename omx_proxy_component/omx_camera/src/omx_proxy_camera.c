@@ -136,6 +136,8 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE, OMX_INDEXTYPE,
 									OMX_PTR, OMX_PTR);
 OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE, OMX_INDEXTYPE,
 									OMX_PTR, OMX_PTR);
+OMX_ERRORTYPE PROXY_SendCommand(OMX_HANDLETYPE, OMX_COMMANDTYPE,
+ 								        OMX_U32,OMX_PTR);
 OMX_ERRORTYPE CameraMaptoTilerDuc(OMX_TI_CONFIG_SHAREDBUFFER *, OMX_PTR *);
 //COREID TARGET_CORE_ID = CORE_APPM3;
 
@@ -164,6 +166,58 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
 
       EXIT:
 	return eError;
+}
+
+static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
+    OMX_IN OMX_COMMANDTYPE eCmd,
+    OMX_IN OMX_U32 nParam, OMX_IN OMX_PTR pCmdData)
+
+{
+	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn;
+	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
+	PROXY_COMPONENT_PRIVATE *pCompPrv;
+	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	static OMX_BOOL dcc_loaded = OMX_FALSE;
+
+	OMX_ERRORTYPE dcc_eError = OMX_ErrorNone;
+	TIMM_OSAL_ERRORTYPE eOsalError = TIMM_OSAL_ERR_NONE;
+	OMX_U32 i;
+
+	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
+
+	if ((eCmd == OMX_CommandStateSet) &&
+	(nParam == (OMX_STATETYPE) OMX_StateIdle))
+	{
+		if (!dcc_loaded)
+		{
+			dcc_eError = DCC_Init(hComponent);
+			if (dcc_eError != OMX_ErrorNone)
+			{
+				DOMX_ERROR(" Error in DCC Init");
+			}
+			/* Configure Ducati to use DCC buffer from A9 side
+			 *ONLY* if DCC_Init is successful. */
+			if (dcc_eError == OMX_ErrorNone)
+			{
+				dcc_eError = send_DCCBufPtr(hComponent);
+				if (dcc_eError != OMX_ErrorNone)
+				{
+					DOMX_ERROR(" Error in Sending DCC Buf ptr");
+				}
+				DCC_DeInit();
+			}
+			dcc_loaded = OMX_TRUE;
+		}
+	}
+
+	eError =
+	PROXY_SendCommand(hComponent,eCmd,nParam,pCmdData);
+
+EXIT:
+
+   DOMX_EXIT("eError: %d", eError);
+   return eError;
+
 }
 
 /* ===========================================================================*/
@@ -335,42 +389,8 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	pHandle->ComponentDeInit = ComponentPrivateDeInit;
 	pHandle->GetConfig = CameraGetConfig;
 	pHandle->SetConfig = CameraSetConfig;
-	char *val = getenv("SET_DCC");
-	dcc_flag = val ? strtol(val, NULL, 0) : DEFAULT_DCC;
-	DOMX_DEBUG(" DCC: 0 - disabled 1 - enabled : val: %d", dcc_flag);
+	pHandle->SendCommand = Camera_SendCommand;
 
-	if (dcc_flag)
-	{
-		eOsalError =
-		    TIMM_OSAL_MutexObtain(cam_mutex, TIMM_OSAL_SUSPEND);
-		PROXY_assert(eOsalError == TIMM_OSAL_ERR_NONE,
-		    OMX_ErrorInsufficientResources, "Mutex lock failed");
-
-		if (numofInstance == 0)
-		{
-			dcc_eError = DCC_Init(hComponent);
-			if (dcc_eError != OMX_ErrorNone)
-			{
-				DOMX_DEBUG(" Error in DCC Init");
-			}
-
-			/* Configure Ducati to use DCC buffer from A9 side
-			*ONLY* if DCC_Init is successful. */
-			if (dcc_eError == OMX_ErrorNone)
-			{
-				dcc_eError = send_DCCBufPtr(hComponent);
-				if (dcc_eError != OMX_ErrorNone)
-				{
-					DOMX_DEBUG(" Error in Sending DCC Buf ptr");
-				}
-				DCC_DeInit();
-			}
-                }
-                numofInstance = numofInstance + 1;
-		eOsalError = TIMM_OSAL_MutexRelease(cam_mutex);
-		PROXY_assert(eOsalError == TIMM_OSAL_ERR_NONE,
-		    OMX_ErrorInsufficientResources, "Mutex release failed");
-	}
       EXIT:
 	return eError;
 }
