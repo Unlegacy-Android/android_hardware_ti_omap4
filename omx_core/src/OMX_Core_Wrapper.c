@@ -41,6 +41,7 @@
 #include <utils/Log.h>
 #undef LOG_TAG
 #define LOG_TAG "OMX_CORE"
+#define LOGV ALOGV
 
 /** determine capabilities of a component before acually using it */
 #if 0
