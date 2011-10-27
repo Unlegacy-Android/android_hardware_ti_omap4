@@ -226,7 +226,13 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigZslFrameSelectMethod,              /**< reference: OMX_TI_CONFIG_ZSLFRAMESELECTMETHODTYPE */
     OMX_TI_IndexAndroidNativeBufferUsage,          /**< reference: OMX_TI_IndexAndroidNativeBufferUsage */
     OMX_TI_IndexConfigAlgoAreas,                         /**< reference: OMX_PARAM_SHAREDBUFFER (pSharedBuff is OMX_ALGOAREASTYPE) */
-	OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< reference: OMX_STREAMINTERLACEFORMATTYPE */
+    OMX_TI_IndexUseBufferDescriptor,             /**< reference: OMX_TI_PARAM_USEBUFFERDESCRIPTOR */
+  
+    
+    
+    
+    /*This should be the last index. Any additions should be before this*/ 
+    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< reference: OMX_STREAMINTERLACEFORMATTYPE */  
 
 } OMX_TI_INDEXTYPE;
 

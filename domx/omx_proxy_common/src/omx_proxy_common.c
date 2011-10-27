@@ -1100,6 +1100,13 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
 				pAuxBuf1 = NULL;
 		}
+		if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+		{
+			pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
+
+			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+				pAuxBuf1 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[1]);
+		}
 	}
 
 	/*Initializing Structure */
@@ -1333,6 +1340,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
 #ifdef ENABLE_GRALLOC_BUFFERS
 	OMX_TI_PARAMUSENATIVEBUFFER *pParamNativeBuffer = NULL;
 #endif
@@ -1346,9 +1354,10 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	DOMX_ENTER
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		hComponent, pCompPrv, nParamIndex, pParamStruct);
-#ifdef ENABLE_GRALLOC_BUFFERS
+
 	switch(nParamIndex)
 	{
+#ifdef ENABLE_GRALLOC_BUFFERS
 		case OMX_TI_IndexUseNativeBuffers:
 		{
 			//Add check version.
@@ -1360,16 +1369,29 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 			}
 			break;
 		}
+#endif
+		case OMX_TI_IndexUseBufferDescriptor:
+		     ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
+		     if(ptBufDescParam->bEnabled == OMX_TRUE)
+		     {
+			     if(ptBufDescParam->eBufferType == OMX_TI_BufferTypeVirtual2D)
+			     {
+			         pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType = BufferDescriptorVirtual2D;
+			         pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].IsBuffer2D = OMX_TRUE;
+		             }
+		     }
+		     else if(ptBufDescParam->bEnabled == OMX_FALSE)
+		     {
+			     /* Reset to defaults*/
+			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType = VirtualPointers;
+			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].IsBuffer2D = OMX_FALSE;
+		     }
+		     break;
 		default:
 			eRPCError =
 				RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 					pLocBufNeedMap, &eCompReturn);
 	}
-#else
-	eRPCError =
-		RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
-			pLocBufNeedMap, &eCompReturn);
-#endif
 
 	PROXY_checkRpcError();
 
@@ -1413,6 +1435,7 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
 
 	PROXY_require((pParamStruct != NULL), OMX_ErrorBadParameter, NULL);
 	PROXY_assert((hComp->pComponentPrivate != NULL),
@@ -1424,9 +1447,26 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		 hComponent, pCompPrv, nParamIndex, pParamStruct);
 
-	eRPCError =
-		RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
+	switch(nParamIndex)
+	{
+		case OMX_TI_IndexUseBufferDescriptor:
+		     ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
+		     if(pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+		     {
+			     ptBufDescParam->bEnabled = OMX_TRUE;
+			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeVirtual2D;
+		     }
+		     else
+		     {
+			     ptBufDescParam->bEnabled = OMX_FALSE;
+			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeMax;
+		     }
+		     break;
+
+		default:
+			eRPCError = RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 				pLocBufNeedMap, &eCompReturn);
+	}
 
 	PROXY_checkRpcError();
 
