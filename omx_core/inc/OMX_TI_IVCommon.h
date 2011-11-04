@@ -2399,6 +2399,7 @@ typedef struct OMX_TI_CAPRESTYPE {
  * ulImageFormatCount                   : Number of the supported image pixelformat count
  * eImageFormats                        : Array containing the supported image pixelformat count
  * tPreviewResRange                     : Supported preview resolution range
+ * tRotatedPreviewResRange              : Supported rotated preview resolution range
  * tImageResRange                       : Supported image resolution range
  * tThumbResRange                       : Supported thumbnail resolution range
  * ulWhiteBalanceCount                  : Supported whitebalance mode count
@@ -2465,6 +2466,7 @@ typedef struct OMX_TI_CAPTYPE {
 	OMX_U16                         ulImageFormatCount;     // supported image pixelformat count
 	OMX_COLOR_FORMATTYPE            eImageFormats[32];
 	OMX_TI_CAPRESTYPE               tPreviewResRange;       // supported preview resolution range
+	OMX_TI_CAPRESTYPE               tRotatedPreviewResRange;     // supported rotated preview resolution range
 	OMX_TI_CAPRESTYPE               tImageResRange;         // supported image resolution range
 	OMX_TI_CAPRESTYPE               tThumbResRange;         // supported thumbnail resolution range
 	OMX_U16                         ulWhiteBalanceCount;    // supported whitebalance mode count
