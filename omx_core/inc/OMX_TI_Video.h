@@ -53,6 +53,7 @@
 #ifndef OMX_TI_VIDEO_H
 #define OMX_TI_VIDEO_H
 #define H264ENC_MAXNUMSLCGPS 2
+#define H264SVCVDEC_MAX_NUM_LAYER 9
 
 #include <OMX_Core.h>
 
@@ -543,7 +544,9 @@ typedef enum OMX_TI_VIDEO_CODINGTYPE {
 	OMX_VIDEO_CodingVP6 =
 		(OMX_VIDEO_CODINGTYPE) OMX_VIDEO_CodingVendorStartUnused +1,  /* VP6 */
 	OMX_VIDEO_CodingVP7, /* VP7 */
-	OMX_TI_VIDEO_CodingSORENSONSPK   /* Sorenson Spark */
+        OMX_TI_VIDEO_CodingSORENSONSPK, /* Sorenson spark*/
+        OMX_VIDEO_CodingSVC,    /**< H.264/SVC */
+	OMX_VIDEO_CodingVP8 /* VP8 */
 }OMX_TI_VIDEO_CODINGTYPE;
 
 
@@ -770,6 +773,334 @@ typedef struct OMX_TI_STREAMINTERLACEFORMATTYPE {
 	OMX_BOOL bInterlaceFormat;
 	OMX_U32 nInterlaceFormats;
 } OMX_TI_STREAMINTERLACEFORMAT;
+
+/*!====================================================================!
+
+    Currently we only support SVC baseline profile
+
+ * !====================================================================!*/
+    typedef enum OMX_TI_VIDEO_SVCPROFILETYPE {
+        OMX_VIDEO_SVCProfileBaseline            = 0x01,     /**< Baseline profile */
+        OMX_VIDEO_SVCProfileHigh                = 0x02,     /**< High profile */
+        OMX_VIDEO_SVCProfileHighIntra           = 0x03,     /**< High Intra profile */
+        OMX_VIDEO_SVCProfileMax                 = 0x7FFFFFFF
+    } OMX_TI_VIDEO_SVCPROFILETYPE;
+
+
+/*!====================================================================!
+
+    Currently we support only SVC baseline profile upto level 4 for SVC encoder.
+
+ * !====================================================================!*/
+    typedef enum OMX_TI_VIDEO_SVCLEVELTYPE {
+        OMX_VIDEO_SVCLevel1                     = 0x01,     /**< Level 1 */
+        OMX_VIDEO_SVCLevel1b                    = 0x02,     /**< Level 1b */
+        OMX_VIDEO_SVCLevel11                    = 0x04,     /**< Level 1.1 */
+        OMX_VIDEO_SVCLevel12                    = 0x08,     /**< Level 1.2 */
+        OMX_VIDEO_SVCLevel13                    = 0x10,     /**< Level 1.3 */
+        OMX_VIDEO_SVCLevel2                     = 0x20,     /**< Level 2 */
+        OMX_VIDEO_SVCLevel21                    = 0x40,     /**< Level 2.1 */
+        OMX_VIDEO_SVCLevel22                    = 0x80,     /**< Level 2.2 */
+        OMX_VIDEO_SVCLevel3                     = 0x100,    /**< Level 3 */
+        OMX_VIDEO_SVCLevel31                    = 0x200,    /**< Level 3.1 */
+        OMX_VIDEO_SVCLevel32                    = 0x400,    /**< Level 3.2 */
+        OMX_VIDEO_SVCLevel4                     = 0x800,    /**< Level 4 */
+        OMX_VIDEO_SVCLevel41                    = 0x1000,   /**< Level 4.1 */
+        OMX_VIDEO_SVCLevel42                    = 0x2000,   /**< Level 4.2 */
+        OMX_VIDEO_SVCLevel5                     = 0x4000,   /**< Level 5 */
+        OMX_VIDEO_SVCLevel51                    = 0x8000,   /**< Level 5.1 */
+        OMX_VIDEO_SVCLevelMax                   = 0x7FFFFFFF
+    } OMX_TI_VIDEO_SVCLEVELTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_STD_PARAMS {
+        OMX_U32  nSliceHeaderSpacing;
+        OMX_U32  nPFrames;
+        OMX_U32  nBFrames;
+        OMX_BOOL bUseHadamard;
+        OMX_U32  nRefFrames;
+        OMX_U32  nRefIdx10ActiveMinus1;
+        OMX_U32  nRefIdx11ActiveMinus1;
+        OMX_BOOL bEnableUEP;
+        /* Not needed as per SVC encoder requirements
+        OMX_BOOL                                bEnableFMO;
+        OMX_BOOL                                bEnableASO;
+        OMX_BOOL                                bEnableRS;
+        */
+        OMX_VIDEO_AVCLOOPFILTERTYPE eLoopFilterMode;
+        OMX_U32                     nAllowedPictureTypes;
+        OMX_BOOL                    bFrameMBsOnly;
+        OMX_BOOL                    bMBAFF;
+        OMX_BOOL                    bEntropyCodingCABAC;
+        OMX_BOOL                    bWeightedPPrediction;
+        OMX_U32                     nWeightedBipredicitonMode;
+        OMX_BOOL                    bconstIpred;
+        OMX_BOOL                    bDirect8x8Inference;
+        OMX_BOOL                    bDirectSpatialTemporal;
+        OMX_U32                     nCabacInitIdc;
+    } OMX_VIDEO_SVC_STD_PARAMS;
+
+
+    typedef struct OMX_VIDEO_SVC_RECTTYPE {
+        OMX_S32 nLeft;
+        OMX_S32 nTop;
+        OMX_U32 nWidth;
+        OMX_U32 nHeight;
+    } OMX_VIDEO_SVC_RECTTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_BITRATETYPE {
+        OMX_VIDEO_CONTROLRATETYPE eControlRate;
+        OMX_U32                   nTargetBitrate;
+    } OMX_VIDEO_SVC_BITRATETYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_MOTIONVECTORTYPE {
+        OMX_VIDEO_MOTIONVECTORTYPE eAccuracy;
+        OMX_BOOL                   bUnrestrictedMVs;
+        OMX_BOOL                   bFourMV;
+        OMX_S32                    sXSearchRange;
+        OMX_S32                    sYSearchRange;
+    } OMX_VIDEO_SVC_MOTIONVECTORTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_QUANTIZATIONTYPE {
+        OMX_U32 nQpI;
+        OMX_U32 nQpP;
+        OMX_U32 nQpB;
+    } OMX_VIDEO_SVC_QUANTIZATIONTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_INTRAREFRESHTYPE {
+        OMX_VIDEO_INTRAREFRESHTYPE eRefreshMode;
+        OMX_U32                    nAirMBs;
+        OMX_U32                    nAirRef;
+        OMX_U32                    nCirMBs;
+    } OMX_VIDEO_SVC_INTRAREFRESHTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_VBSMCTYPE {
+        OMX_BOOL b16x16;
+        OMX_BOOL b16x8;
+        OMX_BOOL b8x16;
+        OMX_BOOL b8x8;
+        OMX_BOOL b8x4;
+        OMX_BOOL b4x8;
+        OMX_BOOL b4x4;
+    } OMX_VIDEO_SVC_VBSMCTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_NALUCONTROLTYPE {
+        OMX_U32 nStartofSequence;
+        OMX_U32 nEndofSequence;
+        OMX_U32 nIDR;
+        OMX_U32 nIntraPicture;
+        OMX_U32 nNonIntraPicture;
+    }OMX_VIDEO_SVC_NALUCONTROLTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_MEBLOCKSIZETYPE {
+        OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeP;
+        OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeB;
+    }OMX_VIDEO_SVC_MEBLOCKSIZETYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_INTRAPREDTYPE {
+        OMX_U32                       nLumaIntra4x4Enable;
+        OMX_U32                       nLumaIntra8x8Enable;
+        OMX_U32                       nLumaIntra16x16Enable;
+        OMX_U32                       nChromaIntra8x8Enable;
+        OMX_VIDEO_CHROMACOMPONENTTYPE eChromaComponentEnable;
+    }OMX_VIDEO_SVC_INTRAPREDTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_ENCODER_PRESETTYPE {
+        OMX_VIDEO_ENCODING_MODE_PRESETTYPE eEncodingModePreset;
+        OMX_VIDEO_RATECONTROL_PRESETTYPE   eRateControlPreset;
+    }OMX_VIDEO_SVC_ENCODER_PRESETTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_VUIINFOTYPE {
+        OMX_BOOL                  bAspectRatioPresent;
+        OMX_VIDEO_ASPECTRATIOTYPE ePixelAspectRatio;
+        OMX_BOOL                  bFullRange;
+    }OMX_VIDEO_SVC_VUIINFOTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_HRDBUFFERSETTING {
+        OMX_U32 nInitialBufferLevel;
+        OMX_U32 nHRDBufferSize;
+        OMX_U32 nTargetBitrate;
+    }OMX_VIDEO_SVC_HRDBUFFERSETTING;
+
+
+    typedef struct OMX_VIDEO_SVC_INTRAPERIOD {
+        OMX_U32 nIDRPeriod;
+        OMX_U32 nPFrames;
+    } OMX_VIDEO_SVC_INTRAPERIOD;
+
+
+    typedef struct OMX_VIDEO_SVC_PIXELINFOTYPE {
+        OMX_U32 nWidth;
+        OMX_U32 nHeight;
+    } OMX_VIDEO_SVC_PIXELINFOTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_MESEARCHRANGETYPE {
+        OMX_VIDEO_MOTIONVECTORTYPE eMVAccuracy;
+        OMX_U32                    nHorSearchRangeP;
+        OMX_U32                    nVerSearchRangeP;
+        OMX_U32                    nHorSearchRangeB;
+        OMX_U32                    nVerSearchRangeB;
+    }OMX_VIDEO_SVC_MESEARCHRANGETYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_QPSETTINGSTYPE {
+        OMX_U32 nQpI;
+        OMX_U32 nQpMaxI;
+        OMX_U32 nQpMinI;
+        OMX_U32 nQpP;
+        OMX_U32 nQpMaxP;
+        OMX_U32 nQpMinP;
+        OMX_U32 nQpOffsetB;
+        OMX_U32 nQpMaxB;
+        OMX_U32 nQpMinB;
+    }OMX_VIDEO_SVC_QPSETTINGSTYPE;
+
+
+    typedef struct OMX_VIDEO_SVC_SLICECODINGTYPE {
+        OMX_VIDEO_AVCSLICEMODETYPE eSliceMode;
+        OMX_U32                    nSlicesize;
+    }OMX_VIDEO_SVC_SLICECODINGTYPE;
+
+
+    typedef struct OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING {
+        OMX_U32 nHRDBufferSize;
+        OMX_U32 nEncodeBitrate;
+    }OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING;
+
+/**
+ * SVC params
+ *
+ * STRUCT MEMBERS:
+ *  nSize                     : Size of the structure in bytes
+ *  nVersion                  : OMX specification version information
+ *  nPortIndex                : Port that this structure applies to
+ *  nSliceHeaderSpacing       : Number of macroblocks between slice header, put
+ *                              zero if not used
+ *  nPFrames                  : Number of P frames between each I frame
+ *  nBFrames                  : Number of B frames between each I frame
+ *  bUseHadamard              : Enable/disable Hadamard transform
+ *  nRefFrames                : Max number of reference frames to use for inter
+ *                              motion search (1-16)
+ *  nRefIdxTrailing           : Pic param set ref frame index (index into ref
+ *                              frame buffer of trailing frames list), B frame
+ *                              support
+ *  nRefIdxForward            : Pic param set ref frame index (index into ref
+ *                              frame buffer of forward frames list), B frame
+ *                              support
+ *  bEnableUEP                : Enable/disable unequal error protection. This
+ *                              is only valid of data partitioning is enabled.
+ *  bEnableFMO                : Enable/disable flexible macroblock ordering
+ *  bEnableASO                : Enable/disable arbitrary slice ordering
+ *  bEnableRS                 : Enable/disable sending of redundant slices
+ *  eProfile                  : AVC profile(s) to use
+ *  eLevel                    : AVC level(s) to use
+ *  nAllowedPictureTypes      : Specifies the picture types allowed in the
+ *                              bitstream
+ *  bFrameMBsOnly             : specifies that every coded picture of the
+ *                              coded video sequence is a coded frame
+ *                              containing only frame macroblocks
+ *  bMBAFF                    : Enable/disable switching between frame and
+ *                              field macroblocks within a picture
+ *  bEntropyCodingCABAC       : Entropy decoding method to be applied for the
+ *                              syntax elements for which two descriptors appear
+ *                              in the syntax tables
+ *  bWeightedPPrediction      : Enable/disable weighted prediction shall not
+ *                              be applied to P and SP slices
+ *  nWeightedBipredicitonMode : Default weighted prediction is applied to B
+ *                              slices
+ *  bconstIpred               : Enable/disable intra prediction
+ *  bDirect8x8Inference       : Specifies the method used in the derivation
+ *                              process for luma motion vectors for B_Skip,
+ *                              B_Direct_16x16 and B_Direct_8x8 as specified
+ *                              in subclause 8.4.1.2 of the AVC spec
+ *  bDirectSpatialTemporal    : Flag indicating spatial or temporal direct
+ *                              mode used in B slice coding (related to
+ *                              bDirect8x8Inference) . Spatial direct mode is
+ *                              more common and should be the default.
+ *  nCabacInitIdx             : Index used to init CABAC contexts
+ *  eLoopFilterMode           : Enable/disable loop filter
+ */
+    typedef struct OMX_TI_VIDEO_PARAM_SVCTYPE {
+        OMX_U32         nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U32         nPortIndex;
+
+        OMX_U32                nActualFrameWidth;
+        OMX_U32                nActualFrameHeight;
+        OMX_S32                nStride;
+        OMX_U32                xFramerate;
+        OMX_COLOR_FORMATTYPE   eColorFormat;
+        OMX_VIDEO_SVC_RECTTYPE sRecType;
+
+        OMX_VIDEO_SVC_STD_PARAMS sBasicParams;
+
+        OMX_U32                     nRefFrames;
+        OMX_TI_VIDEO_SVCPROFILETYPE eProfile;
+        OMX_TI_VIDEO_SVCLEVELTYPE   eLevel;
+
+        OMX_U32                   xEncodeFramerate;
+        OMX_VIDEO_SVC_BITRATETYPE sBitRateParams;
+
+        OMX_VIDEO_SVC_MOTIONVECTORTYPE sMotionVectorParams;
+        OMX_VIDEO_SVC_QUANTIZATIONTYPE sQuantizationParams;
+        OMX_VIDEO_SVC_INTRAREFRESHTYPE sIntraRefreshParams;
+        OMX_VIDEO_SVC_VBSMCTYPE        sVBSMCParams;
+
+        //OMX_NALUFORMATSTYPE               eNaluFormat;
+        OMX_VIDEO_SVC_NALUCONTROLTYPE sNalUnitParams;
+
+        OMX_VIDEO_SVC_MEBLOCKSIZETYPE    sMEBlockSizeParams;
+        OMX_VIDEO_SVC_INTRAPREDTYPE      sIntraPredParams;
+        OMX_VIDEO_SVC_ENCODER_PRESETTYPE sEncPresetParams;
+        OMX_VIDEO_TRANSFORMBLOCKSIZETYPE eTransformBlocksize;
+        OMX_VIDEO_SVC_VUIINFOTYPE        sVUIInfoParams;
+        OMX_VIDEO_SVC_HRDBUFFERSETTING   sHRDBufferParams;
+
+        OMX_U32 nNumTemporalLayers;
+        OMX_S32 nDependencyID;
+        OMX_S32 nQualityID;
+        //OMX_VIDEO_SVC_ENCODE_MODE         eModeOfEncode;
+
+        OMX_U32 nErrorConcealmentMode;
+        OMX_U32 nDeblockFilterMode;
+    } OMX_TI_VIDEO_PARAM_SVCTYPE;
+
+    typedef struct OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS {
+        OMX_U32 nNumLayers;
+        OMX_U32 LayerId[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  PriorityId[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  DependencyId[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  QualityId[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  TemporalId[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  BitrateInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  FramerateInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U8  FramesizeInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U16 AvgBitrate[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U16 MaxBitrate[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U16 AvgFramerate[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U32 FrameWidth[H264SVCVDEC_MAX_NUM_LAYER];
+        OMX_U32 FrameHeight[H264SVCVDEC_MAX_NUM_LAYER];
+
+    } OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS;
+
+    typedef struct OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER {
+        OMX_U32 nSvcTargetLayerDID;
+        OMX_U32 nSvcTargetLayerTID;
+        OMX_U32 nSvcTargetLayerQID;
+
+    } OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER;
 
 #endif /* OMX_TI_VIDEO_H */
 
