@@ -54,7 +54,7 @@ Welcome to BLTsville </title>
 <body>
 <span class="Title">BLTsville for Android</span>
 <p class="Subtitle">
-	CPU Implementation - Version 2.0.0.5
+	CPU Implementation - Version 2.0.0.6
 </p>
 <hr/>
 <p>
@@ -94,9 +94,6 @@ Welcome to BLTsville </title>
 			<li>When a conversion is not supported in the ROP path, it may be supported in the blend path.</li>
 			<li>When a conversion is supported in the blend path, it may not be supported in the ROP path.</li>
 		</ol>
-		<ul>
-			<li>Some RGB to NV12 copies have incorrect colors on right edge of images that are not a multiple of 8.</li>
-		</ul>
 	</td>
 </tr>
 </table>
@@ -107,8 +104,16 @@ Welcome to BLTsville </title>
 <tr>
 	<td>
 		<p>
-			2.0.0.5
-		</p>
+			2.0.0.6</p>
+        <ul>
+          <li>Added more dither validation.</li>
+          <li>Extended non-interpolated scaling to all supported 32-bit formats.</li>
+          <li>Added ordered 2x2/4x4 dither for RGBx24 to RGB16.</li>
+          <li>Fixed issue with NV12 rectangle offset that caused incorrect colors on right edge of images.</li>
+          <li>Added support for ALPHA8 as mask (instead of MONO8).</li>
+        </ul>
+        <p>
+			2.0.0.5</p>
 		<ul>
 			<li>Fix for clipping regression of negative coordinates and clips result in NULL rectangles.</li>
 			<li>Fixed YUV to RGB conversion overflow if the YUV is out of (ITU-R Bt.601) range.</li>
@@ -198,15 +203,15 @@ Welcome to BLTsville </title>
 		 .../lib/android/libbltsville_ticpu.so
 	</td>
 	<td>
-		 Client entry point for special cases.&nbsp; Softlink to libbltsville_ticpu.2.0.0.5.so.&nbsp; (Most clients should not use this entry.)
+		 Client entry point for special cases.&nbsp; Softlink to libbltsville_ticpu.2.0.0.6.so.&nbsp; (Most clients should not use this entry.)
 	</td>
 </tr>
 <tr>
 	<td>
-		 .../lib/android/libbltsville_ticpu.2.0.0.5.so
+		 .../lib/android/libbltsville_ticpu.2.0.0.6.so
 	</td>
 	<td>
-		 Version 2.0.0.5 of the TI BLTsville CPU-based library of 2-D functions for Android.&nbsp; (Do not directly load this file.)
+		 Version 2.0.0.6 of the TI BLTsville CPU-based library of 2-D functions for Android.&nbsp; (Do not directly load this file.)
 	</td>
 </tr>
 </table>
@@ -2286,8 +2291,14 @@ Welcome to BLTsville </title>
 		BGRx24
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		RGBx24</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
 </tr>
 </table>
 <p>
@@ -2295,7 +2306,7 @@ Welcome to BLTsville </title>
 </p>
 <table border="1" cellpadding="2" style="background-color:#EBEBEB">
 <tr>
-	<td colspan="5" class="Header">
+	<td colspan="13" class="Header">
 		 Scaling: Non-interpolated<br/>
 		(NEAREST_NEIGHBOR)
 	</td>
@@ -2304,7 +2315,7 @@ Welcome to BLTsville </title>
 	<td>
 		 Source 1
 	</td>
-	<td colspan="4">
+	<td colspan="12">
 		 Destination
 	</td>
 </tr>
@@ -2324,6 +2335,22 @@ Welcome to BLTsville </title>
 	<td>
 		1RGB24
 	</td>
+	<td>
+		BGRA24</td>
+	<td>
+		RGBA24</td>
+	<td>
+		ABGR24</td>
+	<td>
+		ARGB24</td>
+	<td>
+		nBGRA24</td>
+	<td>
+		nRGBA24</td>
+	<td>
+		nABGR24</td>
+	<td>
+		nARGB24</td>
 </tr>
 <tr class="ctr_small">
 	<td class="rt">
@@ -2333,7 +2360,7 @@ Welcome to BLTsville </title>
 		&nbsp;
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
 	<td>
 		&nbsp;
@@ -2341,13 +2368,29 @@ Welcome to BLTsville </title>
 	<td>
 		&nbsp;
 	</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
 </tr>
 <tr class="ctr_small">
 	<td class="rt">
 		BGRx24
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
 	<td>
 		&nbsp;
@@ -2358,6 +2401,22 @@ Welcome to BLTsville </title>
 	<td>
 		&nbsp;
 	</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
 </tr>
 <tr class="ctr_small">
 	<td class="rt">
@@ -2367,7 +2426,7 @@ Welcome to BLTsville </title>
 		&nbsp;
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
 	<td>
 		&nbsp;
@@ -2375,6 +2434,22 @@ Welcome to BLTsville </title>
 	<td>
 		&nbsp;
 	</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
 </tr>
 <tr class="ctr_small">
 	<td class="rt">
@@ -2387,11 +2462,27 @@ Welcome to BLTsville </title>
 		&nbsp;
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
 	<td>
 		&nbsp;
 	</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
 </tr>
 <tr class="ctr_small">
 	<td class="rt">
@@ -2407,8 +2498,248 @@ Welcome to BLTsville </title>
 		&nbsp;
 	</td>
 	<td>
-		<img src="check.png" alt="+"/>
+		<img src="../linux/check.png" alt="+"/>
 	</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		BGRA24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		RGBA24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		ABGR24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		ARGB24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		nBGRA24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		nRGBA24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		nABGR24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
+	<td>
+		&nbsp;</td>
+</tr>
+<tr class="ctr_small">
+	<td class="rt">
+		nARGB24</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		&nbsp;</td>
+	<td>
+		<img src="../linux/check.png" alt="+"/></td>
 </tr>
 </table>
 <p>
