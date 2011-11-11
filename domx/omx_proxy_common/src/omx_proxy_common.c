@@ -966,6 +966,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 
 	PROXY_require((hComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
+	PROXY_require(pBuffer != NULL, OMX_ErrorBadParameter, "Pointer to buffer is NULL");
 	PROXY_require(ppBufferHdr != NULL, OMX_ErrorBadParameter,
 	    "Pointer to buffer header is NULL");
 
