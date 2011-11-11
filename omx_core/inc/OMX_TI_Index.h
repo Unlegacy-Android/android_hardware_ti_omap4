@@ -230,6 +230,9 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexUseBufferDescriptor,                    /**< 0x7F000089 reference: OMX_TI_PARAM_USEBUFFERDESCRIPTOR */
 
     OMX_TI_IndexParamVtcSlice,                          /**< reference: OMX_TI_PARAM_VTCSLICE */
+
+    OMX_TI_IndexConfigAutofocusEnable,                  /**< 0x7F000091 reference: OMX_CONFIG_BOOLEANTYPE */
+
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
 
