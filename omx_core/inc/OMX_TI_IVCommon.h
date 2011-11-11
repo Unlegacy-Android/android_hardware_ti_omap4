@@ -1537,6 +1537,7 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_CPCamData,               /**< 0x7F00001A Used for cp cam data */
     OMX_TI_H264ESliceDataInfo,      /**< 0x7F00001B */
     OMX_TI_DccData,                 /**< 0x7F00001C Used for dcc data overwrite in the file system */
+    OMX_TI_ProfileData,             /**< 0x7F00001D Used for profiling data */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
