@@ -997,7 +997,7 @@ typedef enum OMX_HISTCOMPONENTTYPE{
     OMX_HISTCOMP_Cr,     /**< Chroma red histogram component (Cr) */
     OMX_HISTCOMP_32BIT_PATCH = 0x7FFFFFFF
 }OMX_HISTCOMPONENTTYPE;
-
+/**/
  /**
  * The OMX_TI_CAMERAVIEWTYPE enumeration is used to identify the
  * particular camera view that the rest of the data in the structure is
@@ -3132,6 +3132,24 @@ typedef struct OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE {
     OMX_VERSIONTYPE          nVersion;
     OMX_TI_ZSL_PRIORITY_TYPE ePriority;
 } OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE;
+ 
+/**
+* Data structure carrying information about
+* VTC slice height.
+*
+* @param nSize Size of the structure in bytes.
+* @param nVersion OMX specification version information.
+* @param nSliceHeight Definition of slice height.
+*
+*
+*
+*
+*/
+typedef struct OMX_TI_PARAM_VTCSLICE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nSliceHeight;
+} OMX_TI_PARAM_VTCSLICE;
 
 #ifdef __cplusplus
 }

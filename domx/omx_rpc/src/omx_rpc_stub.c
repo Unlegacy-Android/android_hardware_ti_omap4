@@ -1425,9 +1425,52 @@ OMX_ERRORTYPE RPC_FillBufferDone(OMX_HANDLETYPE hRPCCtx, OMX_PTR pAppData,
 }
 
 RPC_OMX_ERRORTYPE RPC_ComponentTunnelRequest(OMX_HANDLETYPE hRPCCtx,
-    OMX_IN OMX_U32 nPort, OMX_HANDLETYPE hTunneledhRemoteHandle,
+    OMX_IN OMX_U32 nPort, OMX_HANDLETYPE hTunneledRemoteHandle,
     OMX_U32 nTunneledPort, OMX_INOUT OMX_TUNNELSETUPTYPE * pTunnelSetup,
-    OMX_ERRORTYPE * nCmdStatus)
+    OMX_ERRORTYPE * eCompReturn)
 {
-	return RPC_OMX_ErrorNone;
+	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
+	TIMM_OSAL_ERRORTYPE eError = TIMM_OSAL_ERR_NONE;
+	OMX_U32 nPacketSize = RPC_PACKET_SIZE;
+	RPC_OMX_CONTEXT *hCtx = hRPCCtx;
+	OMX_HANDLETYPE hComp = hCtx->hRemoteHandle;
+       RPC_OMX_CONTEXT   *hTunneledCtx    = hTunneledRemoteHandle;
+        OMX_HANDLETYPE     hTunneledComp   = hTunneledCtx->hRemoteHandle;
+	RPC_OMX_FXN_IDX_TYPE nFxnIdx;
+	struct omx_packet *pOmxPacket = NULL;
+	OMX_U32 nPos = 0, nSize = 0, nOffset = 0;
+	OMX_S32 status = 0;
+#ifdef RPC_SYNC_MODE
+	TIMM_OSAL_PTR pPacket = NULL, pRetPacket = NULL, pData = NULL;
+#endif
+
+        printf(" Entering rpc:domx_stub.c:ComponentTunnelRequest\n");
+
+	nFxnIdx = RPC_OMX_FXN_IDX_COMP_TUNNEL_REQUEST;
+	RPC_getPacket(nPacketSize, pPacket);
+	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
+
+        /*Pack the values into a packet*/
+        //Marshalled:[>ParentComp|>ParentPort|>TunnelComp|>TunneledPort>TunnelSetup]
+	RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_NONE, RPC_OMX_MAP_INFO_TYPE);
+        RPC_SETFIELDVALUE(pData, nPos, hComp, OMX_HANDLETYPE);
+        RPC_SETFIELDVALUE(pData, nPos, nPort, OMX_U32);
+        RPC_SETFIELDVALUE(pData, nPos, hTunneledComp, OMX_HANDLETYPE);
+        RPC_SETFIELDVALUE(pData, nPos, nTunneledPort, OMX_U32);
+        printf("\n after RPC_sendPacket_sync");
+	RPC_sendPacket_sync(hCtx, pPacket, nPacketSize, nFxnIdx, pRetPacket,
+	    nSize);
+
+        printf("\n after RPC_sendPacket_sync: *eCompReturn : 0x%x\n", (OMX_ERRORTYPE) (((struct omx_packet *) pRetPacket)->result));
+	*eCompReturn = (OMX_ERRORTYPE) (((struct omx_packet *) pRetPacket)->result);
+
+      EXIT:
+	if (pPacket)
+		RPC_freePacket(pPacket);
+	if (pRetPacket)
+		RPC_freePacket(pRetPacket);
+
+	DOMX_EXIT("");
+	return eRPCError;
+
 }

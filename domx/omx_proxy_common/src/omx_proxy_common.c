@@ -1914,7 +1914,34 @@ static OMX_ERRORTYPE PROXY_ComponentTunnelRequest(OMX_IN OMX_HANDLETYPE
 
 	DOMX_ENTER("hComponent = %p", hComponent);
 	DOMX_DEBUG(" EMPTY IMPLEMENTATION ");
+	PROXY_COMPONENT_PRIVATE *pOutCompPrv = NULL;
+	PROXY_COMPONENT_PRIVATE *pInCompPrv  = NULL;
+	OMX_COMPONENTTYPE       *hOutComp    = hComponent;
+	OMX_COMPONENTTYPE       *hInComp     = hTunneledComp;
+	OMX_ERRORTYPE           eCompReturn = OMX_ErrorNone;
+	RPC_OMX_ERRORTYPE       eRPCError    = RPC_OMX_ErrorNone;
+	OMX_ERRORTYPE           nCmdStatus   = OMX_ErrorNone;
+	PROXY_assert((hOutComp->pComponentPrivate != NULL),
+	    OMX_ErrorBadParameter, NULL);
+	PROXY_assert((hInComp->pComponentPrivate != NULL),
+	    OMX_ErrorBadParameter, NULL);
 
+        //TBD
+        //PROXY_assert(nPort != 1, OMX_ErrorBadParameter, NULL);
+        //PROXY_assert(nTunnelPort != 0, OMX_ErrorBadParameter, NULL);
+	pOutCompPrv = (PROXY_COMPONENT_PRIVATE *) hOutComp->pComponentPrivate;
+	pInCompPrv  = (PROXY_COMPONENT_PRIVATE *) hInComp->pComponentPrivate;
+	DOMX_ENTER("hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n",
+	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
+
+	printf("PROXY_ComponentTunnelRequest:: hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n ",
+	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
+       eRPCError = RPC_ComponentTunnelRequest(pOutCompPrv->hRemoteComp, nPort,
+	        pInCompPrv->hRemoteComp, nTunneledPort, pTunnelSetup, &nCmdStatus);
+        printf("\nafter: RPC_ComponentTunnelRequest = 0x%x\n ", eRPCError);
+        PROXY_checkRpcError();
+
+EXIT:
 	DOMX_EXIT("eError: %d", eError);
 	return eError;
 }
