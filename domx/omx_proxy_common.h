@@ -173,6 +173,33 @@ extern "C"
 		OMX_U32 IsBuffer2D;   /*Used when buffer pointers come from Gralloc allocations */
 	} PROXY_PORT_TYPE;
 
+#ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
+/*===============================================================*/
+/** DebugFrame_Dump     : Structure holding the info about frames to dump
+ *  @param fromFrame: From which frame to start dumping
+ *  @param toFrame:  till which frame to dump
+ *  @param frame_width: Width of the frame
+ *  @param frame_height: Height of the frame
+ *  @param padded_width: Width of the buffer
+ *  @param padded_height: Height of the buffer
+ *  @param stride: Stride of the Buffer
+ *  @param runningFrame: running counter to track the frames
+ */
+/*===============================================================*/
+	typedef struct DebugFrame_Dump
+	{
+		OMX_S32 fromFrame;
+		OMX_S32 toFrame;
+		OMX_U32 frame_width;
+		OMX_U32 frame_height;
+		OMX_U32 frame_xoffset;
+		OMX_U32	frame_yoffset;
+		OMX_U32 stride;
+		OMX_S32 runningFrame;
+		OMX_U32 *y_uv[2];
+	}DebugFrame_Dump;
+#endif
+
 /* ========================================================================== */
 /**
 * PROXY_COMPONENT_PRIVATE
@@ -207,6 +234,9 @@ extern "C"
 		int ion_fd;
 		OMX_BOOL bUseIon;
 		OMX_BOOL bMapIonBuffers;
+#endif
+#ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
+		DebugFrame_Dump debugframeInfo;
 #endif
 	} PROXY_COMPONENT_PRIVATE;
 

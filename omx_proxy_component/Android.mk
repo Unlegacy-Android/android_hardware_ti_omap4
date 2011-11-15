@@ -30,6 +30,12 @@ LOCAL_MODULE_TAGS:= optional
 LOCAL_SRC_FILES:= omx_video_dec/src/omx_proxy_videodec.c \
                   omx_video_dec/src/omx_proxy_videodec_utils.c
 
+# Uncomment the below 2 lines to enable the run time
+# dump of NV12 buffers from Decoder/Camera
+# based on setprop control
+#LOCAL_CFLAGS += -DENABLE_RAW_BUFFERS_DUMP_UTILITY
+#LOCAL_SHARED_LIBRARIES += libcutils
+
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.DECODER
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
