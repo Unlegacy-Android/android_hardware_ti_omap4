@@ -796,7 +796,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		}
 	}
 
-	PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
+	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 	if (pProxy->bAndroidOpaqueFormat)
 	{
