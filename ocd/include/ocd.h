@@ -106,23 +106,38 @@
 /* 3 reserved for non-YCbCr */
 
 /**** Bits 18-16 are component modifiers for non-alpha c/s only ****/
+#define OCDFMTDEF_ALPHA_SHIFT 18
 #define OCDFMTDEF_ALPHA	\
-	(1 << 18) /* An alpha component is added to the format */
+	(1 << OCDFMTDEF_ALPHA_SHIFT)	/* An alpha component is added to the
+					   format */
+#define OCDFMTDEF_NON_PREMULT_SHIFT 17
 #define OCDFMTDEF_NON_PREMULT \
-	(1 << 17) /* Component(s) is(are) not premultiplied by the alpha
-		     (default is premultiplied) */
+	(1 << OCDFMTDEF_NON_PREMULT_SHIFT)	/* Component(s) is(are) not
+						   premultiplied by the alpha
+						   (default is
+						   premultiplied) */
+#define OCDFMTDEF_FILL_EMPTY_0_SHIFT \
+	OCDFMTDEF_NON_PREMULT_SHIFT
 #define OCDFMTDEF_FILL_EMPTY_0 \
-	(1 << 17) /* Empty bits are hard-wired to 0 (default is 1) */
+	OCDFMTDEF_NON_PREMULT		/* Empty bits are hard-wired to 0
+					   (default is 1) */
+#define OCDFMTDEF_SUBSAMPLE_HORZ_ALIGNMENT_SHIFT 16
 #define OCDFMTDEF_SUBSAMPLE_HORZ_ALIGNED \
-	(0 << 16) /* Subsamples aligned w/1st non-subsample (e.g. MPEG-2) */
+	(0 << OCDFMTDEF_SUBSAMPLE_HORZ_ALIGNMENT_SHIFT)	/* Subsamples aligned
+							   w/1st non-subsample
+							   (e.g. MPEG-2) */
 #define OCDFMTDEF_SUBSAMPLE_HORZ_CENTERED \
-	(1 << 16) /* Subsamples are between non-subsamples (e.g. MPEG-1) */
+	(1 << OCDFMTDEF_SUBSAMPLE_HORZ_ALIGNMENT_SHIFT) /* Subsamples are
+							   between
+							   non-subsamples
+							   (e.g. MPEG-1) */
 
 /*** Bits 18-16 are used differently for alpha c/s ***/
 /* Bit 18 is reserved */
 /*** Bits 17-16 define the number of alpha components for alpha c/s ***/
 #define OCDFMTDEF_ALPHA_COMPONENTS_SHIFT 16
-#define OCDFMTDEF_ALPHA_COMPONENTS_MASK (3 << OCDFMTDEF_ALPHA_COMPONENTS_SHIFT)
+#define OCDFMTDEF_ALPHA_COMPONENTS_MASK \
+	(3 << OCDFMTDEF_ALPHA_COMPONENTS_SHIFT)
 
 #define OCDFMTDEF_ALPHA_COMPONENTS_1 (0 << OCDFMTDEF_ALPHA_COMPONENTS_SHIFT)
 #define OCDFMTDEF_ALPHA_COMPONENTS_2 (1 << OCDFMTDEF_ALPHA_COMPONENTS_SHIFT)
@@ -193,12 +208,19 @@
 /* 7 reserved for non-YCbCr */
 
 /**** Bits 10-9 are layout modifiers. ****/
+#define OCDFMTDEF_REVERSED_SHIFT 10
 #define OCDFMTDEF_REVERSED \
-	(1 << 10) /* Order of components reversed (default is RGB or CbCr) */
+	(1 << OCDFMTDEF_REVERSED_SHIFT)	/* Order of components reversed
+					   (default is RGB or CbCr) */
+#define OCDFMTDEF_LEFT_JUSTIFIED_SHIFT 9
 #define OCDFMTDEF_LEFT_JUSTIFIED \
-	(1 << 9) /* Components are shifted left (default is shifted right);
-		    for 3-plane YCbCr, this indicates wasted space to the
-		    right of the Cb & Cr planes (stride matches Y plane). */
+	(1 << OCDFMTDEF_LEFT_JUSTIFIED_SHIFT)	/* Components are shifted
+						   left (default is shifted
+						   right); for 3-plane YCbCr,
+						   this indicates wasted space
+						   to the right of the Cb & Cr
+						   planes (stride matches Y
+						   plane). */
 
 /**** Bits 6-8 specify the container type. ****/
 #define OCDFMTDEF_CONTAINER_SHIFT 6
