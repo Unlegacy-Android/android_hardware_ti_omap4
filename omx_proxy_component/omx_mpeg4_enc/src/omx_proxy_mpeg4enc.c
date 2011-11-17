@@ -644,7 +644,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_GetExtensionIndex(OMX_IN OMX_HANDLETYPE hCompon
 		goto EXIT;
 	}
 
-        PROXY_GetExtensionIndex(hComponent, cParameterName, pIndexType);
+        eError = PROXY_GetExtensionIndex(hComponent, cParameterName, pIndexType);
 
       EXIT:
 	DOMX_EXIT("%s eError: %d",__FUNCTION__, eError);
