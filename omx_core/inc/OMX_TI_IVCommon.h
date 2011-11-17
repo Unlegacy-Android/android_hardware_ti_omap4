@@ -2457,6 +2457,24 @@ typedef struct OMX_TI_CAPRESTYPE {
  * ePrvFrameLayout                      : Array containing the frame layouts for preview
  * ulCapFrameLayoutCount                : supported frame layout count for capture
  * eCapFrameLayout                      : Array containing the frame layouts for capture
+ * bVideoNoiseFilterSupported           : Flag showing if the video noise filter is supported
+ * bVideoStabilizationSupported         : Flag showing if the video stabilization is supported
+ * bStillCapDuringVideoSupported        : Flag showing if the still capture is supported during video
+ * bMechanicalMisalignmentSupported     : Flag showing if the mechanical misalignment is supported
+ * bFacePrioritySupported               : Flag showing if the face priority is supported
+ * bRegionPrioritySupported             : Flag showing if the region priority is supported
+ * nManualConvMin                       : Manual convergence min value
+ * nManualConvMax                       : Manual convergence max value
+ * nManualExpMin                        : Manual exposure time min value
+ * nManualExpMax                        : Manual exposure time max value
+ * nBrightnessMin                       : Brightness min value
+ * nBrightnessMax                       : Brightness max value
+ * nContrastMin                         : Contrast min value
+ * nContrastMax                         : Contrast max value
+ * nSharpnessMin                        : Sharpness min value
+ * nSharpnessMax                        : Sharpness max value
+ * nSaturationMin                       : Saturation min value
+ * nSaturationMax                       : Saturation max value
  */
 typedef struct OMX_TI_CAPTYPE {
 	OMX_U32                         nSize;
@@ -2524,6 +2542,24 @@ typedef struct OMX_TI_CAPTYPE {
     OMX_TI_STEREOFRAMELAYOUTTYPE   ePrvFrameLayout[16];
     OMX_U16                        ulCapFrameLayoutCount;       // supported frame layout count
     OMX_TI_STEREOFRAMELAYOUTTYPE   eCapFrameLayout[16];
+    OMX_BOOL                       bVideoNoiseFilterSupported;
+    OMX_BOOL                       bVideoStabilizationSupported;
+    OMX_BOOL                       bStillCapDuringVideoSupported;
+    OMX_BOOL                       bMechanicalMisalignmentSupported;
+    OMX_BOOL                       bFacePrioritySupported;
+    OMX_BOOL                       bRegionPrioritySupported;
+    OMX_S16                        nManualConvMin;
+    OMX_S16                        nManualConvMax;
+    OMX_U16                        nManualExpMin;
+    OMX_U16                        nManualExpMax;
+    OMX_S16                        nBrightnessMin;
+    OMX_S16                        nBrightnessMax;
+    OMX_S16                        nContrastMin;
+    OMX_S16                        nContrastMax;
+    OMX_S16                        nSharpnessMin;
+    OMX_S16                        nSharpnessMax;
+    OMX_S16                        nSaturationMin;
+    OMX_S16                        nSaturationMax;
 } OMX_TI_CAPTYPE;
 
 
