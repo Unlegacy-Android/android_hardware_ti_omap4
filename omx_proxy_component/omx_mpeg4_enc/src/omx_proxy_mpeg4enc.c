@@ -82,7 +82,6 @@
 /* needs to be specific for every configuration wrapper */
 
 #define OMX_MPEG4E_INPUT_PORT 0
-#define OMX_MPEG4E_OUTPUT_PORT 1
 #define LINUX_PAGE_SIZE 4096
 
 #ifdef ANDROID_QUIRK_CHANGE_PORT_VALUES
@@ -193,7 +192,7 @@ static OMX_ERRORTYPE OMX_ConfigureDynamicFrameRate( OMX_HANDLETYPE hComponent,
 
 	/*Get Port Frame Rate if not read yet*/
 	if(!nFrameRateThreshold) {
-		tFrameRate.nPortIndex = OMX_MPEG4E_OUTPUT_PORT; /* As per ducati support-set for output port */
+		tFrameRate.nPortIndex = OMX_MPEG4E_INPUT_PORT; /* As per ducati support-set for input port */
 
 		/* Read Current FrameRate */
 		eError = pHandle->GetConfig(hComponent,OMX_IndexConfigVideoFramerate,&tFrameRate);
@@ -232,7 +231,7 @@ static OMX_ERRORTYPE OMX_ConfigureDynamicFrameRate( OMX_HANDLETYPE hComponent,
 		(((OMX_S32) nCurrentFrameRate) - ( (OMX_S32)nTargetFrameRate) >= FRAME_RATE_THRESHOLD)) {
 
 		/* Now Send the new Frame Rate */
-		tFrameRate.nPortIndex = OMX_MPEG4E_OUTPUT_PORT; /* As per ducati support-set for output port */
+		tFrameRate.nPortIndex = OMX_MPEG4E_INPUT_PORT; /* As per ducati support-set for input port */
 		tFrameRate.xEncodeFramerate = (OMX_U32)(nTargetFrameRate * (1 << 16));
 		eError = pHandle->SetConfig(hComponent,OMX_IndexConfigVideoFramerate,&tFrameRate);
 		if(eError != OMX_ErrorNone){
