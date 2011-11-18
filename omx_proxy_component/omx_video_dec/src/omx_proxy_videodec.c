@@ -178,6 +178,20 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	}
 #endif
 	EXIT:
+	if (eError != OMX_ErrorNone)
+	{
+		DOMX_DEBUG("Error in Initializing Proxy");
+		if (pComponentPrivate->cCompName != NULL)
+		{
+			TIMM_OSAL_Free(pComponentPrivate->cCompName);
+			pComponentPrivate->cCompName = NULL;
+		}
+		if (pComponentPrivate != NULL)
+		{
+			TIMM_OSAL_Free(pComponentPrivate);
+			pComponentPrivate = NULL;
+		}
+	}
 		return eError;
 }
 
@@ -259,20 +273,6 @@ OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent)
 	pHandle->EmptyThisBuffer = PrearrageEmptyThisBuffer;
 
       EXIT:
-	if (eError != OMX_ErrorNone)
-	{
-		DOMX_DEBUG("Error in Initializing Proxy");
-		if (pComponentPrivate->cCompName != NULL)
-		{
-			TIMM_OSAL_Free(pComponentPrivate->cCompName);
-			pComponentPrivate->cCompName = NULL;
-		}
-		if (pComponentPrivate != NULL)
-		{
-			TIMM_OSAL_Free(pComponentPrivate);
-			pComponentPrivate = NULL;
-		}
-	}
 	return eError;
 }
 
