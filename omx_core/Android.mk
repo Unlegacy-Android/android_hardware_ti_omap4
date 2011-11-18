@@ -12,8 +12,7 @@ LOCAL_C_INCLUDES += \
 
 LOCAL_SHARED_LIBRARIES := \
     libdl \
-    liblog \
-    libmm_osal
+    libmm_osal 
 
 LOCAL_CFLAGS += -DSTATIC_TABLE -D_Android
 LOCAL_MODULE:= libOMX_Core
