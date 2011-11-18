@@ -238,6 +238,7 @@ extern "C"
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
 		DebugFrame_Dump debugframeInfo;
 #endif
+		int secure_misc_drv_fd;
 	} PROXY_COMPONENT_PRIVATE;
 
 
