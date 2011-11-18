@@ -302,7 +302,7 @@ RPC_OMX_ERRORTYPE RPC_FreeHandle(OMX_HANDLETYPE hRPCCtx,
 /* ===========================================================================*/
 RPC_OMX_ERRORTYPE RPC_SetParameter(OMX_HANDLETYPE hRPCCtx,
     OMX_INDEXTYPE nParamIndex, OMX_PTR pCompParam,
-    OMX_PTR pLocBufNeedMap, OMX_ERRORTYPE * eCompReturn)
+    OMX_PTR pLocBufNeedMap, OMX_U32 nNumOfLocalBuf, OMX_ERRORTYPE * eCompReturn)
 {
 
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
@@ -322,8 +322,14 @@ RPC_OMX_ERRORTYPE RPC_SetParameter(OMX_HANDLETYPE hRPCCtx,
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
 	if (pLocBufNeedMap != NULL && (pLocBufNeedMap - pCompParam) >= 0 ) {
-		RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
-			RPC_OMX_MAP_INFO_TYPE);
+		if (nNumOfLocalBuf == 1) {
+			RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
+				RPC_OMX_MAP_INFO_TYPE);
+		}
+		else if (nNumOfLocalBuf == 2) {
+			RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_TWO_BUF,
+				RPC_OMX_MAP_INFO_TYPE);
+		}
 		nOffset = (pLocBufNeedMap - pCompParam) +
 			sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
 			sizeof(OMX_HANDLETYPE) + sizeof(OMX_INDEXTYPE);

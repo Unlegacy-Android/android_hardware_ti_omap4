@@ -1335,7 +1335,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 /* ===========================================================================*/
 OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_IN OMX_INDEXTYPE nParamIndex, OMX_IN OMX_PTR pParamStruct,
-	OMX_PTR pLocBufNeedMap)
+	OMX_PTR pLocBufNeedMap, OMX_U32 nNumOfLocalBuf)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
@@ -1391,7 +1391,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		default:
 			eRPCError =
 				RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
-					pLocBufNeedMap, &eCompReturn);
+					pLocBufNeedMap, nNumOfLocalBuf, &eCompReturn);
 	}
 
 	PROXY_checkRpcError();
@@ -1414,7 +1414,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 OMX_ERRORTYPE PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_IN OMX_INDEXTYPE nParamIndex, OMX_IN OMX_PTR pParamStruct)
 {
-	return __PROXY_SetParameter(hComponent, nParamIndex, pParamStruct, NULL);
+	return __PROXY_SetParameter(hComponent, nParamIndex, pParamStruct, NULL, 0);
 }
 
 

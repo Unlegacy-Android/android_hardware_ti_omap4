@@ -133,7 +133,7 @@ OMX_ERRORTYPE __PROXY_SetConfig(OMX_HANDLETYPE, OMX_INDEXTYPE,
 OMX_ERRORTYPE __PROXY_GetConfig(OMX_HANDLETYPE, OMX_INDEXTYPE,
 								OMX_PTR, OMX_PTR);
 OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE, OMX_INDEXTYPE,
-									OMX_PTR, OMX_PTR);
+									OMX_PTR, OMX_PTR, OMX_U32);
 OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE, OMX_INDEXTYPE,
 									OMX_PTR, OMX_PTR);
 OMX_ERRORTYPE PROXY_SendCommand(OMX_HANDLETYPE, OMX_COMMANDTYPE,
@@ -542,7 +542,7 @@ OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent)
 	eError = __PROXY_SetParameter(hComponent,
 								OMX_TI_IndexParamDccUriBuffer,
 								&uribufparam,
-								&(uribufparam.pSharedBuff));
+								&(uribufparam.pSharedBuff), 1);
 
 	if (eError != OMX_ErrorNone) {
 		DOMX_ERROR(" Error in SetParam for DCC Uri Buffer 0x%x", eError);
