@@ -3186,6 +3186,8 @@ typedef struct OMX_TI_PARAM_VTCSLICE {
     OMX_U32         nSize;
     OMX_VERSIONTYPE nVersion;
     OMX_U32         nSliceHeight;
+    OMX_U32         nInternalBuffers;
+    OMX_PTR         IonBufhdl[2];
 } OMX_TI_PARAM_VTCSLICE;
 
 #ifdef __cplusplus
