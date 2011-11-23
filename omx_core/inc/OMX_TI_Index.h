@@ -232,6 +232,9 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexParamVtcSlice,                          /**< reference: OMX_TI_PARAM_VTCSLICE */
 
     OMX_TI_IndexConfigAutofocusEnable,                  /**< 0x7F000091 reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexParamAVCEnableLTRMode,                  /**< 0x7F000092 reference: OMX_TI_VIDEO_PARAM_AVC_LTRP*/
+    OMX_TI_IndexConfigAVCEnableNextLTR,                 /**< 0x7F000093 reference: OMX_TI_VIDEO_CONFIG_AVC_LTRP*/
+    OMX_TI_IndexConfigAVCUpdateLTRInterval,             /**< 0x7F000094 reference: OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL*/
 
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;

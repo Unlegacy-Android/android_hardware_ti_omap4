@@ -1116,6 +1116,72 @@ typedef struct OMX_TI_VIDEO_SLICEDATAINFO {
     OMX_U32 nSliceSizeConfigured;
     OMX_U32 nSliceSize[OMXH264E_MAX_SLICE_SUPPORTED];
 } OMX_TI_VIDEO_SLICEDATAINFO;
+/**
+*	@brief	mode selection for the data that is given to the Codec
+ */
+
+typedef enum _OMX_VIDEO_AVCLTRMODE {
+  OMX_H264ENC_LTRP_NONE = 0,
+        /**< No longterm refernce frame in the sequnce
+           */
+  OMX_H264ENC_LTRP_REFERTOIDR = 1,
+          /**< Mark all the I frames as long term-reference frames and
+           * based on the frame control IH264ENC_Control, refere to
+           * a long-term reference frame (I frame).
+           */
+  OMX_H264ENC_LTRP_REFERTOP_PROACTIVE =2,
+          /**< Two long term frames are supported in this schme and
+           * long-term index marking and refernce frame update is done based
+           * the IH264ENC_Control values
+           */
+  OMX_H264ENC_LTRP_REFERTOP_REACTIVE = 3
+          /**< This is not supported in the current version of encoder
+           */
+} OMX_VIDEO_AVCLTRMODE;
+
+
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_PARAM_AVC_LTRP : Structure to enable the configuration of Long Term reference Picture feature in H264 Encoder for the session
+Enabling this parameter will instruct encoder to keep its recent I/IDR frame in its reference buffer list.
+So it increases the DDR foot print by one frame buffer
+@param eLTRMode	: enables the LongTerm Reference Picture, possible modes: 0, 1, 2
+@param nLTRInterval : interval of the write indicating to codec interms of the frame number
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_PARAM_AVC_LTRP{
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nPortIndex;
+	OMX_VIDEO_AVCLTRMODE eLTRMode;
+	OMX_U32 nLTRInterval;
+} OMX_TI_VIDEO_PARAM_AVC_LTRP;
+
+/*
+@brief OMX_TI_VIDEO_CONFIG_AVC_LTRP : Structure to provide the configuration to acknowledge successful decode of previous LTR
+@param eLTRFrameDecoded	: tells the decoder that the LTR has been decoded successfully when set to TRUE
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP{
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnableNextLTR;
+} OMX_TI_VIDEO_CONFIG_AVC_LTRP;
+
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL : Structure to enable the update of the LTRP
+Interval during runtime
+@param nLTRInterval : interval of the write indicating to codec interms of the frame number
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL{
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nPortIndex;
+	OMX_U32 nLTRInterval;
+} OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL;
 
 #endif /* OMX_TI_VIDEO_H */
 
