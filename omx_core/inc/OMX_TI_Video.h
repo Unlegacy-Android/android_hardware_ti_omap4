@@ -54,7 +54,7 @@
 #define OMX_TI_VIDEO_H
 #define H264ENC_MAXNUMSLCGPS 2
 #define H264SVCVDEC_MAX_NUM_LAYER 9
-
+#define OMXH264E_MAX_SLICE_SUPPORTED 64
 #include <OMX_Core.h>
 
 /**
@@ -1101,6 +1101,21 @@ typedef struct OMX_TI_STREAMINTERLACEFORMATTYPE {
         OMX_U32 nSvcTargetLayerQID;
 
     } OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER;
+/* ========================================================================== */
+/*!
+@brief OMX_TI_VIDEO_SLICEDATAINFO : to configure the Slice Settings
+@param  nNumofSlices   number of validfields to be read
+@param  nSliceSizeConfigured   variable that indicates the MaxSlice configured
+                               & (n*nSliceSizeConfigured) gives the buff offset
+                               for nth slice in the o/p buffer
+@param  nSliceSize   gives the SliceSize
+*/
+/* ==========================================================================*/
+typedef struct OMX_TI_VIDEO_SLICEDATAINFO {
+    OMX_U32 nNumofSlices;
+    OMX_U32 nSliceSizeConfigured;
+    OMX_U32 nSliceSize[OMXH264E_MAX_SLICE_SUPPORTED];
+} OMX_TI_VIDEO_SLICEDATAINFO;
 
 #endif /* OMX_TI_VIDEO_H */
 
