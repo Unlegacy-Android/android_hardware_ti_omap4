@@ -391,8 +391,8 @@ struct bvblendxlate {
 	BVBLENDDEF_ ## Normal
 
 #define BVBLENDMODE(Mode, Inverse) \
-	AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_ ## Mode, \
-	AQ_DRAWING_ENGINE_FACTOR_INVERSE_ ## Inverse
+	GCDE_BLENDING_MODE_ ## Mode, \
+	GCDE_FACTOR_INVERSE_ ## Inverse
 
 #define BVBLENDUNDEFINED() \
 	~0, ~0

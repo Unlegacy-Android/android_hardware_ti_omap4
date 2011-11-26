@@ -6817,61 +6817,66 @@
 ** Generic defines
 */
 
-#define AQ_DRAWING_ENGINE_FORMAT_SUB_SAMPLE_MODE_YUV_MODE422                 0x0
-#define AQ_DRAWING_ENGINE_FORMAT_SUB_SAMPLE_MODE_YUV_MODE420                 0x1
+#define GCDE_FORMAT_SUB_SAMPLE_MODE_YUV_MODE422                              0x0
+#define GCDE_FORMAT_SUB_SAMPLE_MODE_YUV_MODE420                              0x1
 
-#define AQ_DRAWING_ENGINE_FORMAT_SWIZZLE_ARGB                                0x0
-#define AQ_DRAWING_ENGINE_FORMAT_SWIZZLE_RGBA                                0x1
-#define AQ_DRAWING_ENGINE_FORMAT_SWIZZLE_ABGR                                0x2
-#define AQ_DRAWING_ENGINE_FORMAT_SWIZZLE_BGRA                                0x3
+#define GCDE_FORMAT_SWIZZLE_ARGB                                             0x0
+#define GCDE_FORMAT_SWIZZLE_RGBA                                             0x1
+#define GCDE_FORMAT_SWIZZLE_ABGR                                             0x2
+#define GCDE_FORMAT_SWIZZLE_BGRA                                             0x3
 
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_X4R4G4B4                            0x00
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_A4R4G4B4                            0x01
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_X1R5G5B5                            0x02
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_A1R5G5B5                            0x03
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_R5G6B5                              0x04
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_X8R8G8B8                            0x05
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_A8R8G8B8                            0x06
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_YUY2                                0x07
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_UYVY                                0x08
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_INDEX8                              0x09
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_MONOCHROME                          0x0A
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_YV12                                0x0F
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_A8                                  0x10
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_NV12                                0x11
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_NV16                                0x12
-#define AQ_DRAWING_ENGINE_FORMAT_FORMAT_RG16                                0x13
-
-/* ~~~~~~~~~~~~~ */
-
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_ALPHA_MODE_NORMAL                   0x0
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_ALPHA_MODE_INVERSED                 0x1
-
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_GLOBAL_ALPHA_MODE_NORMAL            0x0
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_GLOBAL_ALPHA_MODE_GLOBAL            0x1
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_GLOBAL_ALPHA_MODE_SCALED            0x2
-
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_COLOR_MODE_NORMAL                   0x0
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_COLOR_MODE_MULTIPLY                 0x1
-
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_ZERO                  0x0
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_ONE                   0x1
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_NORMAL                0x2
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_INVERSED              0x3
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_COLOR                 0x4
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_COLOR_INVERSED        0x5
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_SATURATED_ALPHA       0x6
-#define AQ_DRAWING_ENGINE_ALPHA_BLENDING_BLENDING_MODE_SATURATED_DEST_ALPHA  0x7
+#define GCDE_FORMAT_FORMAT_X4R4G4B4                                         0x00
+#define GCDE_FORMAT_FORMAT_A4R4G4B4                                         0x01
+#define GCDE_FORMAT_FORMAT_X1R5G5B5                                         0x02
+#define GCDE_FORMAT_FORMAT_A1R5G5B5                                         0x03
+#define GCDE_FORMAT_FORMAT_R5G6B5                                           0x04
+#define GCDE_FORMAT_FORMAT_X8R8G8B8                                         0x05
+#define GCDE_FORMAT_FORMAT_A8R8G8B8                                         0x06
+#define GCDE_FORMAT_FORMAT_YUY2                                             0x07
+#define GCDE_FORMAT_FORMAT_UYVY                                             0x08
+#define GCDE_FORMAT_FORMAT_INDEX8                                           0x09
+#define GCDE_FORMAT_FORMAT_MONOCHROME                                       0x0A
+#define GCDE_FORMAT_FORMAT_YV12                                             0x0F
+#define GCDE_FORMAT_FORMAT_A8                                               0x10
+#define GCDE_FORMAT_FORMAT_NV12                                             0x11
+#define GCDE_FORMAT_FORMAT_NV16                                             0x12
+#define GCDE_FORMAT_FORMAT_RG16                                             0x13
 
 /* ~~~~~~~~~~~~~ */
 
-#define AQ_DRAWING_ENGINE_RESOURCE_USAGE_OVERRIDE_DEFAULT                    0x0
-#define AQ_DRAWING_ENGINE_RESOURCE_USAGE_OVERRIDE_USE_ENABLE                 0x1
-#define AQ_DRAWING_ENGINE_RESOURCE_USAGE_OVERRIDE_USE_DISABLE                0x2
+#define GCDE_ALPHA_MODE_NORMAL                                               0x0
+#define GCDE_ALPHA_MODE_INVERSED                                             0x1
+
+#define GCDE_GLOBAL_ALPHA_MODE_NORMAL                                        0x0
+#define GCDE_GLOBAL_ALPHA_MODE_GLOBAL                                        0x1
+#define GCDE_GLOBAL_ALPHA_MODE_SCALED                                        0x2
+
+#define GCDE_COLOR_MODE_NORMAL                                               0x0
+#define GCDE_COLOR_MODE_MULTIPLY                                             0x1
+
+#define GCDE_BLENDING_MODE_ZERO                                              0x0
+#define GCDE_BLENDING_MODE_ONE                                               0x1
+#define GCDE_BLENDING_MODE_NORMAL                                            0x2
+#define GCDE_BLENDING_MODE_INVERSED                                          0x3
+#define GCDE_BLENDING_MODE_COLOR                                             0x4
+#define GCDE_BLENDING_MODE_COLOR_INVERSED                                    0x5
+#define GCDE_BLENDING_MODE_SATURATED_ALPHA                                   0x6
+#define GCDE_BLENDING_MODE_SATURATED_DEST_ALPHA                              0x7
 
 /* ~~~~~~~~~~~~~ */
 
-#define AQ_DRAWING_ENGINE_FACTOR_INVERSE_DISABLE                             0x0
-#define AQ_DRAWING_ENGINE_FACTOR_INVERSE_ENABLE                              0x1
+#define GCDE_FACTOR_INVERSE_DISABLE                                          0x0
+#define GCDE_FACTOR_INVERSE_ENABLE                                           0x1
+
+/* ~~~~~~~~~~~~~ */
+
+#define GCDE_PREMULTIPLY_DISABLE                                             0x0
+#define GCDE_PREMULTIPLY_ENABLE                                              0x1
+
+/* ~~~~~~~~~~~~~ */
+
+#define GCDE_RESOURCE_USAGE_OVERRIDE_DEFAULT                                 0x0
+#define GCDE_RESOURCE_USAGE_OVERRIDE_USE_ENABLE                              0x1
+#define GCDE_RESOURCE_USAGE_OVERRIDE_USE_DISABLE                             0x2
 
 #endif
