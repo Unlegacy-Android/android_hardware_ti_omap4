@@ -135,120 +135,122 @@ struct blt {
 };
 
 struct bv_alpha {
-       /*
-              The blending formulas used are as follows:
-                     outR = srcR * srcRFactor + dstR * dstRFactor
-                     outG = srcG * srcGFactor + dstG * dstGFactor
-                     outB = srcB * srcBFactor + dstB * dstBFactor
-                     outA = srcA * srcAFactor + dstA * dstAFactor
-       */
+	/*
+		The blending formulas used are as follows:
+		outR = srcR * srcRFactor + dstR * dstRFactor
+		outG = srcG * srcGFactor + dstG * dstGFactor
+		outB = srcB * srcBFactor + dstB * dstBFactor
+		outA = srcA * srcAFactor + dstA * dstAFactor
+	*/
 
-       /*
-              Global color values.
-       */
-       uint32_t src_global_color;
-       uint32_t dst_global_color;
+	/*
+		Global color values.
+	*/
+	unsigned int src_global_color;
+	unsigned int dst_global_color;
 
-       /*
-              NORMAL:
-                     pick straight alpha value;
-              INVERSED:
-                     get the inverse of alpha value.
-       */
-       uint8_t src_inverse_alpha;
-       uint8_t dst_inverse_alpha;
+	/*
+		NORMAL:
+			pick straight alpha value;
+		INVERSED:
+			get the inverse of alpha value.
+	*/
+	unsigned char src_inverse_alpha;
+	unsigned char dst_inverse_alpha;
 
-       /*
-              NORMAL:
-                     pick the pixel (local) alpha value;
-              GLOBAL:
-                     pick the global alpha value;
-              SCALED:
-                     use the multiplication product of local and global alphas.
-       */
-       uint8_t src_global_alpha_mode;
-       uint8_t dst_global_alpha_mode;
+	/*
+		NORMAL:
+			pick the pixel (local) alpha value;
+		GLOBAL:
+			pick the global alpha value;
+		SCALED:
+			use the multiplication product of local and
+			global alphas.
+	*/
+	unsigned char src_global_alpha_mode;
+	unsigned char dst_global_alpha_mode;
 
-       /*
-              ZERO:
-                     R/G/B/A blending factors = 0;
-              ONE:
-                     R/G/B/A blending factors = 1;
-              NORMAL:
-                     R/G/B/A blending factors are the alpha value determined
-                     above;
-              INVERSED:
-                     R/G/B/A blending factors are the inversed alpha value
-                     determined above;
-              COLOR:
-                     R/G/B blending factors is the color of the pixel;
-                     A blending factor is the alpha value determined above;
-              COLOR_INVERSED:
-                     R/G/B blending factors is the inversed color
-                           of the pixel;
-                     A blending factor is the inversed alpha value
-                           determined above;
-              SATURATED_ALPHA:
-                     Factors are set as follows (source mode pseudo code):
-                            srcFactorA = 1.0
-                           srcFactorR = srcFactorG = srcFactorB =
-                                  (srcAlpha < (1.0 - dstAlpha))
-                                         ? srcAlpha
-                                         : (1.0 - dstAlpha)
-                     Note:
-                           1. srcAlpha and dstAlpha are the determined
-                                  alpha values of source and destination
-                                  pixels.
-                           2. Similar formula is used for the destination
-                                  factos.
-              SATURATED_DEST_ALPHA:
-                     Same as above with the exception of alpha values
-                     reversed (source vs. destination).
-       */
-       uint8_t src_factor_mode;
-       uint8_t dst_factor_mode;
+	/*
+		ZERO:
+			R/G/B/A blending factors = 0;
+		ONE:
+			R/G/B/A blending factors = 1;
+		NORMAL:
+			R/G/B/A blending factors are the alpha value determined
+			above;
+		INVERSED:
+			R/G/B/A blending factors are the inversed alpha value
+			determined above;
+		COLOR:
+			R/G/B blending factors is the color of the pixel;
+			A blending factor is the alpha value determined above;
+		COLOR_INVERSED:
+			R/G/B blending factors is the inversed color
+			of the pixel;
+			A blending factor is the inversed alpha value
+			determined above;
+		SATURATED_ALPHA:
+			Factors are set as follows (source mode pseudo code):
+			srcFactorA = 1.0
+			srcFactorR = srcFactorG = srcFactorB =
+				(srcAlpha < (1.0 - dstAlpha))
+					? srcAlpha
+					: (1.0 - dstAlpha)
+			Note:
+			1. srcAlpha and dstAlpha are the determined
+			   alpha values of source and destination
+			   pixels.
+			2. Similar formula is used for the destination
+			   factos.
+		SATURATED_DEST_ALPHA:
+			Same as above with the exception of alpha values
+			reversed (source vs. destination).
+	*/
+	unsigned char src_factor_mode;
+	unsigned char dst_factor_mode;
 
-       /*
-              DISABLED:
-                     Source factors are based off of the destination pixel;
-                     Destination factors are based off of the source pixel;
-              ENABLED:
-                     Source factors are based off of the source pixel;
-                     Destination factors are based off of the destination pixel;
-       */
-       uint8_t src_alpha_factor;
-       uint8_t dst_alpha_factor;
+	/*
+		DISABLED:
+			Source factors are based off of the destination pixel;
+			Destination factors are based off of the source pixel;
+		ENABLED:
+			Source factors are based off of the source pixel;
+			Destination factors are based off of the destination
+			pixel;
+	*/
+	unsigned char src_alpha_factor;
+	unsigned char dst_alpha_factor;
 
-       /*
-              DISABLED:
-                     Premultiplication is disabled.
-              ENABLED:
-                     Premultipy the color by its own alpha value
-                     (alpha value stays the same).
-       */
-       uint8_t src_premul_src_alpha;
-       uint8_t dst_premul_dst_alpha;
+	/*
+		DISABLED:
+			Premultiplication is disabled.
+		ENABLED:
+			Premultipy the color by its own alpha value
+			(alpha value stays the same).
+	*/
+	unsigned char src_premul_src_alpha;
+	unsigned char dst_premul_dst_alpha;
 
-       /*
-              DISABLE:
-                     Premultiplication is disabled.
-              ALPHA:
-                     Premultipy the color by the global source alpha value
-                     (alpha value stays the same).
-              COLOR:
-                     Premultipy the color by the global source color values
-                     (alpha value stays the same).
-       */
-       uint8_t src_premul_global_mode;
+	/*
+		DISABLE:
+			Premultiplication is disabled.
+		ALPHA:
+			Premultipy the color by the global source alpha value
+			(alpha value stays the same).
+		COLOR:
+			Premultipy the color by the global source color values
+			(alpha value stays the same).
+	*/
+	unsigned char src_premul_global_mode;
 
-       /*
-              DISABLED:
-                     Division is disabled.
-              ENABLED:
-                     Divide blended color by its own alpha value
-                     (alpha value stays the same).
-       */
-       uint8_t dst_demul_dst_alpha;
+	/*
+		DISABLED:
+			Division is disabled.
+		ENABLED:
+			Divide blended color by its own alpha value
+			(alpha value stays the same).
+	*/
+	unsigned char dst_demul_dst_alpha;
 };
 
 static const char *file = "/dev/gc-core";
