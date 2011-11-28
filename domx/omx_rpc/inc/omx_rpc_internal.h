@@ -84,7 +84,7 @@ extern "C"
 /*This defines the maximum number of remote functions that can be registered*/
 #define RPC_OMX_MAX_FUNCTION_LIST 21
 /*Packet size for each message*/
-#define RPC_PACKET_SIZE 0x1E4
+#define RPC_PACKET_SIZE 0xF0
 
 
 
