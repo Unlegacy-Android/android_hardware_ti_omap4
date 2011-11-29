@@ -1183,5 +1183,17 @@ typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL{
 	OMX_U32 nLTRInterval;
 } OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL;
 
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL : Structure to enable timestamps in decode order
+            at i/p of decoders.
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER{
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+        OMX_BOOL bEnabled;
+} OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER;
+
 #endif /* OMX_TI_VIDEO_H */
 
