@@ -176,6 +176,7 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
             default: \
                 eError = OMX_ErrorUndefined; \
         } \
+        PROXY_assert((eError == OMX_ErrorNone), eError, "Error returned from OMX API in ducati"); \
     } \
 } while(0)
 
