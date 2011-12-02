@@ -53,7 +53,6 @@
 #ifndef OMX_TI_VIDEO_H
 #define OMX_TI_VIDEO_H
 #define H264ENC_MAXNUMSLCGPS 2
-#define H264SVCVDEC_MAX_NUM_LAYER 9
 #define OMXH264E_MAX_SLICE_SUPPORTED 64
 #include <OMX_Core.h>
 
@@ -1077,30 +1076,40 @@ typedef struct OMX_TI_STREAMINTERLACEFORMATTYPE {
         OMX_U32 nDeblockFilterMode;
     } OMX_TI_VIDEO_PARAM_SVCTYPE;
 
-    typedef struct OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS {
-        OMX_U32 nNumLayers;
-        OMX_U32 LayerId[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  PriorityId[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  DependencyId[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  QualityId[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  TemporalId[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  BitrateInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  FramerateInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U8  FramesizeInfoPresentFlag[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U16 AvgBitrate[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U16 MaxBitrate[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U16 AvgFramerate[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U32 FrameWidth[H264SVCVDEC_MAX_NUM_LAYER];
-        OMX_U32 FrameHeight[H264SVCVDEC_MAX_NUM_LAYER];
+ typedef struct OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
 
-    } OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS;
+    OMX_U32 nNumLayers;
+    OMX_U32 nLayerId;
+    OMX_U8  nPriorityId;
+    OMX_U8  nDependencyId;
+    OMX_U8  nQualityId;
+    OMX_U8  nTemporalId;
+    OMX_U8  nBitrateInfoPresentFlag;
+    OMX_U8  nFramerateInfoPresentFlag;
+    OMX_U8  nFramesizeInfoPresentFlag;
+    OMX_U16 nAvgBitrate;
+    OMX_U16 nMaxBitrate;
+    OMX_U16 nAvgFramerate;
+    OMX_U32 nFrameWidth;
+    OMX_U32 nFrameHeight;
 
-    typedef struct OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER {
-        OMX_U32 nSvcTargetLayerDID;
-        OMX_U32 nSvcTargetLayerTID;
-        OMX_U32 nSvcTargetLayerQID;
+    OMX_U32 nLayerIndex;     /* Used to query for individual layer details */
 
-    } OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER;
+} OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS;
+
+typedef struct OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+
+    OMX_U32 nSvcTargetLayerDID;
+    OMX_U32 nSvcTargetLayerTID;
+    OMX_U32 nSvcTargetLayerQID;
+
+} OMX_TI_VIDEO_CONFIG_SVCTARGETLAYER;
 /* ========================================================================== */
 /*!
 @brief OMX_TI_VIDEO_SLICEDATAINFO : to configure the Slice Settings
