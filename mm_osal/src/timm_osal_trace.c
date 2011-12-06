@@ -108,23 +108,38 @@ void __TIMM_OSAL_TraceFunction(const __TIMM_OSAL_TRACE_LOCATION * loc,
 
 #ifdef _Android
 
+#if 0 // Original for reference
 #if ( TIMM_OSAL_DEBUG_TRACE_DETAIL > 1 )
 		LOGD("%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
 		    loc->function);
 #endif
+#else // Prints function_name for ERROR, WARNING and ENTRY/EXIT
+	if ( (loc->level == 1) || (loc->level == 2) || (loc->level == 5) )
+		LOGD("%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
+		    loc->function);
+#endif
+
 		char string[1000];
 		vsprintf(string, fmt, ap);
 		LOGD("%s",string);
 
 #else
 
+#if 0 // Original for reference
 #if ( TIMM_OSAL_DEBUG_TRACE_DETAIL > 1 )
 		printf("%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
 		    loc->function);
 #endif
+#else // Prints function_name for ERROR, WARNING and ENTRY/EXIT
+		if ( (loc->level == 1) || (loc->level == 2) || (loc->level == 5) )
+			printf("%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
+		    loc->function);
+#endif
+
 		vprintf(fmt, ap);
 
 #endif
+
 		va_end(ap);
 	}
 }
