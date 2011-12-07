@@ -218,7 +218,7 @@ OMX_ERRORTYPE OMX_GetHandle(OMX_HANDLETYPE * pHandle,
 
 	/* Locate the first empty slot for a component.  If no slots
 	 * are available, error out */
-	for (i = 0; i < COUNTOF(pModules); i++)
+	for (i = 0; i < (int)COUNTOF(pModules); i++)
 	{
 		if (pModules[i] == NULL)
 			break;
@@ -284,7 +284,7 @@ OMX_ERRORTYPE OMX_GetHandle(OMX_HANDLETYPE * pHandle,
 	pModules[i] = dlopen(buf, RTLD_LAZY | RTLD_GLOBAL);
 	if (pModules[i] == NULL)
 	{
-		dlError = dlerror();
+		dlError = (char *)dlerror();
 		TIMM_OSAL_Error("Failed because %s", dlError);
 		eError = OMX_ErrorComponentNotFound;
 		goto EXIT;
@@ -378,7 +378,7 @@ OMX_ERRORTYPE OMX_FreeHandle(OMX_HANDLETYPE hComponent)
 	    "OMX_FreeHandle called without calling OMX_Init first");
 
 	/* Locate the component handle in the array of handles */
-	for (i = 0; i < COUNTOF(pModules); i++)
+	for (i = 0; i < (int)COUNTOF(pModules); i++)
 	{
 		if (pComponents[i] == hComponent)
 			break;
@@ -546,7 +546,7 @@ OMX_API OMX_ERRORTYPE OMX_APIENTRY OMX_ComponentNameEnum(OMX_OUT OMX_STRING
 	CORE_require(count > 0, OMX_ErrorUndefined,
 	    "OMX_GetHandle called without calling OMX_Init first");
 
-	if (nIndex >= tableCount)
+	if (nIndex >= (OMX_U32)tableCount)
 	{
 		eError = OMX_ErrorNoMore;
 	} else
@@ -590,7 +590,7 @@ OMX_API OMX_ERRORTYPE OMX_GetRolesOfComponent(OMX_IN OMX_STRING
 	CORE_require(count > 0, OMX_ErrorUndefined,
 	    "OMX_GetHandle called without calling OMX_Init first");
 
-	while (!bFound && i < tableCount)
+	while (!bFound && i < (OMX_U32)tableCount)
 	{
 		if (strcmp(cComponentName, componentTable[i].name) == 0)
 		{
@@ -651,7 +651,7 @@ OMX_API OMX_ERRORTYPE OMX_GetComponentsOfRole(OMX_IN OMX_STRING role,
 	CORE_assert(componentTable[i].pRoleArray[j] != NULL,
 	    OMX_ErrorBadParameter, NULL);
 
-	for (i = 0; i < tableCount; i++)
+	for (i = 0; i < (OMX_U32)tableCount; i++)
 	{
 		for (j = 0; j < componentTable[i].nRoles; j++)
 		{

@@ -798,8 +798,8 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 				}
 
 				/* Update pBufferHdr with NV12 buffers for OMX component */
-				pBufferHdr->pBuffer= pProxy->gralloc_handle[nBufIndex]->fd[0];
-				((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = pProxy->gralloc_handle[nBufIndex]->fd[1];
+				pBufferHdr->pBuffer= (OMX_U8 *)(pProxy->gralloc_handle[nBufIndex]->fd[0]);
+				((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = (OMX_PTR)(pProxy->gralloc_handle[nBufIndex]->fd[1]);
 			}
 #endif
 #endif
@@ -862,8 +862,9 @@ static OMX_ERRORTYPE LOCAL_PROXY_H264E_AllocateBuffer(OMX_HANDLETYPE hComponent,
 		eError = PROXY_GetParameter(hComponent, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParamRect);
 		PROXY_assert(eError == OMX_ErrorNone, eError," Error in Proxy GetParameter");
 
-		err = pProxy->mAllocDev->alloc(pProxy->mAllocDev,(int) tParamRect.nWidth,(int) tParamRect.nHeight, 
-			(int) HAL_PIXEL_FORMAT_TI_NV12,(int) GRALLOC_USAGE_HW_RENDER, &(pProxy->gralloc_handle[pProxy->nCurBufIndex]), &nStride);
+		err = pProxy->mAllocDev->alloc(pProxy->mAllocDev,(int) tParamRect.nWidth,(int) tParamRect.nHeight,
+			(int) HAL_PIXEL_FORMAT_TI_NV12,(int) GRALLOC_USAGE_HW_RENDER,
+			(const struct native_handle_t **)(&(pProxy->gralloc_handle[pProxy->nCurBufIndex])), &nStride);
 	}
 
 	eError = PROXY_AllocateBuffer(hComponent, ppBufferHdr, nPortIndex,
@@ -874,7 +875,7 @@ EXIT:
 	{
 		if(eError != OMX_ErrorNone)
 		{
-			err = pProxy->mAllocDev->free(pProxy->mAllocDev, pProxy->gralloc_handle[pProxy->nCurBufIndex]);
+			err = pProxy->mAllocDev->free(pProxy->mAllocDev, (buffer_handle_t)(pProxy->gralloc_handle[pProxy->nCurBufIndex]));
 		}
 		else
 		{
@@ -910,7 +911,7 @@ static OMX_ERRORTYPE LOCAL_PROXY_H264E_FreeBuffer(OMX_IN OMX_HANDLETYPE hCompone
 
 		if(pProxy->gralloc_handle[pProxy->nCurBufIndex])
 		{
-			pProxy->mAllocDev->free(pProxy->mAllocDev, pProxy->gralloc_handle[pProxy->nCurBufIndex]);
+			pProxy->mAllocDev->free(pProxy->mAllocDev, (buffer_handle_t)(pProxy->gralloc_handle[pProxy->nCurBufIndex]));
 			pProxy->gralloc_handle[pProxy->nCurBufIndex] = NULL;
 		}
 
@@ -961,7 +962,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_ComponentDeInit(OMX_HANDLETYPE hComponent)
 		{
 			if(pProxy->gralloc_handle[i])
 			{
-				pProxy->mAllocDev->free(pProxy->mAllocDev, pProxy->gralloc_handle[i]);
+				pProxy->mAllocDev->free(pProxy->mAllocDev, (buffer_handle_t)(pProxy->gralloc_handle[i]));
 				pProxy->gralloc_handle[i] = NULL;
 			}
 		}

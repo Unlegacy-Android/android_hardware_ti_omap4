@@ -177,7 +177,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
                 ion_free(pCompPrv->ion_fd, gCamIonHdl[i][1]);
                 gCamIonHdl[i][1] = NULL;
             }
-            
+
         }
 	eError = PROXY_ComponentDeInit(hComponent);
 
@@ -371,7 +371,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
     OMX_U32 stride_Y = 0, stride_UV = 0;
     OMX_TI_PARAM_VTCSLICE *pVtcConfig;// = (OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure;
-    
+
     pCompPrv = (PROXY_COMPONENT_PRIVATE *)hComp->pComponentPrivate;
     //fprintf(stdout, "DOMX: CameraSetParam: called!!!\n");
     switch (nParamIndex)
@@ -380,17 +380,17 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
             pVtcConfig = (OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure;
             fprintf(stdout, "DOMX: CameraSetParam: OMX_TI_IndexParamVtcSlice is called!!!\n");
             DOMX_ERROR("CameraSetParam Called for Vtc Slice index\n");
-          
+
             //fprintf(stdout, "CameraSetParam Called for Vtc Slice height = %d\n", ((OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure)->nSliceHeight);
 		    // MAX_NUM_INTERNAL_BUFFERS;
-		
+
     		for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
                     pVtcConfig->nInternalBuffers = i;
-		    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280, 720, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, &stride_Y);
+		    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280, 720, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
 		    pVtcConfig->IonBufhdl[0] = (OMX_PTR)(handle);
 
 		    //fprintf(stdout, "DOMX: ION Buffer#%d: Y: 0x%x\n", i, pVtcConfig->IonBufhdl[0]);
-                    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280/2, 720/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, &stride_UV);
+                    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280/2, 720/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
 		    pVtcConfig->IonBufhdl[1] = (OMX_PTR)(handle);
                     gCamIonHdl[i][0] = pVtcConfig->IonBufhdl[0];
                     gCamIonHdl[i][1] = pVtcConfig->IonBufhdl[1];
@@ -401,8 +401,9 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 					pVtcConfig->IonBufhdl, 2);
                }
 		goto EXIT;
-			    
-        break;
+        	break;
+	default:
+		break;
     }
 	eError = __PROXY_SetParameter(hComponent,
 								nParamIndex,
@@ -548,12 +549,13 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 		return OMX_ErrorInsufficientResources;
 	}
 	dccbuf_size = (dccbuf_size + LINUX_PAGE_SIZE -1) & ~(LINUX_PAGE_SIZE - 1);
-	ret = ion_alloc(ion_fd, dccbuf_size, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT, &DCC_Buff);
+	ret = ion_alloc(ion_fd, dccbuf_size, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT,
+		(struct ion_handle **)&DCC_Buff);
 	if (ret)
 			return OMX_ErrorInsufficientResources;
 
 	if (ion_map(ion_fd, DCC_Buff, dccbuf_size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                  &DCC_Buff_ptr,&mmap_fd) < 0)
+                   (unsigned char **)&DCC_Buff_ptr, &mmap_fd) < 0)
 	{
 		DOMX_ERROR("userspace mapping of ION buffers returned error");
 		return OMX_ErrorInsufficientResources;

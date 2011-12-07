@@ -130,6 +130,8 @@ extern OMX_ERRORTYPE PrearrageEmptyThisBuffer(OMX_HANDLETYPE hComponent,
 extern void DumpVideoFrame(DebugFrame_Dump *frameInfo);
 #endif
 
+OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent);
+
 OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -224,7 +226,7 @@ OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent)
 	eError = OMX_ProxyCommonInit(hComponent);	// Calling Proxy Common Init()
 	PROXY_assert(eError == OMX_ErrorNone, eError, "Proxy common init returned error");
 #ifdef ANDROID_QUIRK_CHANGE_PORT_VALUES
-	pHandle->SetParameter = PROXY_VIDDEC_SetParameter;		
+	pHandle->SetParameter = PROXY_VIDDEC_SetParameter;
         pHandle->GetParameter = PROXY_VIDDEC_GetParameter;
 #endif
 	pHandle->GetExtensionIndex = PROXY_VIDDEC_GetExtensionIndex;
@@ -653,8 +655,8 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillThisBuffer(OMX_HANDLETYPE hComponent, OMX_BUFFERH
 
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
 
-	if(pCompPrv->proxyPortBuffers[OMX_VIDEODECODER_OUTPUT_PORT].proxyBufferType 
-			== GrallocPointers) 
+	if(pCompPrv->proxyPortBuffers[OMX_VIDEODECODER_OUTPUT_PORT].proxyBufferType
+			== GrallocPointers)
 	{
 		/* Lock the Gralloc buffer till it gets rendered completely */
 		/* Extract the Gralloc handle from the Header and then call lock on that */
@@ -695,7 +697,7 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillThisBuffer(OMX_HANDLETYPE hComponent, OMX_BUFFERH
 		pCompPrv->grallocModule->lock((gralloc_module_t const *) pCompPrv->grallocModule,
 				(buffer_handle_t)grallocHandle, GRALLOC_USAGE_HW_RENDER,
 				0,0,sPortDef.format.video.nFrameWidth, sPortDef.format.video.nFrameHeight,NULL);
-	}		
+	}
 
         eRPCError = PROXY_FillThisBuffer(hComponent, pBufferHdr);
 
@@ -737,7 +739,7 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
 
 	if(pCompPrv->proxyPortBuffers[OMX_VIDEODECODER_OUTPUT_PORT].proxyBufferType
 			== GrallocPointers) {
-		for (count = 0; count < pCompPrv->nTotalBuffers; ++count) 
+		for (count = 0; count < pCompPrv->nTotalBuffers; ++count)
 		{
 			if (pCompPrv->tBufList[count].pBufHeaderRemote == remoteBufHdr)
 			{
@@ -778,7 +780,7 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
 			pCompPrv->debugframeInfo.fromFrame--;
 		}
 #endif
-	} 
+	}
 
 	eRPCError = PROXY_FillBufferDone(hComponent,remoteBufHdr, nfilledLen, nOffset, nFlags,
 		nTimeStamp, hMarkTargetComponent, pMarkData);

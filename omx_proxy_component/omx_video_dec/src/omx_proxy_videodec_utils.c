@@ -139,7 +139,7 @@ OMX_ERRORTYPE PrearrageEmptyThisBuffer(OMX_HANDLETYPE hComponent,
             DOMX_ERROR("Error getting OMX_IndexParamStandardComponentRole");
         }
 
-        if(!strcmp(compRole.cRole, "video_decoder.wmv")){
+        if(!strcmp((char *)(compRole.cRole), "video_decoder.wmv")){
             pBuffer = pBufferHdr->pBuffer;
 
             VIDDEC_WMV_RCV_struct sStructRCV;

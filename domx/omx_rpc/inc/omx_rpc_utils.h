@@ -99,7 +99,7 @@ extern "C"
  *   MACROS - COMMON MARSHALLING UTILITIES
  ******************************************************************/
 #define RPC_SETFIELDVALUE(MSGBODY, POS, VALUE, TYPE) do { \
-    *((TYPE *) ((OMX_U32)MSGBODY+POS)) = VALUE; \
+    *((TYPE *) ((OMX_U32)MSGBODY+POS)) = (TYPE)VALUE; \
     POS += sizeof(TYPE); \
     } while(0)
 

@@ -322,8 +322,8 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_ReadFromPipe(TIMM_OSAL_PTR pPipe,
 		bReturnStatus = TIMM_OSAL_ERR_PIPE_EMPTY;
 		goto EXIT;
 	}
-	if ((timeout != TIMM_OSAL_NO_SUSPEND) &&
-	    (timeout != TIMM_OSAL_SUSPEND))
+	if ((timeout !=TIMM_OSAL_NO_SUSPEND) &&
+	    (timeout != (TIMM_OSAL_S32)TIMM_OSAL_SUSPEND))
 	{
 		TIMM_OSAL_Warning("Only infinite or no timeouts \
 			supported. Going to read with infinite timeout now");

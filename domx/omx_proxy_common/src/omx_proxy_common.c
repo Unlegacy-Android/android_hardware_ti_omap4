@@ -757,7 +757,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	else if (pCompPrv->bUseIon == OMX_TRUE)
 	{
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, nSize, &handle);
-		pMemptr = handle;
+		pMemptr =(OMX_U8 *)handle;
 		DOMX_DEBUG ("Ion handle recieved = %x",handle);
 		if (eError != OMX_ErrorNone)
 			return eError;
@@ -801,7 +801,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if(eError != OMX_ErrorNone) {
 		DOMX_ERROR("PROXY_UseBuffer in PROXY_AllocateBuffer failed with error %d (0x%08x)", eError, eError);
 #ifdef USE_ION
-		ion_free(pCompPrv->ion_fd, pMemptr);
+		ion_free(pCompPrv->ion_fd, (struct ion_handle *)pMemptr);
 #else
 		MemMgr_Free(pMemptr);
 #endif
@@ -1127,10 +1127,10 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if(tMetaDataBuffer.bIsMetaDataEnabledOnPort)
 	{
 #ifdef USE_ION
-		((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nMetaDataSize = 
+		((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nMetaDataSize =
 			(tMetaDataBuffer.nMetaDataSize + LINUX_PAGE_SIZE - 1) & ~(LINUX_PAGE_SIZE -1);
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nMetaDataSize,
-			&(((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer));
+			(struct ion_handle **)(&(((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer)));
 		pCompPrv->tBufList[currentBuffer].pMetaDataBuffer = ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->
 			pPlatformPrivate)->pMetaDataBuffer;
 		DOMX_DEBUG("Metadata buffer ion handle = %d",((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer);
@@ -1164,7 +1164,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 			((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer);
         	if (ion_map(pCompPrv->ion_fd, ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer,
 			((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nMetaDataSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-				&pMetadataBuffer,&(pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff)) < 0)
+				(unsigned char **)(&pMetadataBuffer),&(pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff)) < 0)
 		{
 			DOMX_ERROR("userspace mapping of ION metadata buffers returned error");
 			return OMX_ErrorInsufficientResources;
@@ -1247,7 +1247,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	    OMX_ErrorBadParameter,
 	    "Could not find the mapped address in component private buffer list");
 
-	pBuffer = pBufferHdr->pBuffer;
+	pBuffer = (OMX_U32)pBufferHdr->pBuffer;
 	/*Not having asserts from this point since even if error occurs during
 	   unmapping/freeing, still trying to clean up as much as possible */
 
@@ -1935,11 +1935,11 @@ static OMX_ERRORTYPE PROXY_ComponentTunnelRequest(OMX_IN OMX_HANDLETYPE
 	DOMX_ENTER("hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n",
 	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
 
-	printf("PROXY_ComponentTunnelRequest:: hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n ",
+	DOMX_INFO("PROXY_ComponentTunnelRequest:: hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n ",
 	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
        eRPCError = RPC_ComponentTunnelRequest(pOutCompPrv->hRemoteComp, nPort,
 	        pInCompPrv->hRemoteComp, nTunneledPort, pTunnelSetup, &nCmdStatus);
-        printf("\nafter: RPC_ComponentTunnelRequest = 0x%x\n ", eRPCError);
+        DOMX_INFO("\nafter: RPC_ComponentTunnelRequest = 0x%x\n ", eRPCError);
         PROXY_checkRpcError();
 
 EXIT:
@@ -2223,7 +2223,7 @@ OMX_ERRORTYPE RPC_UTIL_GetStride(OMX_COMPONENTTYPE * hRemoteComp,
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
-	OMX_PARAM_PORTDEFINITIONTYPE sPortDef = { 0 };
+	OMX_PARAM_PORTDEFINITIONTYPE sPortDef = {0};
 
 	/*Initializing Structure */
 	sPortDef.nSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
