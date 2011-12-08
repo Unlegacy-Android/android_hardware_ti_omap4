@@ -5,7 +5,7 @@
 <title>
 </title>
 <meta http-equiv="Content-Language" content="en-us"/>
-<meta http-equiv="Content-Type" content='' "text/html; charset='utf-8"'/>
+<meta http-equiv="Content-Type" content='' "text/html; charset='utf-8'"/>
 <title>
 Welcome to BLTsville </title>
 <style type="text/css">
@@ -54,7 +54,7 @@ Welcome to BLTsville </title>
 <body>
 <span class="Title">BLTsville for Android</span>
 <p class="Subtitle">
-	CPU Implementation - Version 2.0.0.6
+	    CPU Implementation - Version 2.0.0.7
 </p>
 <hr/>
 <p>
@@ -103,6 +103,13 @@ Welcome to BLTsville </title>
 <table>
 <tr>
 	<td>
+		<p>
+			2.0.0.7</p>
+        <ul>
+          <li>Fixed typedef of bv_unmap member of bvbuffmap structure (bvinternal.h issue).</li>
+          <li>Fixed access-after-free bug in bv_unmap().</li>
+          <li>Changed method of handling over-read on last source line during scaling.</li>
+        </ul>
 		<p>
 			2.0.0.6</p>
         <ul>
@@ -203,15 +210,15 @@ Welcome to BLTsville </title>
 		 .../lib/android/libbltsville_ticpu.so
 	</td>
 	<td>
-		 Client entry point for special cases.&nbsp; Softlink to libbltsville_ticpu.2.0.0.6.so.&nbsp; (Most clients should not use this entry.)
+		 Client entry point for special cases.&nbsp; Softlink to libbltsville_ticpu.2.0.0.7.so.&nbsp; (Most clients should not use this entry.)
 	</td>
 </tr>
 <tr>
 	<td>
-		 .../lib/android/libbltsville_ticpu.2.0.0.6.so
+		 .../lib/android/libbltsville_ticpu.2.0.0.7.so
 	</td>
 	<td>
-		 Version 2.0.0.6 of the TI BLTsville CPU-based library of 2-D functions for Android.&nbsp; (Do not directly load this file.)
+		 Version 2.0.0.7 of the TI BLTsville CPU-based library of 2-D functions for Android.&nbsp; (Do not directly load this file.)
 	</td>
 </tr>
 </table>
