@@ -1267,7 +1267,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		{
         		if (pCompPrv->bUseIon == OMX_TRUE)
 			{
-				if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+				if(pCompPrv->bMapIonBuffers == OMX_TRUE && pBufferHdr->pBuffer)
 				{
 	                                munmap(pBufferHdr->pBuffer, pBufferHdr->nAllocLen);
         				close(pCompPrv->tBufList[count].mmap_fd);
