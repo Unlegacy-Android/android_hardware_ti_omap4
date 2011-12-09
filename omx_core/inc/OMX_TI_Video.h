@@ -1204,5 +1204,19 @@ typedef struct OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER{
         OMX_BOOL bEnabled;
 } OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER;
 
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE : Structure to enable dynamic update of frame rate
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bEnableAutoVFRUpdate;
+    OMX_U32         nDiffThresholdtoUpdate;
+    OMX_U32         nMaxSessionFrameRate;
+} OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE;
+
 #endif /* OMX_TI_VIDEO_H */
 
