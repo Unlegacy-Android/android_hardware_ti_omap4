@@ -2440,7 +2440,6 @@ typedef struct OMX_TI_CAPRESTYPE {
  * eAutoConvModes                       : Array containing the auto convergence modes
  * ulBracketingModesCount               : Supported bracketing modes count
  * eBracketingModes                     : Array containing the bracketing modes
- * bVidStabSupported                    : Flag showing if the video stabilization is supported
  * bGbceSupported                       : Flag showing if the Gbce is supported
  * bRawJpegSupported                    : Flag showing if the Raw + Jpeg is supported
  * ulImageCodingFormatCount             : Supported image coding formats count
@@ -2463,6 +2462,7 @@ typedef struct OMX_TI_CAPRESTYPE {
  * bMechanicalMisalignmentSupported     : Flag showing if the mechanical misalignment is supported
  * bFacePrioritySupported               : Flag showing if the face priority is supported
  * bRegionPrioritySupported             : Flag showing if the region priority is supported
+ * bGlbceSupported                      : Flag showing if the GLBCE is supported
  * nManualConvMin                       : Manual convergence min value
  * nManualConvMax                       : Manual convergence max value
  * nManualExpMin                        : Manual exposure time min value
@@ -2525,7 +2525,6 @@ typedef struct OMX_TI_CAPTYPE {
 	OMX_TI_AUTOCONVERGENCEMODETYPE  eAutoConvModes[32];
 	OMX_U16                         ulBracketingModesCount; // supported bracketing modes count
 	OMX_BRACKETMODETYPE             eBracketingModes[32];
-	OMX_BOOL                        bVidStabSupported;      // Flag showing if the video stabilization is supported
 	OMX_BOOL                        bGbceSupported;         // Flag showing if the Gbce is supported
 	OMX_BOOL                        bRawJpegSupported;      // Flag showing if the Raw + Jpeg issupported
 	OMX_U16                         ulImageCodingFormatCount;
@@ -2548,6 +2547,7 @@ typedef struct OMX_TI_CAPTYPE {
     OMX_BOOL                       bMechanicalMisalignmentSupported;
     OMX_BOOL                       bFacePrioritySupported;
     OMX_BOOL                       bRegionPrioritySupported;
+    OMX_BOOL                       bGlbceSupported;
     OMX_S16                        nManualConvMin;
     OMX_S16                        nManualConvMax;
     OMX_U16                        nManualExpMin;
