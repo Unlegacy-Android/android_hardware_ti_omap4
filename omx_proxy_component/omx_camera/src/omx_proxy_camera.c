@@ -79,10 +79,6 @@
 #include <sys/mman.h>
 #include <sys/eventfd.h>
 #include <fcntl.h>
-
-#else
-/* Tiler APIs */
-#include <memmgr.h>
 #endif
 
 #define COMPONENT_NAME "OMX.TI.DUCATI1.VIDEO.CAMERA"
@@ -120,9 +116,6 @@ OMX_PTR DCC_Buff = NULL;
 OMX_PTR DCC_Buff_ptr = NULL;
 int ion_fd;
 int mmap_fd;
-
-#else
-MemAllocBlock *MemReqDescTiler;
 #endif
 
 OMX_S32 read_DCCdir(OMX_PTR, OMX_STRING *, OMX_U16);
@@ -561,21 +554,6 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 		return OMX_ErrorInsufficientResources;
 	}
 	ptempbuf = DCC_Buff_ptr;
-#else
-	MemReqDescTiler =
-		(MemAllocBlock *) TIMM_OSAL_Malloc((sizeof(MemAllocBlock) * 2),
-		TIMM_OSAL_TRUE, 0, TIMMOSAL_MEM_SEGMENT_EXT);
-	PROXY_assert(MemReqDescTiler != NULL,
-	    OMX_ErrorInsufficientResources, "Malloc failed");
-
-	/* Allocate 1D Tiler buffer for 'N'DCC files  */
-	MemReqDescTiler[0].fmt = PIXEL_FMT_PAGE;
-	MemReqDescTiler[0].dim.len = dccbuf_size;
-	MemReqDescTiler[0].stride = 0;
-	DCC_Buff = MemMgr_Alloc(MemReqDescTiler, 1);
-	PROXY_assert(DCC_Buff != NULL,
-		OMX_ErrorInsufficientResources, "ERROR Allocating 1D TILER BUF");
-	ptempbuf = DCC_Buff;
 #endif
 	dccbuf_size = read_DCCdir(ptempbuf, dcc_dir, nIndex);
 
@@ -742,14 +720,8 @@ void DCC_DeInit()
 		ion_free(ion_fd, DCC_Buff);
 		ion_close(ion_fd);
 		DCC_Buff = NULL;
-#else
-		MemMgr_Free(DCC_Buff);
 #endif
 	}
-#ifndef USE_ION
-	if (MemReqDescTiler)
-		TIMM_OSAL_Free(MemReqDescTiler);
-#endif
 
 	DOMX_EXIT("EXIT");
 }

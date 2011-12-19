@@ -43,12 +43,8 @@
 #define LOG_TAG "OMX_CORE"
 
 /** determine capabilities of a component before acually using it */
-#if 0
-#include "ti_omx_config_parser.h"
-#else
 extern OMX_BOOL TIOMXConfigParser(OMX_PTR aInputParameters,
     OMX_PTR aOutputParameters);
-#endif
 
 #endif
 
