@@ -997,7 +997,7 @@ typedef enum OMX_HISTCOMPONENTTYPE{
     OMX_HISTCOMP_Cr,     /**< Chroma red histogram component (Cr) */
     OMX_HISTCOMP_32BIT_PATCH = 0x7FFFFFFF
 }OMX_HISTCOMPONENTTYPE;
-/**/
+
  /**
  * The OMX_TI_CAMERAVIEWTYPE enumeration is used to identify the
  * particular camera view that the rest of the data in the structure is
@@ -1010,27 +1010,6 @@ typedef enum OMX_TI_CAMERAVIEWTYPE {
     OMX_Right,  /**< Right camera view in stereo sensor configuration */
     OMX_TI_CAMERAVIEWTYPE_32BIT_PATCH = 0x7FFFFFFF
 } OMX_TI_CAMERAVIEWTYPE;
-/**
- *  nSize is the size of the structure including the length of data field containing
- *  the histogram data.
- *  nBins is the number of bins in the histogram.
- *  eComponentType specifies the type of the histogram bins according to enum.
- *  It can be selected to generate multiple component types, then the extradata struct
- *  is repeated for each component type.
- *  data[1] first byte of the histogram data
- */
-typedef struct OMX_HISTOGRAMTYPE {
-    OMX_U32 nSize;                          /**< The size of the structure
-                                                 including the length of data field containing the histogram data */
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_U32               nBins;            /**< The number of bins in the histogram */
-    OMX_HISTCOMPONENTTYPE eComponentType;     /**< Specifies the type of the histogram bins according to enum.
-                                                 It can be selected to generate multiple component types,
-                                                 then the extradata struct is repeated for each component type */
-    OMX_U8  data[1];
-} OMX_HISTOGRAMTYPE;
 
 #define OMX_OTHER_EXTRADATATYPE_SIZE ((OMX_U32)(((OMX_OTHER_EXTRADATATYPE *)0x0)->data))  /**< Size of OMX_OTHER_EXTRADATATYPE
                                                                                 without Data[1] and without padding */
@@ -1537,7 +1516,7 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_CPCamData,               /**< 0x7F00001A Used for cp cam data */
     OMX_TI_H264ESliceDataInfo,      /**< 0x7F00001B */
     OMX_TI_DccData,                 /**< 0x7F00001C Used for dcc data overwrite in the file system */
-    OMX_TI_ProfileData,             /**< 0x7F00001D Used for profiling data */
+    OMX_TI_ProfilerData,            /**< 0x7F00001D Used for profiling data */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
@@ -2983,6 +2962,26 @@ typedef struct OMX_TI_H3AAFDATA {
     OMX_U8               *data;
 } OMX_TI_H3AAFDATA;
 
+/**
+* Data structure carrying information about
+* VTC slice height.
+*
+* @param nSize Size of the structure in bytes.
+* @param nVersion OMX specification version information.
+* @param nSliceHeight Definition of slice height.
+*
+*
+*
+*
+*/
+typedef struct OMX_TI_PARAM_VTCSLICE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nSliceHeight;
+    OMX_U32         nInternalBuffers;
+    OMX_PTR         IonBufhdl[2];
+} OMX_TI_PARAM_VTCSLICE;
+
 
 /**
  *  nSize is the size of the structure including the length of data field containing
@@ -3170,26 +3169,6 @@ typedef struct OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE {
     OMX_TI_ZSL_PRIORITY_TYPE ePriority;
 } OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE;
  
-/**
-* Data structure carrying information about
-* VTC slice height.
-*
-* @param nSize Size of the structure in bytes.
-* @param nVersion OMX specification version information.
-* @param nSliceHeight Definition of slice height.
-*
-*
-*
-*
-*/
-typedef struct OMX_TI_PARAM_VTCSLICE {
-    OMX_U32         nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32         nSliceHeight;
-    OMX_U32         nInternalBuffers;
-    OMX_PTR         IonBufhdl[2];
-} OMX_TI_PARAM_VTCSLICE;
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
