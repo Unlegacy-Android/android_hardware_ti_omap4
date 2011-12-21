@@ -998,16 +998,21 @@ typedef enum OMX_HISTCOMPONENTTYPE{
     OMX_HISTCOMP_32BIT_PATCH = 0x7FFFFFFF
 }OMX_HISTCOMPONENTTYPE;
 
- /**
+/**
  * The OMX_TI_CAMERAVIEWTYPE enumeration is used to identify the
- * particular camera view that the rest of the data in the structure is
- * associated with.
+ * particular camera view and frame type that the rest of
+ * the data in the structure is associated with.
  */
 typedef enum OMX_TI_CAMERAVIEWTYPE {
-
-    OMX_2D,     /**< Camera view in 2D sensor configuration */
-    OMX_Left,   /**< Left camera view in stereo sensor configuration */
-    OMX_Right,  /**< Right camera view in stereo sensor configuration */
+    OMX_2D_Prv,         /**< Camera view in 2D for preview */
+    OMX_2D_Snap,        /**< Camera view in 2D for snapshot */
+    OMX_2D_Cap,         /**< Camera view in 2D for capture */
+    OMX_3D_Left_Prv,    /**< Left camera view in 3D for preview */
+    OMX_3D_Left_Snap,   /**< Left camera view in 3D for snapshot */
+    OMX_3D_Left_Cap,    /**< Left camera view in 3D for capture */
+    OMX_3D_Right_Prv,   /**< Right camera view in 3D for preview */
+    OMX_3D_Right_Snap,  /**< Right camera view in 3D for snapshot */
+    OMX_3D_Right_Cap,   /**< Right camera view in 3D for capture */
     OMX_TI_CAMERAVIEWTYPE_32BIT_PATCH = 0x7FFFFFFF
 } OMX_TI_CAMERAVIEWTYPE;
 
@@ -1543,7 +1548,6 @@ typedef struct OMX_CONFIG_EXTRADATATYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32               nPortIndex;           /**< The read-only value containing the index of the port */
     OMX_EXT_EXTRADATATYPE eExtraDataType;       /**< Identifies the extra data payload type */
-    OMX_TI_CAMERAVIEWTYPE eCameraView;
     OMX_BOOL bEnable;
 } OMX_CONFIG_EXTRADATATYPE;
 
