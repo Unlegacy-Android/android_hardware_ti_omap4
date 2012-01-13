@@ -1752,7 +1752,6 @@ static OMX_ERRORTYPE PROXY_ComponentTunnelRequest(OMX_IN OMX_HANDLETYPE
 	OMX_COMPONENTTYPE       *hInComp     = hTunneledComp;
 	OMX_ERRORTYPE           eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE       eRPCError    = RPC_OMX_ErrorNone;
-	OMX_ERRORTYPE           nCmdStatus   = OMX_ErrorNone;
 	PROXY_assert((hOutComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
 	PROXY_assert((hInComp->pComponentPrivate != NULL),
@@ -1769,7 +1768,7 @@ static OMX_ERRORTYPE PROXY_ComponentTunnelRequest(OMX_IN OMX_HANDLETYPE
 	DOMX_INFO("PROXY_ComponentTunnelRequest:: hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n ",
 	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
        eRPCError = RPC_ComponentTunnelRequest(pOutCompPrv->hRemoteComp, nPort,
-	        pInCompPrv->hRemoteComp, nTunneledPort, pTunnelSetup, &nCmdStatus);
+	        pInCompPrv->hRemoteComp, nTunneledPort, pTunnelSetup, &eCompReturn);
         DOMX_INFO("\nafter: RPC_ComponentTunnelRequest = 0x%x\n ", eRPCError);
         PROXY_checkRpcError();
 
