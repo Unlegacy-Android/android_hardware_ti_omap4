@@ -98,8 +98,16 @@
 	(param)->nVersion.s.nVersionMinor = 1;		\
 	} while(0)
 
+/* VTC specific changes */
 #define MAX_NUM_INTERNAL_BUFFERS 4
+#define MAX_VTC_WIDTH 1920
+#define MAX_VTC_HEIGHT 1080
+#define BORDER_WIDTH 32
+#define BORDER_HEIGHT 32
+#define MAX_VTC_WIDTH_WITH_VNF (MAX_VTC_WIDTH + BORDER_WIDTH)
+#define MAX_VTC_HEIGHT_WITH_VNF (MAX_VTC_HEIGHT + BORDER_HEIGHT)
 OMX_PTR gCamIonHdl[MAX_NUM_INTERNAL_BUFFERS][2];
+
 /* Incase of multiple instance, making sure DCC is initialized only for
    first instance */
 static OMX_S16 numofInstance = 0;
@@ -379,11 +387,11 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 
     		for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
                     pVtcConfig->nInternalBuffers = i;
-		    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280, 720, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
+		    ret = ion_alloc_tiler(pCompPrv->ion_fd, MAX_VTC_WIDTH_WITH_VNF, MAX_VTC_HEIGHT_WITH_VNF, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
 		    pVtcConfig->IonBufhdl[0] = (OMX_PTR)(handle);
 
 		    //fprintf(stdout, "DOMX: ION Buffer#%d: Y: 0x%x\n", i, pVtcConfig->IonBufhdl[0]);
-                    ret = ion_alloc_tiler(pCompPrv->ion_fd, 1280/2, 720/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
+                    ret = ion_alloc_tiler(pCompPrv->ion_fd, MAX_VTC_WIDTH_WITH_VNF/2, MAX_VTC_HEIGHT_WITH_VNF/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
 		    pVtcConfig->IonBufhdl[1] = (OMX_PTR)(handle);
                     gCamIonHdl[i][0] = pVtcConfig->IonBufhdl[0];
                     gCamIonHdl[i][1] = pVtcConfig->IonBufhdl[1];
