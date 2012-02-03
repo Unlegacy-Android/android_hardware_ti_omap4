@@ -25,51 +25,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GCMAIN_H
-#define GCMAIN_H
+#ifndef GC2D_H
+#define GC2D_H
 
-#include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include "gcioctl.h"
+#include <bltsville.h>
+#include <bvinternal.h>
+#include <ocd.h>
 
-#define DEV_NAME	"gc2dusr"
-
-/*******************************************************************************
- * Miscellaneous macros.
- */
-
-#define gcalloc(type, size) \
-	(type *) malloc(size)
-
-#define gcfree(ptr) \
-	free(ptr)
-
-#define gcdump fprintf
-
-#define EXPORT_SYMBOL(sym)
-
-/*******************************************************************************
- * IOCTL wrappers.
- */
-
-void gc_map_wrapper(struct gcmap *gcmap);
-void gc_unmap_wrapper(struct gcmap *gcmap);
-void gc_commit_wrapper(struct gccommit *gccommit);
-
-/*******************************************************************************
- * Floating point conversions.
- */
-
-unsigned char gcfp2norm8(float value);
-
-/*******************************************************************************
- * BLTsville initialization/cleanup.
- */
-
-void bv_init(void);
-void bv_exit(void);
+enum bverror bv_map(struct bvbuffdesc *buffdesc);
+enum bverror bv_unmap(struct bvbuffdesc *buffdesc);
+enum bverror bv_blt(struct bvbltparams *bltparams);
 
 #endif
