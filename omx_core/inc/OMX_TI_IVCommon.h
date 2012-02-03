@@ -1282,6 +1282,28 @@ typedef struct OMX_TI_PARAM_SENSORDETECT {
 } OMX_TI_PARAM_SENSORDETECT;
 
 /**
+ * OMX_BAYERCOMPRESSION
+ *
+ */
+typedef enum OMX_BAYERCOMPRESSION {
+    OMX_BAYER_UNPACKED,
+    OMX_BAYER_PACKED10,
+    OMX_BAYER_ALAW,
+    OMX_BAYER_DPCM,
+    OMX_BAYER_MAX = 0x7FFFFFFF
+} OMX_BAYERCOMPRESSION;
+
+/**
+* Sensor Detect
+*/
+typedef struct OMX_TI_PARAM_BAYERCOMPRESSION {
+    OMX_U32              nSize;
+    OMX_VERSIONTYPE      nVersion;
+    OMX_U32              nPortIndex;
+    OMX_BAYERCOMPRESSION eBayerCompression;
+} OMX_TI_PARAM_BAYERCOMPRESSION;
+
+/**
  * Sensor custom data type
  */
 typedef struct OMX_CONFIG_SENSORCUSTOMDATATYPE {
