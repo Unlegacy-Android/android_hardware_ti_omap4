@@ -237,6 +237,14 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexParamTimeStampInDecodeOrder,            /**< 0x7F00008E reference: OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER */
     OMX_TI_IndexParamVideoAutoFrameRateUpdate,          /**< 0x7F00008F reference: OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE */
     OMX_TI_IndexParamBayerCompression,                  /**< 0x7F000090 reference: OMX_TI_PARAM_BAYERCOMPRESSION */
+    OMX_TI_IndexConfigMipiCounters,                     /**< 0x7F000091 reference: OMX_CONFIG_MIPICOUNTERS */
+    OMX_TI_IndexConfigCsiTimingRW,                      /**< 0x7F000092 reference: OMX_CONFIG_CSITIMINGRW */
+    OMX_TI_IndexConfigCSIcomplexIO,                     /**< 0x7F000093 reference: OMX_CONFIG_CSICMPXIO */
+    OMX_TI_IndexConfigAFScore,                          /**< 0x7F000094 reference: OMX_CONFIG_AUTOFOCUSSCORE */
+    OMX_TI_IndexConfigColorBars,                        /**< 0x7F000095 reference: OMX_CONFIG_COLORBARS */
+    OMX_TI_IndexConfigOTPEeprom,                        /**< 0x7F000096 reference: OMX_CONFIG_OTPEEPROM */
+    OMX_TI_IndexConfigISPInfo,                          /**< 0x7F000097 reference: OMX_CONFIG_ISPINFO */
+    OMX_TI_IndexConfigPicSizeControlInfo,               /**< 0x7F000098 reference: OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO */
 
 
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */

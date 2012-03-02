@@ -773,6 +773,23 @@ typedef struct OMX_TI_STREAMINTERLACEFORMATTYPE {
 	OMX_U32 nInterlaceFormats;
 } OMX_TI_STREAMINTERLACEFORMAT;
 
+/*
+@brief OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO : Structure to provide the configuration to compute min and max picture size
+@param minPicSizeRatio : This ratio is used to compute minimum picture size in the following manner,
+minPicSize = averagePicSize >> minPicSizeRatio. Allowed values are 1 to 4. Setting this to 0 will enable encoder chosen ratio.
+@param maxPicSizeRatio : This ratio is used to compute maximum picture size in the following manner,
+maxPicSize = averagePicSize * maxPicSizeRatio. Allowed values are 2 to 30. Setting this to 0 or 1 will enable encoder chosen ratio.
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U16         minPicSizeRatio;
+    OMX_U16         maxPicSizeRatio;
+} OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO;
+
+
 /*!====================================================================!
 
     Currently we only support SVC baseline profile
