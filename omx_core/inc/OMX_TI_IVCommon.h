@@ -2701,6 +2701,7 @@ typedef struct OMX_TI_CONFIG_VARFRMRANGETYPE {
         OMX_TI_SinglePreviewMode_Video,
         OMX_TI_SinglePreviewMode_ImageCapture,
         OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed,
+        OMX_TI_SinglePreviewMode_Reprocess,
         OMX_TI_SinglePreviewMode = 0x7FFFFFFF
     } OMX_TI_SINGLEPREVIEWMODETYPE;
 
