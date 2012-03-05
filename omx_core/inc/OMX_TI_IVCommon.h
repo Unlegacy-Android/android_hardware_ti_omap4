@@ -462,6 +462,7 @@ typedef enum OMX_BRACKETMODETYPE {
     OMX_BracketFlashPower,
     OMX_BracketAperture,
     OMX_BracketTemporal,
+    OMX_BracketExposureGainAbsolute,
     OMX_BrackerTypeKhronosExtensions = 0x6f000000,
     OMX_BrackerTypeVendorStartUnused = 0x7f000000,
     OMX_BracketTypeMax = 0x7FFFFFFF
@@ -472,8 +473,9 @@ typedef struct OMX_CONFIG_BRACKETINGTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_BRACKETMODETYPE eBracketMode;
-    OMX_U32 nNbrBracketingValues;
-    OMX_S32 nBracketValues[10]; /**< 10 can be assumed */
+    OMX_U32             nNbrBracketingValues;
+    OMX_S32             nBracketValues[10];     /**< 10 can be assumed */
+    OMX_S32             nBracketValues2[10];     /**< 10 can be assumed */
 } OMX_CONFIG_BRACKETINGTYPE;
 
 
