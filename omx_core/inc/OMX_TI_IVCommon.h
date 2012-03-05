@@ -525,7 +525,8 @@ typedef enum OMX_CAMOPERATINGMODETYPE {
         OMX_TI_CaptureImageProfileZeroShutterLag,
         OMX_TI_SinglePreview,
         OMX_TI_StereoGestureRecognition,
-        OMX_CamOperatingModeMax = OMX_TI_StereoGestureRecognition,
+        OMX_TI_CPCam,
+        OMX_CamOperatingModeMax = OMX_TI_CPCam,
         OMX_CamOperatingMode = 0x7fffffff
 } OMX_CAMOPERATINGMODETYPE;
 /**
