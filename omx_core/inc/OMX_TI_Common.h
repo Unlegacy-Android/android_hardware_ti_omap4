@@ -213,17 +213,26 @@ typedef struct OMX_TI_PARAM_METADATABUFFERINFO {
  *                                      buffer that is exchanged with the OMX
  *                                      component port
  *
+ *  OMX_TI_BufferTypeDefault          : Default buffer type accessed via a 
+ *                                      single virtual address
  *  OMX_TI_BufferTypeVirtual2D        : Multiple virtual buffers describing a
  *                                      2D buffer
  *  OMX_TI_BufferTypePlatform1D       : Platform specific 1D buffer handle
  *  OMX_TI_BufferTypePlatform2D       : Platform specific buffer handles
  *                                      describing a 2D buffer
+ *  OMX_TI_BufferTypePhysicalPageList : List of a given number of physical pages
+ *  OMX_TI_BufferTypeHardwareReserved1D:Harware reserve space only that can
+ *                                      accomodate a 1D buffer by mapping memory
+ *                                      to it
  */
 /*===============================================================*/
 typedef enum OMX_TI_BUFFERTYPE {
-    OMX_TI_BufferTypeVirtual2D = 0,
+    OMX_TI_BufferTypeDefault = 0,
+    OMX_TI_BufferTypeVirtual2D,
     OMX_TI_BufferTypePlatform1D,
     OMX_TI_BufferTypePlatform2D,
+    OMX_TI_BufferTypePhysicalPageList,
+    OMX_TI_BufferTypeHardwareReserved1D,
     OMX_TI_BufferTypeMax = 0x7FFFFFFF
 } OMX_TI_BUFFERTYPE;
 
