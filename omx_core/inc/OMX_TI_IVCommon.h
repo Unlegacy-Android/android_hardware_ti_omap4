@@ -3198,6 +3198,33 @@ typedef struct OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE {
     OMX_VERSIONTYPE          nVersion;
     OMX_TI_ZSL_PRIORITY_TYPE ePriority;
 } OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE;
+
+typedef enum OMX_TI_PORTTAPPOINTTYPE {
+    OMX_TI_PortTap_Bayer_SensorOutput,
+    OMX_TI_PortTap_Bayer_PostLsc,
+    OMX_TI_PortTap_Bayer_PreBayerToYUVConversion,
+    OMX_TI_PortTap_YUV_PostBayerToYUVConversion,
+    OMX_TI_PortTap_YUV_PreJPEGCompression,
+    OMX_TI_PortTap = 0x7FFFFFFF
+} OMX_TI_PORTTAPPOINTTYPE;
+
+/**
+ * Define configuration structure for
+ * tap in/out points for the selected port
+ *
+ * STRUCT MEMBERS:
+ *  nSize       : Size of the structure in bytes
+ *  nVersion    : OMX specification version information
+ *  nPortIndex  : Port that this structure applies to
+ *  eTapPoint   : Select the tap in/out point for the port
+ */
+typedef struct OMX_TI_CONFIG_PORTTAPPOINTTYPE {
+    OMX_U32                 nSize;
+    OMX_VERSIONTYPE         nVersion;
+    OMX_U32                 nPortIndex;
+    OMX_TI_PORTTAPPOINTTYPE eTapPoint;
+} OMX_TI_CONFIG_PORTTAPPOINTTYPE;
+
  
 #ifdef __cplusplus
 }
