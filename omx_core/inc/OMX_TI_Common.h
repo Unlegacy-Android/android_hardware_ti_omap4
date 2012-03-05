@@ -281,6 +281,40 @@ typedef struct OMX_TI_PARAM_USEBUFFERDESCRIPTOR {
     OMX_TI_BUFFERTYPE eBufferType;
 } OMX_TI_PARAM_USEBUFFERDESCRIPTOR;
 
+
+/*===============================================================*/
+/** OMX_TI_PARAM_COMPONENTBUFALLOCTYPE :This parameter is used to query/set
+ *                                      internal buffers used by OMX component
+ *                                      after allocation by the user of OMX
+ *                                      component during regular OMX buffer
+ *                                      allocation/free life cycle
+ *
+ *  @ param nSize                     : Size of the structure.
+ *  @ param nVersion                  : Version.
+ *  @ param nPortIndex                : Port index on which the parameter will
+ *                                      be applied.
+ *  @ param nIndex                    : Present buffer number whose requirement
+ *                                      is queried and then set
+ *  @ param eBufType                  : Present nIndex'ed buffer type
+ *  @ param pBuf                      : Buffer communication
+ *  @ param nAllocWidth               : Size of buffer (Width in case of 2D)
+ *  @ param nAllocLines               : Size of buffer (1 in case of 1D)
+ *  @ param nOffset                   : Offset from which buffer communicated is
+ *                                      valid
+ */
+/*===============================================================*/
+typedef struct OMX_TI_PARAM_COMPONENTBUFALLOCTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nIndex;
+    OMX_TI_BUFFERTYPE eBufType;
+    OMX_PTR pBuf[3];
+    OMX_U32 nAllocWidth;
+    OMX_U32 nAllocLines;
+    OMX_U32 nOffset;
+} OMX_TI_PARAM_COMPONENTBUFALLOCTYPE;
+
 /*******************************************************************
  * PRIVATE DECLARATIONS: defined here, used only here
  *******************************************************************/
