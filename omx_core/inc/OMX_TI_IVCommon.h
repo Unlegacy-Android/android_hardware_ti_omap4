@@ -3225,7 +3225,69 @@ typedef struct OMX_TI_CONFIG_PORTTAPPOINTTYPE {
     OMX_TI_PORTTAPPOINTTYPE eTapPoint;
 } OMX_TI_CONFIG_PORTTAPPOINTTYPE;
 
- 
+/**
+ * Define configuration structure for
+ * shot configuration for the selected port
+ *
+ * STRUCT MEMBERS:
+ *  nSize       : Size of the structure in bytes
+ *  nVersion    : OMX specification version information
+ *  nPortIndex  : Port that this structure applies to
+ *  nConfigId   : A unique config identification number that will be
+ *                put in ancillary data for the corresponding output frame
+ *  nFrames     : Number of sequential frames that will use this
+ *                configuration
+ *  nExp        : Exposure value for this configuration slot
+ *  nGain       : Gain value for this configuration slot
+ */
+typedef struct OMX_TI_CONFIG_SHOTCONFIG {
+    OMX_U32         nConfigId;
+    OMX_U32         nFrames;
+    OMX_U32         nExp;
+    OMX_U32         nGain;
+} OMX_TI_CONFIG_SHOTCONFIG;
+
+/**
+ * Define configuration structure for
+ * shot configuration vector for the selected port
+ *
+ * STRUCT MEMBERS:
+ *  nSize           : Size of the structure in bytes
+ *  nVersion        : OMX specification version information
+ *  nPortIndex      : Port that this structure applies to
+ *  bFlushQueue     : If TRUE: Flush queue and abort processing before enqueing
+ *                    new shot configurations
+ *  nNumConfigs     : Number of valid configurations in the nShotConfig array
+ *  nShotConfig     : Array of shot configurations
+ *  nSlotsAvilable  : Return value with number of available slots in the queue
+ */
+typedef struct OMX_TI_CONFIG_ENQUEUESHOTCONFIGS {
+    OMX_U32                     nSize;
+    OMX_VERSIONTYPE             nVersion;
+    OMX_U32                     nPortIndex;
+    OMX_BOOL                    bFlushQueue;
+    OMX_U32                     nNumConfigs;
+    OMX_TI_CONFIG_SHOTCONFIG    nShotConfig[10];
+} OMX_TI_CONFIG_ENQUEUESHOTCONFIGS;
+
+/**
+ * Define configuration structure to
+ * query available/free shots in shot queue.
+ * Will be supported only as GetConfig function.
+ *
+ * STRUCT MEMBERS:
+ *  nSize           : Size of the structure in bytes
+ *  nVersion        : OMX specification version information
+ *  nPortIndex      : Port that this structure applies to
+ *  nAvailableShots : Number of available shots
+ */
+typedef struct OMX_TI_CONFIG_QUERYAVAILABLESHOTS {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nAvailableShots;
+} OMX_TI_CONFIG_QUERYAVAILABLESHOTS;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

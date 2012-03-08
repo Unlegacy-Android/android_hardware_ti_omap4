@@ -251,6 +251,8 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigFixedGamma,                       /**< 0x7F00009C reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexConfigDisableThreeLinColorMap,          /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexParamComponentBufferAllocation,         /**< 0x7F00009E reference: OMX_TI_PARAM_COMPONENTBUFALLOCTYPE */
+    OMX_TI_IndexConfigEnqueueShotConfigs,               /**< 0x7F00009C reference: OMX_TI_CONFIG_ENQUEUESHOTCONFIGS */
+    OMX_TI_IndexConfigQueryAvailableShots,              /**< 0x7F00009D reference: OMX_TI_CONFIG_QUERYAVAILABLESHOTS */
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
 
