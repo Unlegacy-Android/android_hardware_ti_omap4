@@ -1235,5 +1235,17 @@ typedef struct OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE {
     OMX_U32         nMaxSessionFrameRate;
 } OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE;
 
+/* ============================================================================= */
+/*
+@brief OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES : Structure to enable feature to skip grey output
+           frames which doesn't have proper reference.
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_BOOL        bEnabled;
+} OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES;
+
 #endif /* OMX_TI_VIDEO_H */
 
