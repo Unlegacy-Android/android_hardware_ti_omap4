@@ -1061,6 +1061,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_U32 count = 0, nStride = 0;
 	OMX_U32 pBuffer = 0;
 	OMX_PTR pMetaDataBuffer = NULL;
+	OMX_PTR pAuxBuf0 = NULL;
 
 	PROXY_require(pBufferHdr != NULL, OMX_ErrorBadParameter, NULL);
 	PROXY_require(hComp->pComponentPrivate != NULL, OMX_ErrorBadParameter,
@@ -1087,12 +1088,35 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	    "Could not find the mapped address in component private buffer list");
 
 	pBuffer = (OMX_U32)pBufferHdr->pBuffer;
+    pAuxBuf0 = (OMX_PTR) pBuffer;
+
+#ifdef ENABLE_GRALLOC_BUFFERS
+	if (pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == GrallocPointers)
+	{
+		//Extracting buffer pointer from the gralloc buffer
+		pAuxBuf0 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[0]);
+	}
+#endif
+
+	/*To find whether buffer is 2D or 1D */
+	/*Not having asserts from this point since even if error occurs during
+	   unmapping/freeing, still trying to clean up as much as possible */
+	eError =
+	    RPC_UTIL_GetStride(pCompPrv->hRemoteComp, nPortIndex, &nStride);
+	if (eError == OMX_ErrorNone && nStride == LINUX_PAGE_SIZE)
+	{
+		if (pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+		{
+			pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
+		}
+	}
+
 	/*Not having asserts from this point since even if error occurs during
 	   unmapping/freeing, still trying to clean up as much as possible */
 
 	eRPCError =
 	    RPC_FreeBuffer(pCompPrv->hRemoteComp, nPortIndex,
-	    pCompPrv->tBufList[count].pBufHeaderRemote, pBuffer,
+	    pCompPrv->tBufList[count].pBufHeaderRemote, (OMX_U32) pAuxBuf0,
 	    &eCompReturn);
 
 	if (eRPCError != RPC_OMX_ErrorNone)
@@ -2049,7 +2073,7 @@ OMX_ERRORTYPE RPC_UTIL_GetStride(OMX_COMPONENTTYPE * hRemoteComp,
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
-	OMX_PARAM_PORTDEFINITIONTYPE sPortDef = {0};
+	OMX_PARAM_PORTDEFINITIONTYPE sPortDef;
 
 	/*Initializing Structure */
 	sPortDef.nSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
