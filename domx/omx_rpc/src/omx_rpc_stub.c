@@ -1186,8 +1186,11 @@ RPC_OMX_ERRORTYPE RPC_FreeBuffer(OMX_HANDLETYPE hRPCCtx,
 	RPC_getPacket(nPacketSize, pPacket);
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
+	/*Offset is the location of the buffer pointer from the start of the data packet */
+	nOffset =  sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
+                   sizeof(OMX_HANDLETYPE) + sizeof(OMX_U32) + sizeof(OMX_U32);
 	/*No buffer mapping required */
-	RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_NONE,
+	RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
 	    RPC_OMX_MAP_INFO_TYPE);
 	RPC_SETFIELDVALUE(pData, nPos, nOffset, OMX_U32);
 
