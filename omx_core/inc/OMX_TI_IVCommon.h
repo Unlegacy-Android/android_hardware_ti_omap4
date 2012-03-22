@@ -463,6 +463,7 @@ typedef enum OMX_BRACKETMODETYPE {
     OMX_BracketAperture,
     OMX_BracketTemporal,
     OMX_BracketExposureGainAbsolute,
+    OMX_BracketVectorShot,
     OMX_BrackerTypeKhronosExtensions = 0x6f000000,
     OMX_BrackerTypeVendorStartUnused = 0x7f000000,
     OMX_BracketTypeMax = 0x7FFFFFFF
@@ -1039,6 +1040,29 @@ typedef struct OMX_TI_DCCDATATYPE {
     OMX_U32               nOffset;
     OMX_PTR               pData;
 } OMX_TI_DCCDATATYPE;
+/**
+ * The extra data vector shot feedback info
+ *  nConfigId   : Same id that cames with
+ *                OMX_TI_CONFIG_ENQUEUESHOTCONFIGS::nShotConfig[x].nConfigId
+ *                for particular shot config.
+ *  nFrameNum   : Frame number in vect shot repeat sequence.
+ *                Starts from 1 for every shot config.
+ *  nExpTime    : Exposure time of this frame.
+ *  nAGain      : Analog gain of this frame.
+ *  nExpTimeErr : Exposure time error in us.
+ *                If the requested exposure time is ExpReq
+ *                and the one produced by the sensor is ExpSen then:
+ *                nExpTimeErr = ExpSen - ExpReq.
+ *  nAGainErr   : Analog gain error as multiplier (in Q8 format).
+ */
+typedef struct OMX_TI_VECTSHOTINFOTYPE {
+    OMX_U32 nConfigId;
+    OMX_U32 nFrameNum;
+    OMX_U32 nExpTime;
+    OMX_U32 nAGain;
+    OMX_S32 nExpTimeErr;
+    OMX_U32 nAGainErr;
+} OMX_TI_VECTSHOTINFOTYPE;
 
 /**
  * The extra data having ancillary data is described with the following structure.
@@ -1547,6 +1571,7 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_H264ESliceDataInfo,      /**< 0x7F00001B */
     OMX_TI_DccData,                 /**< 0x7F00001C Used for dcc data overwrite in the file system */
     OMX_TI_ProfilerData,            /**< 0x7F00001D Used for profiling data */
+    OMX_TI_VectShotInfo,            /**< 0x7F00001E Used for vector shot feedback notification */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
@@ -3199,6 +3224,173 @@ typedef struct OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE {
     OMX_TI_ZSL_PRIORITY_TYPE ePriority;
 } OMX_TI_CONFIG_ZSLFRAMESELECTPRIOTYPE;
 
+/**
+* MIPI, ECC, and CRC counters
+* Mipi counter counts the frames from the MIPI receiver (CSI_RX).
+* TCMD application will use this test
+* to validate the MIPI channel integrity (TX to RX).
+*
+* STRUCT MEMBERS:
+*  nSize              : Size of the structure in bytes
+*  nVersion           : OMX specification version information
+*  nPortIndex         : Port that this structure applies to
+*  bResetMIPICounter  : if OMX_SetConfig() is called with value True
+*                       for this parameter, the MIPICounter shall be reset to 0, by ducati.
+*  nMIPICounter       : MIPI frame counter
+*  nECCCounter        : ECC counter
+*  nCRCCounter        : CRC counter
+*/
+typedef struct OMX_CONFIG_MIPICOUNTERS {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bResetMIPICounter;
+    OMX_U32         nMIPICounter;
+    OMX_U32         nECCCounter;
+    OMX_U32         nCRCCounter;
+    OMX_U32         nFifoOvfCounter;
+    OMX_U32         nOCPCounter;
+    OMX_U32         nEccCorrCounter;
+    OMX_U32         SoTErrCnt;
+    OMX_U32         SoTSyncErrCnt;
+    OMX_U32         ULPMCnt;
+    OMX_U32         ULPMExitCnt;
+    OMX_U32         ULPMEnterCnt;
+    OMX_U32         ControlErrCnt;
+    OMX_U32         ErrEscapeCnt;
+    OMX_U32         CSIRxTimeoutCnt;
+    OMX_U32         bStopStartCntrs;
+} OMX_CONFIG_MIPICOUNTERS;
+
+/**
+* CSI Timing Register
+*
+* STRUCT MEMBERS:
+*  nSize              : Size of the structure in bytes
+*  nVersion           : OMX specification version information
+*  nPortIndex         : Port that this structure applies to
+*  nReadWrite         : if OMX_SetConfig() is called with value True
+*                       for this parameter, the ISS_CAMERARX_CORE1_REG0 register will be
+*                       written with the supplied values below.
+*  nThsSettle         :
+*  nThsTerm           :
+*  nHsClkCfg          :
+*/
+typedef struct OMX_CONFIG_CSITIMINGRW {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U8          nReadWrite;
+    OMX_U8          nThsSettle;
+    OMX_U8          nThsTerm;
+    OMX_U8          nHsClkCfg;
+} OMX_CONFIG_CSITIMINGRW;
+
+/**
+* CSI Complex IO Data
+*
+* STRUCT MEMBERS:
+*  nSize              : Size of the structure in bytes
+*  nVersion           : OMX specification version information
+*  nPortIndex         : Port that this structure applies to
+*  nFrameCount        : Recieved Frames on the CSI2Rx
+*  nLaneCount         : Number of active lanes
+*  nCSISpeed          : CSI2Rx speed
+*/
+typedef struct OMX_CONFIG_CSICMPXIO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nFrameCount;
+    OMX_U32         nLaneCount;
+    OMX_U32         nCSISpeed;
+} OMX_CONFIG_CSICMPXIO;
+
+/**
+ * Auto Focus Score
+ *
+ *  STRUCT MEMBERS:
+ *  nSize              : Size of the structure in bytes
+ *  nVersion           : OMX specification version information
+ *  nPortIndex         : Port that this structure applies to
+ *  nAutoFocusScore    : Auto Focus Score
+ */
+typedef struct OMX_CONFIG_AUTOFOCUSSCORE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nAutoFocusScore;
+} OMX_CONFIG_AUTOFOCUSSCORE;
+
+/**
+ * Color Bar test pattern
+ *
+ *  STRUCT MEMBERS:
+ *  nSize              : Size of the structure in bytes
+ *  nVersion           : OMX specification version information
+ *  nPortIndex         : Port that this structure applies to
+ *  bEnableColorBars   : Enable Color Bars test pattern
+ */
+typedef struct OMX_CONFIG_COLORBARS {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         bEnableColorBars;
+} OMX_CONFIG_COLORBARS;
+
+/**
+* Sensor OTP EEEPROM data
+*
+*  STRUCT MEMBERS:
+*  nSize              : Size of the structure in bytes
+*  nVersion           : OMX specification version information
+*  nPortIndex         : Port that this structure applies to
+*  pData              : pointer to the client's buffer
+*  nDataSize          : size of the EEPROM data in bytes
+*  nClientDataSize    : size of the client's buffer
+*  SensorIndex        : index of the eeprom buffer
+*/
+typedef struct OMX_CONFIG_OTPEEPROM {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_PTR         pData;
+    OMX_U32         nDataSize;
+    OMX_U32         nClientDataSize;
+    OMX_U8          SensorIndex;
+}OMX_CONFIG_OTPEEPROM;
+
+/**
+ * The OMX_ISP_TYPE enumeration is used to define the
+ * TI ISP & ST ISP types.
+ */
+typedef enum OMX_ISP_TYPE {
+    OMX_TIISP = 0,
+    OMX_STISP= 1,
+    OMX_ISPUnknown
+} OMX_ISP_TYPE;
+
+/**
+* ISP Information
+*
+*  STRUCT MEMBERS:
+*  nSize              : Size of the structure in bytes
+*  nVersion           : OMX specification version information
+*  nPortIndex         : Port that this structure applies to
+*  eIspType              : ISP Type (TI ISP/ ST ISP)
+*  nHardwareVersion    : Hardware version of ISP
+*  nSoftwareVersion        : Software version of ISP
+*/
+typedef struct OMX_CONFIG_ISPINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_ISP_TYPE    eIspType;
+    OMX_U32         nHardwareVersion;
+    OMX_U32         nSoftwareVersion;
+    OMX_S8          cDucatiVersion[32];
+}OMX_CONFIG_ISPINFO;
+
 typedef enum OMX_TI_PORTTAPPOINTTYPE {
     OMX_TI_PortTap_Bayer_SensorOutput,
     OMX_TI_PortTap_Bayer_PostLsc,
@@ -3226,6 +3418,16 @@ typedef struct OMX_TI_CONFIG_PORTTAPPOINTTYPE {
 } OMX_TI_CONFIG_PORTTAPPOINTTYPE;
 
 /**
+ * Available methods to apply vect shot exposure and gain
+ */
+typedef enum OMX_TI_EXPGAINAPPLYMETHODTYPE {
+    OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE,
+    OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE,
+    OMX_TI_EXPGAINAPPLYMETHOD_FORCE_RELATIVE,
+    OMX_TI_EXPGAINAPPLYMETHOD = 0x7FFFFFFF
+} OMX_TI_EXPGAINAPPLYMETHODTYPE;
+
+/**
  * Define configuration structure for
  * shot configuration for the selected port
  *
@@ -3239,12 +3441,17 @@ typedef struct OMX_TI_CONFIG_PORTTAPPOINTTYPE {
  *                configuration
  *  nExp        : Exposure value for this configuration slot
  *  nGain       : Gain value for this configuration slot
+ *  eExpGainApplyMethod : Selects the method which will be used to apply exposure and gain
+ *  bNoSnapshot : Determinates whether a snapshot image will be send
+ *                on the preview port for this shot config
  */
 typedef struct OMX_TI_CONFIG_SHOTCONFIG {
-    OMX_U32         nConfigId;
-    OMX_U32         nFrames;
-    OMX_U32         nExp;
-    OMX_U32         nGain;
+    OMX_U32                         nConfigId;
+    OMX_U32                         nFrames;
+    OMX_S32                         nExp;
+    OMX_S32                         nGain;
+    OMX_TI_EXPGAINAPPLYMETHODTYPE   eExpGainApplyMethod;
+    OMX_BOOL                        bNoSnapshot;
 } OMX_TI_CONFIG_SHOTCONFIG;
 
 /**
@@ -3287,6 +3494,34 @@ typedef struct OMX_TI_CONFIG_QUERYAVAILABLESHOTS {
     OMX_U32         nPortIndex;
     OMX_U32         nAvailableShots;
 } OMX_TI_CONFIG_QUERYAVAILABLESHOTS;
+
+/**
+ * Available vector shot capture stop methods
+ */
+typedef enum OMX_TI_VECTSHOTSTOPMETHOD {
+    OMX_TI_VECTSHOTSTOPMETHOD_GOTO_PREVIEW,
+    OMX_TI_VECTSHOTSTOPMETHOD_WAIT_IN_CAPTURE,
+    OMX_TI_VECTSHOTSTOPMETHOD_MAX = 0x7FFFFFFF
+} OMX_TI_VECTSHOTSTOPMETHOD;
+
+/**
+ * Define configuration structure to
+ * specify the beahvior of vector shot capture
+ * when the shot queue is empty
+ *
+ * STRUCT MEMBERS:
+ *  nSize           : Size of the structure in bytes
+ *  nVersion        : OMX specification version information
+ *  nPortIndex      : Port that this structure applies to
+ *  eStopMethod     : Select the stop method
+ */
+typedef struct OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE {
+    OMX_U32                     nSize;
+    OMX_VERSIONTYPE             nVersion;
+    OMX_U32                     nPortIndex;
+    OMX_TI_VECTSHOTSTOPMETHOD   eStopMethod;
+} OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE;
+
 
 #ifdef __cplusplus
 }

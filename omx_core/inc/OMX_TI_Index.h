@@ -237,23 +237,26 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexParamTimeStampInDecodeOrder,            /**< 0x7F00008E reference: OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER */
     OMX_TI_IndexParamVideoAutoFrameRateUpdate,          /**< 0x7F00008F reference: OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE */
     OMX_TI_IndexParamBayerCompression,                  /**< 0x7F000090 reference: OMX_TI_PARAM_BAYERCOMPRESSION */
-    OMX_TI_IndexConfigMipiCounters,                     /**< 0x7F000091 reference: OMX_CONFIG_MIPICOUNTERS */
-    OMX_TI_IndexConfigCsiTimingRW,                      /**< 0x7F000092 reference: OMX_CONFIG_CSITIMINGRW */
-    OMX_TI_IndexConfigCSIcomplexIO,                     /**< 0x7F000093 reference: OMX_CONFIG_CSICMPXIO */
-    OMX_TI_IndexConfigAFScore,                          /**< 0x7F000094 reference: OMX_CONFIG_AUTOFOCUSSCORE */
-    OMX_TI_IndexConfigColorBars,                        /**< 0x7F000095 reference: OMX_CONFIG_COLORBARS */
-    OMX_TI_IndexConfigOTPEeprom,                        /**< 0x7F000096 reference: OMX_CONFIG_OTPEEPROM */
-    OMX_TI_IndexConfigISPInfo,                          /**< 0x7F000097 reference: OMX_CONFIG_ISPINFO */
-    OMX_TI_IndexConfigPicSizeControlInfo,               /**< 0x7F000098 reference: OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO */
-    OMX_TI_IndexConfigPortTapPoint,                       /**< 0x7F000099 reference: OMX_TI_CONFIG_PORTTAPPOINTTYPE */
-    OMX_TI_IndexConfigDisableNSF,                       /**< 0x7F00009A reference: OMX_CONFIG_BOOLEANTYPE */
-    OMX_TI_IndexConfigDisableSharpening,                /**< 0x7F00009B reference: OMX_CONFIG_BOOLEANTYPE */
-    OMX_TI_IndexConfigFixedGamma,                       /**< 0x7F00009C reference: OMX_CONFIG_BOOLEANTYPE */
-    OMX_TI_IndexConfigDisableThreeLinColorMap,          /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
-    OMX_TI_IndexParamComponentBufferAllocation,         /**< 0x7F00009E reference: OMX_TI_PARAM_COMPONENTBUFALLOCTYPE */
-    OMX_TI_IndexConfigEnqueueShotConfigs,               /**< 0x7F00009F reference: OMX_TI_CONFIG_ENQUEUESHOTCONFIGS */
-    OMX_TI_IndexConfigQueryAvailableShots,              /**< 0x7F0000A0 reference: OMX_TI_CONFIG_QUERYAVAILABLESHOTS */
-    OMX_TI_IndexParamSkipGreyOutputFrames,              /**< 0x7F0000A1 reference: OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES */
+    OMX_TI_IndexParamSkipGreyOutputFrames,              /**< 0x7F000091 reference: OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES */
+    OMX_TI_IndexConfigMipiCounters,                     /**< 0x7F000092 reference: OMX_CONFIG_MIPICOUNTERS */
+    OMX_TI_IndexConfigCsiTimingRW,                      /**< 0x7F000093 reference: OMX_CONFIG_CSITIMINGRW */
+    OMX_TI_IndexConfigCSIcomplexIO,                     /**< 0x7F000094 reference: OMX_CONFIG_CSICMPXIO */
+    OMX_TI_IndexConfigAFScore,                          /**< 0x7F000095 reference: OMX_CONFIG_AUTOFOCUSSCORE */
+    OMX_TI_IndexConfigColorBars,                        /**< 0x7F000096 reference: OMX_CONFIG_COLORBARS */
+    OMX_TI_IndexConfigOTPEeprom,                        /**< 0x7F000097 reference: OMX_CONFIG_OTPEEPROM */
+    OMX_TI_IndexConfigISPInfo,                          /**< 0x7F000098 reference: OMX_CONFIG_ISPINFO */
+    OMX_TI_IndexConfigPicSizeControlInfo,               /**< 0x7F000099 reference: OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO */
+    OMX_TI_IndexConfigPortTapPoint,                     /**< 0x7F00009A reference: OMX_TI_CONFIG_PORTTAPPOINTTYPE */
+    OMX_TI_IndexConfigDisableNSF2,                      /**< 0x7F00009B reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableSharpening,                /**< 0x7F00009C reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigFixedGamma,                       /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableThreeLinColorMap,          /**< 0x7F00009E reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexParamComponentBufferAllocation,         /**< 0x7F00009F reference: OMX_TI_PARAM_COMPONENTBUFALLOCTYPE */
+    OMX_TI_IndexConfigEnqueueShotConfigs,               /**< 0x7F0000A0 reference: OMX_TI_CONFIG_ENQUEUESHOTCONFIGS */
+    OMX_TI_IndexConfigQueryAvailableShots,              /**< 0x7F0000A1 reference: OMX_TI_CONFIG_QUERYAVAILABLESHOTS */
+    OMX_TI_IndexConfigDisableNSF1,                      /**< 0x7F0000A2 reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableGIC,                       /**< 0x7F0000A3 reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigVectShotStopMethod,               /**< 0x7F0000A4 reference: OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE */
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
 
