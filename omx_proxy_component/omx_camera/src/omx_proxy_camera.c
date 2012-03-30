@@ -65,6 +65,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <timm_osal_interfaces.h>
 #include <OMX_TI_IVCommon.h>
@@ -108,6 +109,11 @@
 #define MAX_VTC_HEIGHT_WITH_VNF (MAX_VTC_HEIGHT + BORDER_HEIGHT)
 OMX_PTR gCamIonHdl[MAX_NUM_INTERNAL_BUFFERS][2];
 
+/* Tiler heap resservation specific */
+#define OMAP_ION_HEAP_TILER_ALLOCATION_MASK (1<<4)
+/* store handles for tracking and freeing */
+OMX_PTR gComponentBufferAllocation[PROXY_MAXNUMOFPORTS][MAX_NUM_INTERNAL_BUFFERS];
+
 /* Incase of multiple instance, making sure DCC is initialized only for
    first instance */
 static OMX_S16 numofInstance = 0;
@@ -150,7 +156,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
 	TIMM_OSAL_ERRORTYPE eOsalError = TIMM_OSAL_ERR_NONE;
 	PROXY_COMPONENT_PRIVATE *pCompPrv;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
-	OMX_U32 i;
+	OMX_U32 i, j;
 
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
 
@@ -180,6 +186,16 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
             }
 
         }
+
+        for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
+            for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
+                if (gComponentBufferAllocation[i][j]) {
+                    ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[i][j]);
+                }
+                gComponentBufferAllocation[i][j] = NULL;
+            }
+        }
+
 	eError = PROXY_ComponentDeInit(hComponent);
 
       EXIT:
@@ -226,10 +242,25 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
 			}
 			dcc_loaded = OMX_TRUE;
 		}
-	}
+	} else if (eCmd == OMX_CommandPortDisable) {
+            int i, j;
+            for (i = 0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
+                for (j = 0; j < PROXY_MAXNUMOFPORTS; j++) {
+                    if (((j == nParam) || (nParam == OMX_ALL)) &&
+                         gComponentBufferAllocation[i][j])
+                    {
+                        ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[i][j]);
+                        gComponentBufferAllocation[i][j] = NULL;
+                    }
+                }
+            }
+
+        }
+
 
 	eError =
 	PROXY_SendCommand(hComponent,eCmd,nParam,pCmdData);
+
 
 EXIT:
 
@@ -372,6 +403,8 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
     OMX_U32 stride_Y = 0, stride_UV = 0;
     OMX_TI_PARAM_VTCSLICE *pVtcConfig;// = (OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure;
+    OMX_TI_PARAM_COMPONENTBUFALLOCTYPE *bufferalloc = NULL;
+    int size = 0;
 
     pCompPrv = (PROXY_COMPONENT_PRIVATE *)hComp->pComponentPrivate;
     //fprintf(stdout, "DOMX: CameraSetParam: called!!!\n");
@@ -402,10 +435,42 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 					pVtcConfig->IonBufhdl, 2);
                }
 		goto EXIT;
-        	break;
-	default:
+	case OMX_TI_IndexParamComponentBufferAllocation: {
+                OMX_U32 port = 0, index = 0;
+		bufferalloc = (OMX_TI_PARAM_COMPONENTBUFALLOCTYPE *)
+			pComponentParameterStructure;
+
+                port = bufferalloc->nPortIndex;
+                index = bufferalloc->nIndex;
+
+		size = (bufferalloc->nAllocWidth * bufferalloc->nAllocLines * 3) >> 1;
+		ret = ion_alloc_tiler (pCompPrv->ion_fd, size, 1,
+				       TILER_PIXEL_FMT_PAGE,
+				       OMAP_ION_HEAP_TILER_ALLOCATION_MASK,
+				       &handle, &stride_Y);
+		if (ret < 0) {
+			DOMX_ERROR ("ION allocation failed - %s", strerror(errno));
+			goto EXIT;
+		}
+
+		bufferalloc->pBuf[0] = handle;
+		eError = __PROXY_SetParameter(hComponent,
+					      OMX_TI_IndexParamComponentBufferAllocation,
+					      bufferalloc, &bufferalloc->pBuf[0], 1);
+                if (eError != OMX_ErrorNone) {
+                   ion_free(pCompPrv->ion_fd, handle);
+                } else {
+                   if (gComponentBufferAllocation[port][index]) {
+                       ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[port][index]);
+                   }
+                   gComponentBufferAllocation[port][index] = handle;
+                }
+        }
+		goto EXIT;
 		break;
-    }
+	default:
+		 break;
+	}
 	eError = __PROXY_SetParameter(hComponent,
 								nParamIndex,
 								pComponentParameterStructure,
@@ -423,7 +488,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	OMX_ERRORTYPE dcc_eError = OMX_ErrorNone;
 	OMX_COMPONENTTYPE *pHandle = NULL;
 	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
-        OMX_U32 i =0;
+        OMX_U32 i = 0, j = 0;
 	pHandle = (OMX_COMPONENTTYPE *) hComponent;
 	TIMM_OSAL_ERRORTYPE eOsalError = TIMM_OSAL_ERR_NONE;
 	DOMX_ENTER("_____________________INSIDE CAMERA PROXY"
@@ -465,6 +530,13 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
             gCamIonHdl[i][0] = NULL;
             gCamIonHdl[i][1] = NULL;
         }
+
+        for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
+            for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
+                gComponentBufferAllocation[i][j] = NULL;
+            }
+        }
+
 	pHandle->ComponentDeInit = ComponentPrivateDeInit;
 	pHandle->GetConfig = CameraGetConfig;
 	pHandle->SetConfig = CameraSetConfig;
