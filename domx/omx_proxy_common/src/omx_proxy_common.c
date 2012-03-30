@@ -127,39 +127,6 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
  *   MACROS - LOCAL
  ******************************************************************/
 
-#define PROXY_checkRpcError() do { \
-    if (eRPCError == RPC_OMX_ErrorNone) \
-    { \
-        DOMX_DEBUG("Corresponding RPC function executed successfully"); \
-        eError = eCompReturn; \
-        PROXY_assert((eError == OMX_ErrorNone) || (eError == OMX_ErrorNoMore), eError, "Error returned from OMX API in ducati"); \
-    } else \
-    { \
-        DOMX_ERROR("RPC function returned error 0x%x", eRPCError); \
-        switch (eRPCError) \
-        { \
-            case RPC_OMX_ErrorHardware: \
-                eError = OMX_ErrorHardware; \
-            break; \
-            case RPC_OMX_ErrorInsufficientResources: \
-                eError = OMX_ErrorInsufficientResources; \
-            break; \
-            case RPC_OMX_ErrorBadParameter: \
-                eError = OMX_ErrorBadParameter; \
-            break; \
-            case RPC_OMX_ErrorUnsupportedIndex: \
-                eError = OMX_ErrorUnsupportedIndex; \
-            break; \
-            case RPC_OMX_ErrorTimeout: \
-                eError = OMX_ErrorTimeout; \
-            break; \
-            default: \
-                eError = OMX_ErrorUndefined; \
-        } \
-        PROXY_assert((eError == OMX_ErrorNone), eError, "Error returned from OMX API in ducati"); \
-    } \
-} while(0)
-
 #ifdef USE_ION
 
 RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
@@ -653,6 +620,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_BOOL bSlotFound = OMX_FALSE;
 #ifdef USE_ION
 	struct ion_handle *handle = NULL;
+	OMX_PTR pIonMappedBuffer = NULL;
 #endif
 
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
@@ -695,10 +663,22 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	else if (pCompPrv->bUseIon == OMX_TRUE)
 	{
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, nSize, &handle);
-		pMemptr =(OMX_U8 *)handle;
+		pCompPrv->tBufList[currentBuffer].pYBuffer = handle;
+		if (pCompPrv->bMapIonBuffers == OMX_TRUE)
+		{
+			DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
+			if (ion_map(pCompPrv->ion_fd, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+		                &pIonMappedBuffer, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0)
+			{
+				DOMX_ERROR("userspace mapping of ION buffers returned error");
+				eError = OMX_ErrorInsufficientResources;
+				goto EXIT;
+			}
+		}
+		pMemptr = pCompPrv->tBufList[currentBuffer].mmap_fd;
 		DOMX_DEBUG ("Ion handle recieved = %x",handle);
 		if (eError != OMX_ErrorNone)
-			return eError;
+			goto EXIT;
 	}
 #endif
 	/*Pick up 1st empty slot */
@@ -729,26 +709,23 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if(eError != OMX_ErrorNone) {
 		DOMX_ERROR("PROXY_UseBuffer in PROXY_AllocateBuffer failed with error %d (0x%08x)", eError, eError);
 #ifdef USE_ION
-		ion_free(pCompPrv->ion_fd, (struct ion_handle *)pMemptr);
+		ion_free(pCompPrv->ion_fd,
+		         (struct ion_handle *)pCompPrv->tBufList[currentBuffer].pYBuffer);
+		close(pCompPrv->tBufList[currentBuffer].mmap_fd);
 #endif
 		goto EXIT;
 	}
 	else {
+#ifndef USE_ION
 		pCompPrv->tBufList[currentBuffer].pYBuffer = pMemptr;
+#endif
 	}
 
 #ifdef USE_ION
 	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapIonBuffers == OMX_TRUE)
 	{
 		DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
-        	if (ion_map(pCompPrv->ion_fd, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                          &((*ppBufferHdr)->pBuffer),
-                                    &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0)
-		{
-			DOMX_ERROR("userspace mapping of ION buffers returned error");
-			return OMX_ErrorInsufficientResources;
-		}
-		//ion_free(pCompPrv->ion_fd, handleToMap);
+		(*ppBufferHdr)->pBuffer = pIonMappedBuffer;
 	}
 #endif
 

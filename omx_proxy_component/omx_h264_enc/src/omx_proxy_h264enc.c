@@ -153,6 +153,10 @@ typedef struct _OMX_PROXY_H264E_PRIVATE
 	OMX_S32  nCurBufIndex;
 	alloc_device_t* mAllocDev;
 }OMX_PROXY_H264E_PRIVATE;
+
+RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
+				     OMX_PTR *handle);
+RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
 #endif
 
 
@@ -700,6 +704,11 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	TIMM_OSAL_ERRORTYPE eOSALStatus = TIMM_OSAL_ERR_NONE;
 	OMX_U32 nBufIndex = 0, nSize=0, nRet=0;
 #endif
+#ifdef ENABLE_GRALLOC_BUFFER
+	OMX_PTR pAuxBuf0 = NULL, pAuxBuf1 = NULL;
+	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
+	OMX_ERRORTYPE eCompReturn = OMX_ErrorNone;
+#endif
 
 	PROXY_require(pBufferHdr != NULL, OMX_ErrorBadParameter, NULL);
 	PROXY_require(hComp->pComponentPrivate != NULL, OMX_ErrorBadParameter,
@@ -839,6 +848,21 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		}
 	}
 
+#ifdef ENABLE_GRALLOC_BUFFER
+	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
+					 pBufferHdr->pBuffer,
+					 &pAuxBuf0);
+	PROXY_checkRpcError();
+	if (pAuxBuf0)
+		pBufferHdr->pBuffer = pAuxBuf0;
+	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
+					 ((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1,
+					 &pAuxBuf1);
+	PROXY_checkRpcError();
+	if (pAuxBuf1)
+		((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = pAuxBuf1;
+#endif
+
 	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 	if (pProxy->bAndroidOpaqueFormat)
@@ -849,6 +873,12 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		PROXY_assert(eOSALStatus == TIMM_OSAL_ERR_NONE, OMX_ErrorBadParameter, "Pipe write failed");
 	}
 #endif
+
+#ifdef ENABLE_GRALLOC_BUFFER
+	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
+	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+#endif
+
 	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
 	{
 		pBufferHdr->pBuffer = pBufferOrig;

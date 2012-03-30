@@ -110,6 +110,38 @@ extern "C"
                   OMX_ErrorVersionMismatch, NULL); \
     } while(0)
 
+#define PROXY_checkRpcError() do { \
+    if (eRPCError == RPC_OMX_ErrorNone) \
+    { \
+        DOMX_DEBUG("Corresponding RPC function executed successfully"); \
+        eError = eCompReturn; \
+        PROXY_assert((eError == OMX_ErrorNone) || (eError == OMX_ErrorNoMore), eError, "Error returned from OMX API in ducati"); \
+    } else \
+    { \
+        DOMX_ERROR("RPC function returned error 0x%x", eRPCError); \
+        switch (eRPCError) \
+        { \
+            case RPC_OMX_ErrorHardware: \
+                eError = OMX_ErrorHardware; \
+            break; \
+            case RPC_OMX_ErrorInsufficientResources: \
+                eError = OMX_ErrorInsufficientResources; \
+            break; \
+            case RPC_OMX_ErrorBadParameter: \
+                eError = OMX_ErrorBadParameter; \
+            break; \
+            case RPC_OMX_ErrorUnsupportedIndex: \
+                eError = OMX_ErrorUnsupportedIndex; \
+            break; \
+            case RPC_OMX_ErrorTimeout: \
+                eError = OMX_ErrorTimeout; \
+            break; \
+            default: \
+                eError = OMX_ErrorUndefined; \
+        } \
+        PROXY_assert((eError == OMX_ErrorNone), eError, "Error returned from OMX API in ducati"); \
+    } \
+} while(0)
 
 	typedef OMX_ERRORTYPE(*PROXY_EMPTYBUFFER_DONE) (OMX_HANDLETYPE
 	    hComponent, OMX_U32 remoteBufHdr, OMX_U32 nfilledLen,
