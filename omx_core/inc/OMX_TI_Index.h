@@ -258,7 +258,8 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigDisableGIC,                       /**< 0x7F0000A3 reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexConfigVectShotStopMethod,               /**< 0x7F0000A4 reference: OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE */
     OMX_TI_IndexParamComponentExpectedSuspensionState,  /**< 0x7F0000A5 reference: OMX_PARAM_SUSPENSIONTYPE */
-    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
+    OMX_TI_IndexComponentHandle,                        /**< 0x7F0000A6 reference: OMX_TI_COMPONENT_HANDLE */
+    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100), /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
 
 

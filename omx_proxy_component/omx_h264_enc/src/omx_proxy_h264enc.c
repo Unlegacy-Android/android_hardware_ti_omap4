@@ -480,6 +480,12 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		}
 #endif
         }
+    else if (nParamIndex == OMX_TI_IndexComponentHandle)
+    {
+        OMX_TI_COMPONENT_HANDLE * pCompHandle = pParamStruct;
+        pCompHandle->pHandle = hComponent;
+        eError = OMX_ErrorNone;
+    }
 
 	PROXY_assert((eError == OMX_ErrorNone) || (eError == OMX_ErrorNoMore),
 		    eError," Error in Proxy GetParameter");

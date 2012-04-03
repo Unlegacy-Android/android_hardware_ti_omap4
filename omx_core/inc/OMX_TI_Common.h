@@ -315,6 +315,21 @@ typedef struct OMX_TI_PARAM_COMPONENTBUFALLOCTYPE {
     OMX_U32 nOffset;
 } OMX_TI_PARAM_COMPONENTBUFALLOCTYPE;
 
+/*===============================================================*/
+/** OMX_TI_COMPONENT_HANDLE           : This parameter is used to retrieve
+ *                                      the component handle by the client.
+ *
+ *  @ param nSize                     : Size of the structure.
+ *  @ param nVersion                  : Version.
+ *  @ param pHandle                   : Component Handle
+ */
+/*===============================================================*/
+typedef struct OMX_TI_COMPONENT_HANDLE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_HANDLETYPE pHandle;
+} OMX_TI_COMPONENT_HANDLE;
+
 /*******************************************************************
  * PRIVATE DECLARATIONS: defined here, used only here
  *******************************************************************/
