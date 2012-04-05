@@ -527,9 +527,14 @@ typedef enum OMX_CAMOPERATINGMODETYPE {
         OMX_TI_SinglePreview,
         OMX_TI_StereoGestureRecognition,
         OMX_TI_CPCam,
-        OMX_CamOperatingModeMax = OMX_TI_CPCam,
+        OMX_TI_StereoVideo,
+        // Put new entries here so OMX_CamOperatingModeMax always points to
+        // the last one
+        OMX_TI_CamOperatingModeCount,
+        OMX_CamOperatingModeMax = OMX_TI_CamOperatingModeCount - 1,
         OMX_CamOperatingMode = 0x7fffffff
 } OMX_CAMOPERATINGMODETYPE;
+
 /**
  * Capture mode setting: applicable to multi shot capture also including bracketing.
  *
