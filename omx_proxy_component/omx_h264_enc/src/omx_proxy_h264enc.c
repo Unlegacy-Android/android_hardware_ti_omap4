@@ -733,7 +733,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	    __FUNCTION__,hComponent, pCompPrv, pBufferHdr->nFilledLen,
 	    pBufferHdr->nOffset, pBufferHdr->nFlags);
 
-	if( pCompPrv->proxyPortBuffers[OMX_H264E_INPUT_PORT].proxyBufferType == EncoderMetadataPointers && nFilledLen != 0 )
+	if( pCompPrv->proxyPortBuffers[OMX_H264E_INPUT_PORT].proxyBufferType == EncoderMetadataPointers )
 	{
 		OMX_U32 *pTempBuffer;
 		OMX_U32 nMetadataBufferType;
@@ -790,17 +790,21 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 						                     TIMM_OSAL_SUSPEND);
 				PROXY_assert(eOSALStatus == TIMM_OSAL_ERR_NONE, OMX_ErrorBadParameter, NULL);
 
-				/* Get NV12 data after colorconv*/
-				nRet = COLORCONVERT_PlatformOpaqueToNV12(pProxy->hCC, (void **) &pGrallocHandle, (void **) &pProxy->gralloc_handle[nBufIndex],
+				if(nFilledLen != 0)
+				{
+				    /* Get NV12 data after colorconv*/
+				    nRet = COLORCONVERT_PlatformOpaqueToNV12(pProxy->hCC, (void **) &pGrallocHandle, (void **) &pProxy->gralloc_handle[nBufIndex],
 									 pGrallocHandle->iWidth,
 									 pGrallocHandle->iHeight,
 									 4096, COLORCONVERT_BUFTYPE_GRALLOCOPAQUE,
 									 COLORCONVERT_BUFTYPE_GRALLOCOPAQUE );
-				if(nRet != 0)
-				{
-					eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &nBufIndex,
+
+				    if(nRet != 0)
+				    {
+					    eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &nBufIndex,
 						                     sizeof(OMX_U32), TIMM_OSAL_SUSPEND);
-					PROXY_assert(0, OMX_ErrorBadParameter, "Color conversion routine failed");
+					    PROXY_assert(0, OMX_ErrorBadParameter, "Color conversion routine failed");
+				    }
 				}
 
 				/* Update pBufferHdr with NV12 buffers for OMX component */
