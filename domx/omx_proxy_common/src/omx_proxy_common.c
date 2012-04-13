@@ -1158,6 +1158,9 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	/*Not having asserts from this point since even if error occurs during
 	   unmapping/freeing, still trying to clean up as much as possible */
 
+	if (pCompPrv->tBufList[count].pRegisteredAufBux0 != NULL)
+		pAuxBuf0 = pCompPrv->tBufList[count].pRegisteredAufBux0;
+
 	eRPCError =
 	    RPC_FreeBuffer(pCompPrv->hRemoteComp, nPortIndex,
 	    pCompPrv->tBufList[count].pBufHeaderRemote, (OMX_U32) pAuxBuf0,
