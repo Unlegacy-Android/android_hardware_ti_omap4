@@ -134,7 +134,7 @@ int COLORCONVERT_PlatformOpaqueToNV12(void *hCC, void *pSrc[],
 				      int nHeight, int nStride,
 				      int nSrcBufType, int nDstBufType);
 int COLORCONVERT_close(void *hCC,PROXY_COMPONENT_PRIVATE *pCompPrv);
-
+static int COLORCONVERT_AllocateBuffer(OMX_HANDLETYPE hComponent, OMX_U32 nStride);
 static OMX_ERRORTYPE LOCAL_PROXY_H264E_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_INOUT OMX_BUFFERHEADERTYPE ** ppBufferHdr, OMX_IN OMX_U32 nPortIndex,
     OMX_IN OMX_PTR pAppPrivate, OMX_IN OMX_U32 nSizeBytes);
@@ -754,7 +754,16 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			pVideoMetadataBuffer = (video_metadata_t*) ((OMX_U32 *)(pBufferHdr->pBuffer));
 			pGrallocHandle = (IMG_native_handle_t*) (pVideoMetadataBuffer->handle);
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
+                        if( pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 && pProxy->gralloc_handle[0] == NULL ) {
+                            DOMX_DEBUG("Allocating NV12 buffers internally within DOMX actual count: %d", pCompPrv->nAllocatedBuffers);
+                            pProxy->nCurBufIndex = 0;
 
+                            while( (unsigned) pProxy->nCurBufIndex < pCompPrv->nAllocatedBuffers ) {
+                                   eError = COLORCONVERT_AllocateBuffer(hComponent, nStride);
+                                   PROXY_require(eError == OMX_ErrorNone, eError, "Error allocating buffers for color conversion");
+                                   pProxy->nCurBufIndex++;
+                            }
+                        }
 			pBufferHdr->pBuffer = (OMX_U8 *)(pGrallocHandle->fd[0]);
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->
 			pAuxBuf1 = (OMX_PTR) pGrallocHandle->fd[1];
@@ -775,6 +784,16 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			tBufHandle =  *((buffer_handle_t *)pTempBuffer);
 			pGrallocHandle = (IMG_native_handle_t*) tBufHandle;
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
+                        if( pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 && pProxy->gralloc_handle[0] == NULL ) {
+                            DOMX_DEBUG("Allocating NV12 buffers internally within DOMX actual count: %d", pCompPrv->nAllocatedBuffers);
+                            pProxy->nCurBufIndex = 0;
+
+                            while( (unsigned) pProxy->nCurBufIndex < pCompPrv->nAllocatedBuffers ) {
+                                   eError = COLORCONVERT_AllocateBuffer(hComponent, nStride);
+                                   PROXY_require(eError == OMX_ErrorNone, eError, "Error allocating buffers for color conversion");
+                                   pProxy->nCurBufIndex++;
+                            }
+                        }
 
 			pBufferHdr->pBuffer = (OMX_U8 *)(pGrallocHandle->fd[0]);
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->
@@ -848,7 +867,6 @@ static OMX_ERRORTYPE LOCAL_PROXY_H264E_AllocateBuffer(OMX_HANDLETYPE hComponent,
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
-	OMX_CONFIG_RECTTYPE tParamRect;
 	OMX_PROXY_H264E_PRIVATE *pProxy = NULL;
 	TIMM_OSAL_ERRORTYPE eOSALStatus = TIMM_OSAL_ERR_NONE;
 	int err, nStride;
@@ -858,43 +876,10 @@ static OMX_ERRORTYPE LOCAL_PROXY_H264E_AllocateBuffer(OMX_HANDLETYPE hComponent,
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
 	pProxy = (OMX_PROXY_H264E_PRIVATE *) pCompPrv->pCompProxyPrv;
 
-	if((nPortIndex == OMX_H264E_INPUT_PORT) &&
-	   (pProxy->bAndroidOpaqueFormat))
-	{
-
-		tParamRect.nSize = sizeof(OMX_CONFIG_RECTTYPE);
-		tParamRect.nVersion.s.nVersionMajor = 1;
-		tParamRect.nVersion.s.nVersionMinor = 1;
-		tParamRect.nVersion.s.nRevision = 0;
-		tParamRect.nVersion.s.nStep = 0;
-		tParamRect.nPortIndex = nPortIndex;
-
-		eError = PROXY_GetParameter(hComponent, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParamRect);
-		PROXY_assert(eError == OMX_ErrorNone, eError," Error in Proxy GetParameter");
-
-		err = pProxy->mAllocDev->alloc(pProxy->mAllocDev,(int) tParamRect.nWidth,(int) tParamRect.nHeight,
-			(int) HAL_PIXEL_FORMAT_TI_NV12,(int) GRALLOC_USAGE_HW_RENDER,
-			(const struct native_handle_t **)(&(pProxy->gralloc_handle[pProxy->nCurBufIndex])), &nStride);
-	}
 
 	eError = PROXY_AllocateBuffer(hComponent, ppBufferHdr, nPortIndex,
 				      pAppPrivate, nSizeBytes);
 EXIT:
-	if((nPortIndex == OMX_H264E_INPUT_PORT) &&
-	   (pProxy->bAndroidOpaqueFormat))
-	{
-		if(eError != OMX_ErrorNone)
-		{
-			err = pProxy->mAllocDev->free(pProxy->mAllocDev, (buffer_handle_t)(pProxy->gralloc_handle[pProxy->nCurBufIndex]));
-		}
-		else
-		{
-			/*Populate buffer to pipe*/
-			eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &pProxy->nCurBufIndex,
-						    sizeof(OMX_U32), TIMM_OSAL_SUSPEND);
-			pProxy->nCurBufIndex++;
-		}
-	}
 	return eError;
 }
 
@@ -913,7 +898,7 @@ static OMX_ERRORTYPE LOCAL_PROXY_H264E_FreeBuffer(OMX_IN OMX_HANDLETYPE hCompone
 	pProxy = (OMX_PROXY_H264E_PRIVATE *) pCompPrv->pCompProxyPrv;
 
 	if((nPortIndex == OMX_H264E_INPUT_PORT) &&
-	   (pProxy->bAndroidOpaqueFormat))
+	   (pProxy->bAndroidOpaqueFormat) && (pProxy->gralloc_handle[0] != NULL))
 	{
 		pProxy->nCurBufIndex--;
 		PROXY_require(pProxy->nCurBufIndex >=0,
@@ -940,6 +925,35 @@ EXIT:
 	return eError;
 }
 
+int COLORCONVERT_AllocateBuffer(OMX_HANDLETYPE hComponent, OMX_U32 nStride)
+{
+        OMX_CONFIG_RECTTYPE tParam;
+        TIMM_OSAL_ERRORTYPE eOSALStatus = TIMM_OSAL_ERR_NONE;
+        OMX_U32 err;
+        OMX_ERRORTYPE eError = OMX_ErrorNone;
+        PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
+        OMX_PROXY_H264E_PRIVATE *pProxy = NULL;
+        OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+
+        pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
+        pProxy = (OMX_PROXY_H264E_PRIVATE *) pCompPrv->pCompProxyPrv;
+
+        tParam.nSize = sizeof(OMX_CONFIG_RECTTYPE);
+        tParam.nVersion.s.nVersionMajor = 1;
+        tParam.nVersion.s.nVersionMinor = 1;
+        tParam.nVersion.s.nRevision = 0;
+        tParam.nVersion.s.nStep = 0;
+        tParam.nPortIndex = OMX_H264E_INPUT_PORT;
+        eError = PROXY_GetParameter(hComponent, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParam);
+        PROXY_assert(eError == OMX_ErrorNone, eError, " Error in Proxy GetParameter");
+        err = pProxy->mAllocDev->alloc(pProxy->mAllocDev, (int) tParam.nWidth, (int) tParam.nHeight, (int) HAL_PIXEL_FORMAT_TI_NV12, (int) GRALLOC_USAGE_HW_RENDER, (const struct native_handle_t * *)(&(pProxy->gralloc_handle[pProxy->nCurBufIndex])), (int *) &nStride);
+        PROXY_assert(!err, err, " Error in allocating Gralloc buffers");
+        eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &pProxy->nCurBufIndex, sizeof(OMX_U32), TIMM_OSAL_SUSPEND);
+        PROXY_assert(eOSALStatus == TIMM_OSAL_ERR_NONE, OMX_ErrorBadParameter, "Pipe write failed");
+
+EXIT:
+        return eError;
+}
 OMX_ERRORTYPE LOCAL_PROXY_H264E_ComponentDeInit(OMX_HANDLETYPE hComponent)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
