@@ -99,7 +99,7 @@ char *tComponentName[MAXCOMP][MAX_ROLES] = {
          "video_encoder.mpeg4",
          "video_encoder.h263",NULL},
     {"OMX.TI.DUCATI1.VIDEO.CAMERA",  "camera.omx", NULL},
-#ifdef OMAP_ENHANCEMENT
+#ifdef USE_ITTIAM_AAC
     {"OMX.ITTIAM.AAC.decode", "audio_decoder.aac", NULL},
     {"OMX.ITTIAM.BSAC.decode", "audio_decoder.aac", NULL},
 #endif
