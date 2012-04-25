@@ -644,6 +644,27 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	    ("hComponent = %p, pCompPrv = %p, nPortIndex = %p, pAppPrivate = %p, nSizeBytes = %d",
 	    hComponent, pCompPrv, nPortIndex, pAppPrivate, nSizeBytes);
 
+	/*Pick up 1st empty slot */
+	/*The same empty spot will be picked up by the subsequent
+	Use buffer call to fill in the corresponding buffer
+	Buffer header in the list */
+
+	bSlotFound = OMX_FALSE;
+	for (i = 0; i < pCompPrv->nTotalBuffers; i++)
+	{
+		if (pCompPrv->tBufList[i].pBufHeader == NULL)
+		{
+			currentBuffer = i;
+			bSlotFound = OMX_TRUE;
+			break;
+		}
+	}
+
+	if (bSlotFound == OMX_FALSE)
+	{
+		currentBuffer = pCompPrv->nTotalBuffers;
+	}
+
 	/*To find whether buffer is 2D or 1D */
 	eError =
 	    RPC_UTIL_GetStride(pCompPrv->hRemoteComp, nPortIndex, &nStride);
@@ -681,25 +702,6 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 			goto EXIT;
 	}
 #endif
-	/*Pick up 1st empty slot */
-	/*The same empty spot will be picked up by the subsequent
-	Use buffer call to fill in the corresponding buffer
-	Buffer header in the list */
-
-        for (i = 0; i < pCompPrv->nTotalBuffers; i++)
-        {
-                if (pCompPrv->tBufList[i].pBufHeader == NULL)
-                {
-                        currentBuffer = i;
-                        bSlotFound = OMX_TRUE;
-                        break;
-		}
-        }
-
-	if (!bSlotFound)
-	{
-		currentBuffer = pCompPrv->nTotalBuffers;
-	}
 
 	/*No need to increment Allocated buffers here.
 	It will be done in the subsequent use buffer call below*/
