@@ -1,6 +1,7 @@
 ifeq ($(ENHANCED_DOMX),true)
 
-    ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+    # DOMX not used in OMAP3 program
+    ifneq ($(TARGET_BOARD_PLATFORM),omap3)
 
         LOCAL_PATH:= $(call my-dir)
         HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)/../omap4xxx
