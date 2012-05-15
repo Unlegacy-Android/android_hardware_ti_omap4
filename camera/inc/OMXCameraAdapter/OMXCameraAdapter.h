@@ -579,12 +579,16 @@ private:
                                 const OMX_BOOL data, const char *msg);
     status_t setParameter3ABoolInvert(const OMX_INDEXTYPE omx_idx,
                                       const OMX_BOOL data, const char *msg);
-    status_t setAlgoFixedGamma(Gen3A_settings& Gen3A);
+    status_t setAlgoExternalGamma(Gen3A_settings& Gen3A);
     status_t setAlgoNSF1(Gen3A_settings& Gen3A);
     status_t setAlgoNSF2(Gen3A_settings& Gen3A);
     status_t setAlgoSharpening(Gen3A_settings& Gen3A);
     status_t setAlgoThreeLinColorMap(Gen3A_settings& Gen3A);
     status_t setAlgoGIC(Gen3A_settings& Gen3A);
+
+    //Gamma table
+    void updateGammaTable(const char* gamma);
+    status_t setGammaTable(Gen3A_settings& Gen3A);
 
     status_t getEVCompensation(Gen3A_settings& Gen3A);
     status_t getWBMode(Gen3A_settings& Gen3A);

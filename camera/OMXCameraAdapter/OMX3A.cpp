@@ -388,8 +388,8 @@ status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &para
     }
 
 // TI extensions for enable/disable algos
-    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_FIXED_GAMMA,
-                       mParameters3A.AlgoFixedGamma, SetAlgoFixedGamma, "Fixed Gamma");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_EXTERNAL_GAMMA,
+                       mParameters3A.AlgoExternalGamma, SetAlgoExternalGamma, "External Gamma");
     declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF1,
                        mParameters3A.AlgoNSF1, SetAlgoNSF1, "NSF1");
     declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF2,
@@ -400,9 +400,90 @@ status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &para
                        mParameters3A.AlgoThreeLinColorMap, SetAlgoThreeLinColorMap, "ThreeLinColorMap");
     declareParameter3ABool(params, TICameraParameters::KEY_ALGO_GIC, mParameters3A.AlgoGIC, SetAlgoGIC, "GIC");
 
+    // Gamma table
+    str = params.get(TICameraParameters::KEY_GAMMA_TABLE);
+    updateGammaTable(str);
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
+}
+
+void OMXCameraAdapter::updateGammaTable(const char* gamma)
+{
+    unsigned int plane = 0;
+    unsigned int i = 0;
+    bool gamma_changed = false;
+    const char *a = gamma;
+    OMX_TI_GAMMATABLE_ELEM_TYPE *elem[3] = { mParameters3A.mGammaTable.pR,
+                                             mParameters3A.mGammaTable.pG,
+                                             mParameters3A.mGammaTable.pB};
+
+    if (!gamma) return;
+
+    mPending3Asettings &= ~SetGammaTable;
+    memset(&mParameters3A.mGammaTable, 0, sizeof(mParameters3A.mGammaTable));
+    for (plane = 0; plane < 3; plane++) {
+        a = strchr(a, '(');
+        if (NULL != a) {
+            a++;
+            for (i = 0; i < OMX_TI_GAMMATABLE_SIZE; i++) {
+                char *b;
+                int newVal;
+                newVal = strtod(a, &b);
+                if (newVal != elem[plane][i].nOffset) {
+                    elem[plane][i].nOffset = newVal;
+                    gamma_changed = true;
+                }
+                a = strpbrk(b, ",:)");
+                if ((NULL != a) && (':' == *a)) {
+                    a++;
+                } else if ((NULL != a) && (',' == *a)){
+                    a++;
+                    break;
+                } else if ((NULL != a) && (')' == *a)){
+                    a++;
+                    break;
+                } else {
+                    CAMHAL_LOGE("Error while parsing values");
+                    gamma_changed = false;
+                    break;
+                }
+                newVal = strtod(a, &b);
+                if (newVal != elem[plane][i].nSlope) {
+                    elem[plane][i].nSlope = newVal;
+                    gamma_changed = true;
+                }
+                a = strpbrk(b, ",:)");
+                if ((NULL != a) && (',' == *a)) {
+                    a++;
+                } else if ((NULL != a) && (':' == *a)){
+                    a++;
+                    break;
+                } else if ((NULL != a) && (')' == *a)){
+                    a++;
+                    break;
+                } else {
+                    CAMHAL_LOGE("Error while parsing values");
+                    gamma_changed = false;
+                    break;
+                }
+            }
+            if ((OMX_TI_GAMMATABLE_SIZE - 1) != i) {
+                CAMHAL_LOGE("Error while parsing values (incorrect count %u)", i);
+                gamma_changed = false;
+                break;
+            }
+        } else {
+            CAMHAL_LOGE("Error while parsing planes (%u)", plane);
+            gamma_changed = false;
+            break;
+        }
+    }
+
+    if (gamma_changed) {
+        mPending3Asettings |= SetGammaTable;
+    }
 }
 
 void OMXCameraAdapter::declareParameter3ABool(const android::CameraParameters &params, const char *key,
@@ -1767,9 +1848,9 @@ status_t OMXCameraAdapter::setParameter3ABool(const OMX_INDEXTYPE omx_idx,
   return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
-status_t OMXCameraAdapter::setAlgoFixedGamma(Gen3A_settings& Gen3A)
+status_t OMXCameraAdapter::setAlgoExternalGamma(Gen3A_settings& Gen3A)
 {
-    return setParameter3ABool((OMX_INDEXTYPE) OMX_TI_IndexConfigFixedGamma, Gen3A.AlgoFixedGamma, "Fixed Gamma");
+    return setParameter3ABool((OMX_INDEXTYPE) OMX_TI_IndexConfigExternalGamma, Gen3A.AlgoExternalGamma, "External Gamma");
 }
 
 status_t OMXCameraAdapter::setAlgoNSF1(Gen3A_settings& Gen3A)
@@ -1795,6 +1876,86 @@ status_t OMXCameraAdapter::setAlgoThreeLinColorMap(Gen3A_settings& Gen3A)
 status_t OMXCameraAdapter::setAlgoGIC(Gen3A_settings& Gen3A)
 {
     return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableGIC, Gen3A.AlgoGIC, "Green Inballance Correction");
+}
+
+status_t OMXCameraAdapter::setGammaTable(Gen3A_settings& Gen3A)
+{
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    CameraBuffer *bufferlist = NULL;
+    OMX_TI_CONFIG_GAMMATABLE_TYPE *gammaTable = NULL;
+    OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
+    int tblSize = 0;
+
+    LOG_FUNCTION_NAME;
+
+    if ( OMX_StateInvalid == mComponentState ) {
+        CAMHAL_LOGEA("OMX component is in invalid state");
+        ret = NO_INIT;
+        goto EXIT;
+    }
+
+    tblSize = ((sizeof(OMX_TI_CONFIG_GAMMATABLE_TYPE)+4095)/4096)*4096;
+    bufferlist = mMemMgr.allocateBufferList(0, 0, NULL, tblSize, 1);
+    if (NULL == bufferlist) {
+        CAMHAL_LOGEB("Error allocating buffer for gamma table");
+        ret =  NO_MEMORY;
+        goto EXIT;
+    }
+    gammaTable = (OMX_TI_CONFIG_GAMMATABLE_TYPE *)bufferlist[0].mapped;
+    if (NULL == gammaTable) {
+        CAMHAL_LOGEB("Error allocating buffer for gamma table (wrong data pointer)");
+        ret =  NO_MEMORY;
+        goto EXIT;
+    }
+
+    memcpy(gammaTable, &mParameters3A.mGammaTable, sizeof(OMX_TI_CONFIG_GAMMATABLE_TYPE));
+
+#ifdef CAMERAHAL_DEBUG
+    {
+        android::String8 DmpR;
+        android::String8 DmpG;
+        android::String8 DmpB;
+        for (unsigned int i=0; i<OMX_TI_GAMMATABLE_SIZE;i++) {
+            DmpR.appendFormat(" %d:%d;", (int)gammaTable->pR[i].nOffset, (int)(int)gammaTable->pR[i].nSlope);
+            DmpG.appendFormat(" %d:%d;", (int)gammaTable->pG[i].nOffset, (int)(int)gammaTable->pG[i].nSlope);
+            DmpB.appendFormat(" %d:%d;", (int)gammaTable->pB[i].nOffset, (int)(int)gammaTable->pB[i].nSlope);
+        }
+        CAMHAL_LOGE("Gamma table R:%s", DmpR.string());
+        CAMHAL_LOGE("Gamma table G:%s", DmpG.string());
+        CAMHAL_LOGE("Gamma table B:%s", DmpB.string());
+    }
+#endif
+
+    OMX_INIT_STRUCT_PTR (&sharedBuffer, OMX_TI_CONFIG_SHAREDBUFFER);
+    sharedBuffer.nPortIndex = OMX_ALL;
+    sharedBuffer.nSharedBuffSize = sizeof(OMX_TI_CONFIG_GAMMATABLE_TYPE);
+    sharedBuffer.pSharedBuff = (OMX_U8 *)camera_buffer_get_omx_ptr (&bufferlist[0]);
+    if ( NULL == sharedBuffer.pSharedBuff ) {
+        CAMHAL_LOGEA("No resources to allocate OMX shared buffer");
+        ret = NO_MEMORY;
+        goto EXIT;
+    }
+
+    eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            (OMX_INDEXTYPE) OMX_TI_IndexConfigGammaTable, &sharedBuffer);
+    if ( OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("Error while setting Gamma Table configuration 0x%x", eError);
+        ret = BAD_VALUE;
+        goto EXIT;
+    } else {
+        CAMHAL_LOGDA("Gamma Table SetConfig successfull.");
+    }
+
+EXIT:
+
+    if (NULL != bufferlist) {
+        mMemMgr.freeBufferList(bufferlist);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
 }
 
 status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
@@ -1932,9 +2093,9 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                   break;
 
                 //TI extensions for enable/disable algos
-                case SetAlgoFixedGamma:
+                case SetAlgoExternalGamma:
                   {
-                    ret |= setAlgoFixedGamma(Gen3A);
+                    ret |= setAlgoExternalGamma(Gen3A);
                   }
                   break;
 
@@ -1965,6 +2126,12 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                 case SetAlgoGIC:
                   {
                     ret |= setAlgoGIC(Gen3A);
+                  }
+                  break;
+
+                case SetGammaTable:
+                  {
+                    ret |= setGammaTable(Gen3A);
                   }
                   break;
 
