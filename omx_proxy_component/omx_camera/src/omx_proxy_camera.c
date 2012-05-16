@@ -405,6 +405,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     OMX_TI_PARAM_VTCSLICE *pVtcConfig;// = (OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure;
     OMX_TI_PARAM_COMPONENTBUFALLOCTYPE *bufferalloc = NULL;
     int size = 0;
+    int fd1 = -1, fd2 = -1;
 
     pCompPrv = (PROXY_COMPONENT_PRIVATE *)hComp->pComponentPrivate;
     //fprintf(stdout, "DOMX: CameraSetParam: called!!!\n");
@@ -421,11 +422,36 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     		for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
                     pVtcConfig->nInternalBuffers = i;
 		    ret = ion_alloc_tiler(pCompPrv->ion_fd, MAX_VTC_WIDTH_WITH_VNF, MAX_VTC_HEIGHT_WITH_VNF, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
-		    pVtcConfig->IonBufhdl[0] = (OMX_PTR)(handle);
+			if (ret < 0) {
+				DOMX_ERROR ("ION allocation failed - %s", strerror(errno));
+				goto EXIT;
+			}
+
+			ret = ion_share(pCompPrv->ion_fd, handle, &fd1);
+			if (ret < 0) {
+				DOMX_ERROR("ION share failed");
+				ion_free(pCompPrv->ion_fd, handle);
+				goto EXIT;
+			}
+
+			pVtcConfig->IonBufhdl[0] = (OMX_PTR)(fd1);
 
 		    //fprintf(stdout, "DOMX: ION Buffer#%d: Y: 0x%x\n", i, pVtcConfig->IonBufhdl[0]);
-                    ret = ion_alloc_tiler(pCompPrv->ion_fd, MAX_VTC_WIDTH_WITH_VNF/2, MAX_VTC_HEIGHT_WITH_VNF/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
-		    pVtcConfig->IonBufhdl[1] = (OMX_PTR)(handle);
+
+			ret = ion_alloc_tiler(pCompPrv->ion_fd, MAX_VTC_WIDTH_WITH_VNF/2, MAX_VTC_HEIGHT_WITH_VNF/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
+			if (ret < 0) {
+				DOMX_ERROR ("ION allocation failed - %s", strerror(errno));
+				goto EXIT;
+			}
+
+			ret = ion_share(pCompPrv->ion_fd, handle, &fd2);
+			if (ret < 0) {
+				DOMX_ERROR("ION share failed");
+				ion_free(pCompPrv->ion_fd, handle);
+				goto EXIT;
+			}
+
+		    pVtcConfig->IonBufhdl[1] = (OMX_PTR)(fd2);
                     gCamIonHdl[i][0] = pVtcConfig->IonBufhdl[0];
                     gCamIonHdl[i][1] = pVtcConfig->IonBufhdl[1];
 		    //fprintf(stdout, "DOMX: ION Buffer#%d: UV: 0x%x\n", i, pVtcConfig->IonBufhdl[1]);
@@ -433,10 +459,13 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
                                               OMX_TI_IndexParamVtcSlice,
 					      pVtcConfig,
 					pVtcConfig->IonBufhdl, 2);
+		    close(fd1);
+		    close(fd2);
                }
 		goto EXIT;
 	case OMX_TI_IndexParamComponentBufferAllocation: {
                 OMX_U32 port = 0, index = 0;
+		int fd;
 		bufferalloc = (OMX_TI_PARAM_COMPONENTBUFALLOCTYPE *)
 			pComponentParameterStructure;
 
@@ -453,7 +482,14 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 			goto EXIT;
 		}
 
-		bufferalloc->pBuf[0] = handle;
+		ret = ion_share(pCompPrv->ion_fd, handle, &fd);
+		if (ret < 0) {
+			DOMX_ERROR("ION share failed");
+			ion_free(pCompPrv->ion_fd, handle);
+			goto EXIT;
+		}
+
+		bufferalloc->pBuf[0] = fd;
 		eError = __PROXY_SetParameter(hComponent,
 					      OMX_TI_IndexParamComponentBufferAllocation,
 					      bufferalloc, &bufferalloc->pBuf[0], 1);
@@ -465,6 +501,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
                    }
                    gComponentBufferAllocation[port][index] = handle;
                 }
+		close (fd);
         }
 		goto EXIT;
 		break;
@@ -672,7 +709,11 @@ OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent)
 	DOMX_ENTER("ENTER");
 
 	uribufparam.nSharedBuffSize = dccbuf_size;
-	uribufparam.pSharedBuff = (OMX_U8 *) DCC_Buff;
+#ifdef USE_ION
+	uribufparam.pSharedBuff = (OMX_PTR) mmap_fd;
+#else
+	uribufparam.pSharedBuff = (OMX_PTR) DCC_Buff;
+#endif
 
 	DOMX_DEBUG("SYSLINK MAPPED ADDR:  0x%x sizeof buffer %d",
 		uribufparam.pSharedBuff, uribufparam.nSharedBuffSize);
