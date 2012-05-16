@@ -68,7 +68,7 @@
 #define KEY_MECHANICAL_MISALIGNMENT_CORRECTION "mechanical-misalignment-correction"
 
 //TI extensions for enable/disable algos
-#define KEY_ALGO_FIXED_GAMMA            "ti-algo-fixed-gamma"
+#define KEY_ALGO_EXTERNAL_GAMMA         "ti-algo-external-gamma"
 #define KEY_ALGO_NSF1                   "ti-algo-nsf1"
 #define KEY_ALGO_NSF2                   "ti-algo-nsf2"
 #define KEY_ALGO_SHARPENING             "ti-algo-sharpening"
@@ -77,6 +77,8 @@
 
 #define KEY_TAP_OUT_SURFACES            "tap-out"
 #define KEY_TAP_IN_SURFACE              "tap-in"
+
+#define KEY_GAMMA_TABLE                 "gamma-table"
 
 #define BRACKETING_IDX_DEFAULT          0
 #define BRACKETING_IDX_STREAM           1
@@ -231,6 +233,12 @@ typedef struct param_NamedExpBracketList_t {
     const char *value;
 } param_NamedExpBracketList;
 
+typedef struct param_GammaTblList_t {
+    const char *desc;
+    const char *r;
+    const char *g;
+    const char *b;
+} param_GammaTblList;
 
 char * get_cycle_cmd(const char *aSrc);
 void trim_script_cmd(char *cmd);
