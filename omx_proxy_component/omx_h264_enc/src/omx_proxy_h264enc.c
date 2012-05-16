@@ -801,7 +801,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			DOMX_DEBUG("%s Gralloc=0x%x, Y-fd=%d, UV-fd=%d", __FUNCTION__, pGrallocHandle,
 			            pGrallocHandle->fd[0], pGrallocHandle->fd[1]);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
-			if (pProxy->bAndroidOpaqueFormat)
+			if (pProxy->bAndroidOpaqueFormat && pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12)
 			{
 				/* Dequeue NV12 buffer for encoder */
 				eOSALStatus = TIMM_OSAL_ReadFromPipe(pProxy->hBufPipe, &nBufIndex,
