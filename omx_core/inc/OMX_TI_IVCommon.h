@@ -1657,11 +1657,11 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_SEIInfoFrame2,           /**< 0x7F000026 Used for SEI message to be provided by video decoders*/
     OMX_TI_VUIInfoFrame1,           /**< 0x7F000027 Used for VUI message to be provided by video decoders */
     OMX_TI_VUIInfoFrame2,           /**< 0x7F000028 Used for VUI message to be provided by video decoders */
+    OMX_TI_FaceDetectionRaw,        /**< 0x7F000029 Face detect data without face tracking calculations */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
 } OMX_EXT_EXTRADATATYPE;
-
 
 /**
  * Enable Extra-data on a specific port.
