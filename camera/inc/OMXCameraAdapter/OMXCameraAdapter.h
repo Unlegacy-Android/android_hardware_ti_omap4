@@ -634,9 +634,11 @@ private:
                          size_t previewWidth,
                          size_t previewHeight);
     status_t encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
-                                   camera_frame_metadata_t **pFaces,
+                                   camera_frame_metadata_t *metadataResult,
                                    size_t previewWidth,
                                    size_t previewHeight);
+    status_t encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
+
     void pauseFaceDetection(bool pause);
 
     //3A Algorithms priority configuration
@@ -767,7 +769,6 @@ private:
                          const OMX_PTR plat_pvt,
                          camera_request_memory allocator) const;
 #endif
-    void encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
 
     // Mechanical Misalignment Correction
     status_t setMechanicalMisalignmentCorrection(bool enable);
@@ -1035,6 +1036,8 @@ private:
 
     camera_face_t  faceDetectionLastOutput[MAX_NUM_FACES_SUPPORTED];
     int faceDetectionNumFacesLastOutput;
+    int metadataLastAnalogGain;
+    int metadataLastExposureTime;
 
     //Geo-tagging
     EXIFData mEXIFData;

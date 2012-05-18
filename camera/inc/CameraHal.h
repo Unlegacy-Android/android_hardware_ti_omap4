@@ -249,24 +249,23 @@ class CameraMetadataResult : public android::RefBase
 {
 public:
 
-    CameraMetadataResult() : mMetadata(NULL) {};
-    CameraMetadataResult(camera_frame_metadata_t *meta) : mMetadata(meta) {};
+    CameraMetadataResult() {
+        mMetadata.faces = NULL;
+        mMetadata.number_of_faces = 0;
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        mMetadata.analog_gain = 0;
+        mMetadata.exposure_time = 0;
+#endif
+
+   }
 
     virtual ~CameraMetadataResult() {
-        if ( ( NULL != mMetadata ) && ( NULL != mMetadata->faces ) ) {
-            free(mMetadata->faces);
-            free(mMetadata);
-            mMetadata=NULL;
+        if ( NULL != mMetadata.faces ) {
+            free(mMetadata.faces);
         }
-
-        if(( NULL != mMetadata ))
-            {
-            free(mMetadata);
-            mMetadata = NULL;
-            }
     }
 
-    camera_frame_metadata_t *getMetadataResult() { return mMetadata; };
+    camera_frame_metadata_t *getMetadataResult() { return &mMetadata; };
 
     static const ssize_t TOP = -1000;
     static const ssize_t LEFT = -1000;
@@ -276,7 +275,7 @@ public:
 
 private:
 
-    camera_frame_metadata_t *mMetadata;
+    camera_frame_metadata_t mMetadata;
 };
 
 typedef enum {

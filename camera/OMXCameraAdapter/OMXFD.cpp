@@ -206,10 +206,9 @@ status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHead
                                           size_t previewHeight)
 {
     status_t ret = NO_ERROR;
-    OMX_ERRORTYPE eError = OMX_ErrorNone;
-    OMX_TI_FACERESULT *faceResult;
+    status_t faceRet = NO_ERROR;
+    status_t metaRet = NO_ERROR;
     OMX_FACEDETECTIONTYPE *faceData = NULL;
-    camera_frame_metadata_t *meta;
 
     LOG_FUNCTION_NAME;
 
@@ -264,14 +263,37 @@ status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHead
         }
     }
 
-    ret = encodeFaceCoordinates(faceData, &meta, previewWidth, previewHeight);
-    encodePreviewMetadata(meta, pBuffHeader->pPlatformPrivate);
+    result = new (std::nothrow) CameraMetadataResult;
+    if(NULL == result.get()) {
+        ret = NO_MEMORY;
+        return ret;
+    }
 
-    if ( (NO_ERROR == ret) )  {
-        result = new CameraMetadataResult(meta);
+    //Encode face coordinates
+    faceRet = encodeFaceCoordinates(faceData, result->getMetadataResult()
+                                            , previewWidth, previewHeight);
+    if ((NO_ERROR == faceRet) || (NOT_ENOUGH_DATA == faceRet)) {
+        // Ignore harmless errors (no error and no update) and go ahead and encode
+        // the preview meta data
+        metaRet = encodePreviewMetadata(result->getMetadataResult()
+                                        , pBuffHeader->pPlatformPrivate);
+        if ( (NO_ERROR != metaRet) && (NOT_ENOUGH_DATA != metaRet) )  {
+           // Some 'real' error occurred during preview meta data encod, clear metadata
+           // result and return correct error code
+           result.clear();
+           ret = metaRet;
+        }
     } else {
+        //Some real error occurred during face encoding, clear metadata result
+        // and return correct error code
         result.clear();
-        result = NULL;
+        ret = faceRet;
+    }
+
+    if((NOT_ENOUGH_DATA == faceRet) && (NOT_ENOUGH_DATA == metaRet)) {
+        //No point sending the callback if nothing is changed
+        result.clear();
+        ret = faceRet;
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -280,27 +302,29 @@ status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHead
 }
 
 status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
-                                                 camera_frame_metadata_t **pMetadata,
+                                                 camera_frame_metadata_t *metadataResult,
                                                  size_t previewWidth,
                                                  size_t previewHeight)
 {
     status_t ret = NO_ERROR;
     camera_face_t *faces;
-    camera_frame_metadata_t *metadataResult;
     size_t hRange, vRange;
     double tmp;
+    bool faceArrayChanged = false;
 
     LOG_FUNCTION_NAME;
 
     hRange = CameraMetadataResult::RIGHT - CameraMetadataResult::LEFT;
     vRange = CameraMetadataResult::BOTTOM - CameraMetadataResult::TOP;
 
-    metadataResult = ( camera_frame_metadata_t * ) malloc(sizeof(camera_frame_metadata_t));
-    if ( NULL == metadataResult ) {
-        return -ENOMEM;
-    }
-
     android::AutoMutex lock(mFaceDetectionLock);
+
+    // Avoid memory leak if called twice on same CameraMetadataResult
+    if ( (0 < metadataResult->number_of_faces) && (NULL != metadataResult->faces) ) {
+        free(metadataResult->faces);
+        metadataResult->number_of_faces = 0;
+        metadataResult->faces = NULL;
+    }
 
     if ( (NULL != faceData) && (0 < faceData->ulFaceCount) ) {
         int orient_mult;
@@ -308,7 +332,8 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
 
         faces = ( camera_face_t * ) malloc(sizeof(camera_face_t)*faceData->ulFaceCount);
         if ( NULL == faces ) {
-            return -ENOMEM;
+            ret = NO_MEMORY;
+            goto out;
         }
 
         /**
@@ -416,6 +441,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
 
         for (int i = 0; i  < metadataResult->number_of_faces; i++)
         {
+            bool faceChanged = true;
             int centerX = (faces[i].rect[trans_left] + faces[i].rect[trans_right] ) / 2;
             int centerY = (faces[i].rect[trans_top] + faces[i].rect[trans_bot] ) / 2;
 
@@ -444,6 +470,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
                         // Rectangle is almost same as last time
                         // Output exactly what was done for this face last time.
                         faces[i] = faceDetectionLastOutput[j];
+                        faceChanged = false;
                     }
                     else
                     {
@@ -452,6 +479,10 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
                     }
                 }
             }
+            // Send face detection data after some face coordinate changes
+            if (faceChanged) {
+                faceArrayChanged = true;
+            }
         }
 
         // Save this output for next iteration
@@ -459,15 +490,24 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         {
             faceDetectionLastOutput[i] = faces[i];
         }
-        faceDetectionNumFacesLastOutput = metadataResult->number_of_faces;
     } else {
         metadataResult->number_of_faces = 0;
         metadataResult->faces = NULL;
     }
 
-    *pMetadata = metadataResult;
+    // Send face detection data after face count changes
+    if (faceDetectionNumFacesLastOutput != metadataResult->number_of_faces) {
+        faceArrayChanged = true;
+    }
+    faceDetectionNumFacesLastOutput = metadataResult->number_of_faces;
+
+    if ( !faceArrayChanged ) {
+        ret = NOT_ENOUGH_DATA;
+    }
 
     LOG_FUNCTION_NAME_EXIT;
+
+out:
 
     return ret;
 }

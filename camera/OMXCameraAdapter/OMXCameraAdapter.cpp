@@ -334,6 +334,9 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mFaceDetectionPaused = false;
     mFDSwitchAlgoPriority = false;
 
+    metadataLastAnalogGain = -1;
+    metadataLastExposureTime = -1;
+
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex], 0, sizeof(OMXCameraPortParameters));

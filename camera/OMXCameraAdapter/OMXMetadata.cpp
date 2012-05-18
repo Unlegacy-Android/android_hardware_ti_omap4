@@ -114,8 +114,9 @@ status_t OMXCameraAdapter::setMetaData(CameraFrame &frame,
 }
 #endif
 
-void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt)
+status_t OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt)
 {
+    status_t ret = NO_ERROR;
 #ifdef OMAP_ENHANCEMENT_CPCAM
     OMX_OTHER_EXTRADATATYPE *extraData = NULL;
 
@@ -131,11 +132,22 @@ void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, cons
         meta->analog_gain = -1;
         meta->exposure_time = -1;
     }
+
+    // Send metadata event only after any value has been changed
+    if ((metadataLastAnalogGain == meta->analog_gain) &&
+        (metadataLastExposureTime == meta->exposure_time)) {
+        ret = NOT_ENOUGH_DATA;
+    } else {
+        metadataLastAnalogGain = meta->analog_gain;
+        metadataLastExposureTime = meta->exposure_time;
+    }
 #else
     // no-op in non enhancement mode
     CAMHAL_UNUSED(meta);
     CAMHAL_UNUSED(plat_pvt);
 #endif
+
+    return ret;
 }
 
 } // namespace Camera
