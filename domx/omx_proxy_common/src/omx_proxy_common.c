@@ -81,6 +81,7 @@
 #include <sys/eventfd.h>
 #include <fcntl.h>
 #include <linux/rpmsg_omx.h>
+#include <errno.h>
 #endif
 
 #endif
@@ -129,14 +130,13 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
 
 #ifdef USE_ION
 
+
 RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
 				     OMX_PTR *handle1, OMX_PTR *handle2,
 				     PROXY_BUFFER_TYPE proxyBufferType)
 {
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	int status;
-	struct ion_fd_data ion_data;
-	struct omx_pvr_data pvr_data;
 	RPC_OMX_CONTEXT *pRPCCtx = (RPC_OMX_CONTEXT *) hRPCCtx;
 
 	if ((fd < 0) || (handle1 ==  NULL) ||
@@ -145,31 +145,43 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
 		goto EXIT;
 	}
 
-	if (proxyBufferType == GrallocPointers) {
-		pvr_data.fd = fd;
-		memset(pvr_data.handles, 0x0, sizeof(pvr_data.handles));
-		status = ioctl(pRPCCtx->fd_omx, OMX_IOCPVRREGISTER, &pvr_data);
-	} else {
+	if (proxyBufferType != GrallocPointers) {
+		struct ion_fd_data ion_data;
+
 		ion_data.fd = fd;
 		ion_data.handle = NULL;
 		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &ion_data);
-	}
+		if (status < 0) {
+			DOMX_ERROR("RegisterBuffer ioctl call failed");
+			eRPCError = RPC_OMX_ErrorInsufficientResources;
+			goto EXIT;
+		}
+		if (ion_data.handle)
+			*handle1 = ion_data.handle;
+	} else {
+#ifdef OMX_IOCPVRREGISTER
+		struct omx_pvr_data pvr_data;
 
-	if (status < 0) {
-		DOMX_ERROR("RegisterBuffer ioctl call failed");
-		eRPCError = RPC_OMX_ErrorInsufficientResources;
-		goto EXIT;
-	}
+		pvr_data.fd = fd;
+		memset(pvr_data.handles, 0x0, sizeof(pvr_data.handles));
+		status = ioctl(pRPCCtx->fd_omx, OMX_IOCPVRREGISTER, &pvr_data);
+		if (status < 0) {
+			if (errno == ENOTTY) {
+				DOMX_DEBUG("OMX_IOCPVRREGISTER not supported with current kernel version");
+			} else {
+				DOMX_ERROR("RegisterBuffer ioctl call failed");
+				eRPCError = RPC_OMX_ErrorInsufficientResources;
+			}
+			goto EXIT;
+		}
 
-	if (proxyBufferType == GrallocPointers) {
 		if (pvr_data.handles[0])
 			*handle1 = pvr_data.handles[0];
 		if (pvr_data.handles[1])
 			*handle2 = pvr_data.handles[1];
-	} else {
-		if (ion_data.handle)
-			*handle1 = ion_data.handle;
+#endif
 	}
+
 
  EXIT:
 	return eRPCError;
