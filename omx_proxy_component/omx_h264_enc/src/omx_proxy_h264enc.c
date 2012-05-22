@@ -155,7 +155,8 @@ typedef struct _OMX_PROXY_H264E_PRIVATE
 }OMX_PROXY_H264E_PRIVATE;
 
 RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
-				     OMX_PTR *handle);
+				     OMX_PTR *handle1, OMX_PTR *handle2,
+				     PROXY_BUFFER_TYPE proxyBufferType);
 RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
 #endif
 
@@ -849,16 +850,12 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	}
 
 #ifdef ENABLE_GRALLOC_BUFFER
-	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
-					 pBufferHdr->pBuffer,
-					 &pAuxBuf0);
+	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
+								   &pAuxBuf0, &pAuxBuf1,
+								   GrallocPointers);
 	PROXY_checkRpcError();
 	if (pAuxBuf0)
 		pBufferHdr->pBuffer = pAuxBuf0;
-	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
-					 ((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1,
-					 &pAuxBuf1);
-	PROXY_checkRpcError();
 	if (pAuxBuf1)
 		((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = pAuxBuf1;
 #endif

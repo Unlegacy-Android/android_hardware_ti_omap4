@@ -130,28 +130,46 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
 #ifdef USE_ION
 
 RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
-				     OMX_PTR *handle)
+				     OMX_PTR *handle1, OMX_PTR *handle2,
+				     PROXY_BUFFER_TYPE proxyBufferType)
 {
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	int status;
-	struct ion_fd_data data;
+	struct ion_fd_data ion_data;
+	struct omx_pvr_data pvr_data;
 	RPC_OMX_CONTEXT *pRPCCtx = (RPC_OMX_CONTEXT *) hRPCCtx;
 
-	if ((fd < 0) || (handle ==  NULL)) {
+	if ((fd < 0) || (handle1 ==  NULL) ||
+	    ((proxyBufferType == GrallocPointers) && (handle2 ==  NULL))) {
 		eRPCError = RPC_OMX_ErrorBadParameter;
 		goto EXIT;
 	}
 
-	data.fd = fd;
-	data.handle = NULL;
-	status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &data);
+	if (proxyBufferType == GrallocPointers) {
+		pvr_data.fd = fd;
+		memset(pvr_data.handles, 0x0, sizeof(pvr_data.handles));
+		status = ioctl(pRPCCtx->fd_omx, OMX_IOCPVRREGISTER, &pvr_data);
+	} else {
+		ion_data.fd = fd;
+		ion_data.handle = NULL;
+		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &ion_data);
+	}
+
 	if (status < 0) {
 		DOMX_ERROR("RegisterBuffer ioctl call failed");
 		eRPCError = RPC_OMX_ErrorInsufficientResources;
 		goto EXIT;
 	}
-	if (data.handle)
-		*handle = data.handle;
+
+	if (proxyBufferType == GrallocPointers) {
+		if (pvr_data.handles[0])
+			*handle1 = pvr_data.handles[0];
+		if (pvr_data.handles[1])
+			*handle2 = pvr_data.handles[1];
+	} else {
+		if (ion_data.handle)
+			*handle1 = ion_data.handle;
+	}
 
  EXIT:
 	return eRPCError;
@@ -1008,20 +1026,16 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 #ifdef USE_ION
 	{
 		// Need to register buffers when using ion and rpmsg
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pAuxBuf0,
-					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0);
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0,
+					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0,
+					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1,
+					   pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType);
 		PROXY_checkRpcError();
 		if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0)
 			pAuxBuf0 = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0;
-		if (pPlatformPrivate->pAuxBuf1 != NULL)
-		{
-			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
-								(int)pPlatformPrivate->pAuxBuf1,
-								&pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1);
-			PROXY_checkRpcError();
-			if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1)
-				pPlatformPrivate->pAuxBuf1 = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1;
-		}
+		if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1)
+			pPlatformPrivate->pAuxBuf1 = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1;
+
 		if (pPlatformPrivate->pMetaDataBuffer != NULL)
 		{
 			int fd = -1;
@@ -1032,7 +1046,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 				pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff = fd;
 			}
 			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd,
-					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2);
+					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2, NULL, IONPointers);
 			PROXY_checkRpcError();
 			if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2)
 				pPlatformPrivate->pMetaDataBuffer = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2;
@@ -1344,7 +1358,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 				int fd = *((int*)pAuxBuf);
 				if (fd > -1) {
 					eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
-							   &pRegistered);
+							   &pRegistered, NULL, IONPointers);
 					PROXY_checkRpcError();
 					if (pRegistered)
 						*pAuxBuf = pRegistered;
@@ -1445,7 +1459,7 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 				int fd = *((int*)pAuxBuf);
 				if (fd > -1) {
 					eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
-							   &pRegistered);
+							   &pRegistered, NULL, IONPointers);
 					PROXY_checkRpcError();
 					if (pRegistered)
 						*pAuxBuf = pRegistered;
@@ -1526,7 +1540,7 @@ OMX_ERRORTYPE __PROXY_GetConfig(OMX_HANDLETYPE hComponent,
 		int fd = *((int*)pAuxBuf);
 		if (fd > -1) {
 			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
-					   &pRegistered);
+					   &pRegistered, NULL, IONPointers);
 			PROXY_checkRpcError();
 			if (pRegistered)
 				*pAuxBuf = pRegistered;
@@ -1609,7 +1623,7 @@ OMX_ERRORTYPE __PROXY_SetConfig(OMX_IN OMX_HANDLETYPE hComponent,
 		int fd = *((int*)pAuxBuf);
 		if (fd > -1) {
 			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
-					   &pRegistered);
+					   &pRegistered, NULL, IONPointers);
 			PROXY_checkRpcError();
 			if (pRegistered)
 				*pAuxBuf = pRegistered;
