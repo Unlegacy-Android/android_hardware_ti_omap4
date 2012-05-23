@@ -472,7 +472,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
                 port = bufferalloc->nPortIndex;
                 index = bufferalloc->nIndex;
 
-		size = (bufferalloc->nAllocWidth * bufferalloc->nAllocLines * 3) >> 1;
+		size = bufferalloc->nAllocWidth * bufferalloc->nAllocLines;
 		ret = ion_alloc_tiler (pCompPrv->ion_fd, size, 1,
 				       TILER_PIXEL_FMT_PAGE,
 				       OMAP_ION_HEAP_TILER_ALLOCATION_MASK,
