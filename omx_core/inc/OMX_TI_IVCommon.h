@@ -1046,28 +1046,97 @@ typedef struct OMX_TI_DCCDATATYPE {
     OMX_PTR               pData;
 } OMX_TI_DCCDATATYPE;
 /**
+ * The extra data type to feed the camera re-processing function
+ */
+typedef struct OMX_TI_CAMREPROCMETATYPE {
+    OMX_U32 nExpTime;
+    OMX_U32 nGain;
+} OMX_TI_CAMREPROCMETATYPE;
+
+/**
  * The extra data vector shot feedback info
  *  nConfigId   : Same id that cames with
  *                OMX_TI_CONFIG_ENQUEUESHOTCONFIGS::nShotConfig[x].nConfigId
  *                for particular shot config.
  *  nFrameNum   : Frame number in vect shot repeat sequence.
  *                Starts from 1 for every shot config.
+ *
+ *  nExpMin     : The exposure time lower limit,[us]
+ *  nExpMax     : The exposure time upper limit,[us]
+ *  nGainMin    : The analog gain lower limit,[0,01EV]
+ *  nGainMax    : The analog gain upper limit,[0,01EV]
+ *
+ *  nReqEC      : Requested total exposure compensation
+ *  nReqExpTime : Requested exposure time
+ *  nReqGain    : Requested gain
+ *
  *  nExpTime    : Exposure time of this frame.
  *  nAGain      : Analog gain of this frame.
- *  nExpTimeErr : Exposure time error in us.
+ *
+ *  nSenExpTimeErr : Exposure time error in us.
  *                If the requested exposure time is ExpReq
- *                and the one produced by the sensor is ExpSen then:
- *                nExpTimeErr = ExpSen - ExpReq.
- *  nAGainErr   : Analog gain error as multiplier (in Q8 format).
+ *                and the one produced by the sensor is nExpTime then:
+ *                nExpTimeErr = nExpTime - ExpReq.
+ *  nSenAGainErr: Analog gain error as multiplier (in Q8 format).
+ *
+ *  nDevEV      : The total exposure deviation,[us]
+ *  nDevExpTime : The exposure time deviation after flicker reduction,[us]
+ *  nDevAGain   : The analog gain deviation after flicker reduction,[0,01EV]
  */
 typedef struct OMX_TI_VECTSHOTINFOTYPE {
     OMX_U32 nConfigId;
     OMX_U32 nFrameNum;
+    OMX_U32 nExpMin;
+    OMX_U32 nExpMax;
+    OMX_U32 nGainMin;
+    OMX_U32 nGainMax;
+    OMX_S32 nReqEC;
+    OMX_S32 nReqExpTime;
+    OMX_S32 nReqGain;
     OMX_U32 nExpTime;
     OMX_U32 nAGain;
-    OMX_S32 nExpTimeErr;
-    OMX_U32 nAGainErr;
+    OMX_S32 nSenExpTimeErr;
+    OMX_U32 nSenAGainErr;
+    OMX_S32 nDevEV;
+    OMX_S32 nDevExpTime;
+    OMX_S32 nDevAGain;
 } OMX_TI_VECTSHOTINFOTYPE;
+
+/*
+ * LSC gain table size
+ */
+#define OMX_TI_LSC_GAIN_TABLE_SIZE (80 * 1024)
+
+/**
+ * Possible LSC table gain formats
+ */
+typedef enum OMX_TI_LSC_GAIN_FORMAT_TYPE {
+    OMX_TI_LSC_GAIN_FORMAT_0Q8,
+    OMX_TI_LSC_GAIN_FORMAT_0Q8_PLUS_1,
+    OMX_TI_LSC_GAIN_FORMAT_1Q7,
+    OMX_TI_LSC_GAIN_FORMAT_1Q7_PLUS_1,
+    OMX_TI_LSC_GAIN_FORMAT_2Q6,
+    OMX_TI_LSC_GAIN_FORMAT_2Q6_PLUS_1,
+    OMX_TI_LSC_GAIN_FORMAT_3Q5,
+    OMX_TI_LSC_GAIN_FORMAT_3Q5_PLUS_1,
+    OMX_TI_LSC_GAIN_FORMAT = 0x7FFFFFFF
+} OMX_TI_LSC_GAIN_FORMAT_TYPE;
+
+/**
+ * The extra data for LSC table
+ *  bApplied    : If true the table is applied to the frame.
+ *  eGainFormat : Paxel format
+ *  nWidth      : LSC table width in paxels
+ *  nHeight     : LSC table height in paxels
+ *  pGainTable  : LSC gain table
+ */
+typedef struct OMX_TI_LSCTABLETYPE {
+    OMX_BOOL bApplied;
+    OMX_TI_LSC_GAIN_FORMAT_TYPE eGainFormat;
+    OMX_U32 nWidth;
+    OMX_U32 nHeight;
+    OMX_U8 pGainTable[OMX_TI_LSC_GAIN_TABLE_SIZE];
+} OMX_TI_LSCTABLETYPE;
 
 /**
  * The extra data having ancillary data is described with the following structure.
@@ -3439,6 +3508,7 @@ typedef enum OMX_TI_EXPGAINAPPLYMETHODTYPE {
     OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE,
     OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE,
     OMX_TI_EXPGAINAPPLYMETHOD_FORCE_RELATIVE,
+    OMX_TI_EXPGAINAPPLYMETHOD_FORCE_ABSOLUTE,
     OMX_TI_EXPGAINAPPLYMETHOD = 0x7FFFFFFF
 } OMX_TI_EXPGAINAPPLYMETHODTYPE;
 
@@ -3454,6 +3524,7 @@ typedef enum OMX_TI_EXPGAINAPPLYMETHODTYPE {
  *                put in ancillary data for the corresponding output frame
  *  nFrames     : Number of sequential frames that will use this
  *                configuration
+ *  nEC         : Total exposure compensation value
  *  nExp        : Exposure value for this configuration slot
  *  nGain       : Gain value for this configuration slot
  *  eExpGainApplyMethod : Selects the method which will be used to apply exposure and gain
@@ -3463,6 +3534,7 @@ typedef enum OMX_TI_EXPGAINAPPLYMETHODTYPE {
 typedef struct OMX_TI_CONFIG_SHOTCONFIG {
     OMX_U32                         nConfigId;
     OMX_U32                         nFrames;
+    OMX_S32                         nEC;
     OMX_S32                         nExp;
     OMX_S32                         nGain;
     OMX_TI_EXPGAINAPPLYMETHODTYPE   eExpGainApplyMethod;
@@ -3489,7 +3561,7 @@ typedef struct OMX_TI_CONFIG_ENQUEUESHOTCONFIGS {
     OMX_U32                     nPortIndex;
     OMX_BOOL                    bFlushQueue;
     OMX_U32                     nNumConfigs;
-    OMX_TI_CONFIG_SHOTCONFIG    nShotConfig[10];
+    OMX_TI_CONFIG_SHOTCONFIG    nShotConfig[5];
 } OMX_TI_CONFIG_ENQUEUESHOTCONFIGS;
 
 /**
