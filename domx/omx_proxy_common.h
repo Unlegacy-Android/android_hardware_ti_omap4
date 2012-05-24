@@ -134,6 +134,12 @@ extern "C"
  * @param pBufHeader         : This is a pointer to the A9 bufferheader.
  *
  * @param pBufHeaderRemote   : This is pointer to Ducati side bufferheader.
+ *
+ * @param pRegisteredAufBux0
+ * @param pRegisteredAufBux1
+ * @param pRegisteredAufBux2 : These are pointers to buffers registered with rpc driver
+ *                             They will assigned when registering and used when
+ *                             unregistering the buffer
  */
 /*===============================================================*/
 	typedef struct PROXY_BUFFER_INFO
@@ -145,6 +151,9 @@ extern "C"
 #ifdef USE_ION
 		int mmap_fd;
 		int mmap_fd_metadata_buff;
+		OMX_PTR pRegisteredAufBux0;
+		OMX_PTR pRegisteredAufBux1;
+		OMX_PTR pRegisteredAufBux2;
 #endif
 	} PROXY_BUFFER_INFO;
 

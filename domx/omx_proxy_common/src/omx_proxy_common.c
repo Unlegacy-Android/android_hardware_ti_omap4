@@ -80,6 +80,7 @@
 #include <sys/mman.h>
 #include <sys/eventfd.h>
 #include <fcntl.h>
+#include <linux/rpmsg_omx.h>
 #endif
 
 #endif
@@ -162,18 +163,54 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
 #ifdef USE_ION
 
 RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
-				     struct ion_handle **handle)
+				     OMX_PTR *handle)
 {
+	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	int status;
 	struct ion_fd_data data;
 	RPC_OMX_CONTEXT *pRPCCtx = (RPC_OMX_CONTEXT *) hRPCCtx;
 
+	if ((fd < 0) || (handle ==  NULL)) {
+		eRPCError = RPC_OMX_ErrorBadParameter;
+		goto EXIT;
+	}
+
 	data.fd = fd;
-	status = ioctl(pRPCCtx->fd_omx, ION_IOC_IMPORT, &data);
-	if (status < 0)
-		return RPC_OMX_ErrorInsufficientResources;
-	*handle = data.handle;
-	return RPC_OMX_ErrorNone;
+	data.handle = NULL;
+	status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &data);
+	if (status < 0) {
+		DOMX_ERROR("RegisterBuffer ioctl call failed");
+		eRPCError = RPC_OMX_ErrorInsufficientResources;
+		goto EXIT;
+	}
+	if (data.handle)
+		*handle = data.handle;
+
+ EXIT:
+	return eRPCError;
+}
+
+RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle)
+{
+	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
+	int status;
+	struct ion_fd_data data;
+	RPC_OMX_CONTEXT *pRPCCtx = (RPC_OMX_CONTEXT *) hRPCCtx;
+
+	if (handle ==  NULL) {
+		eRPCError = RPC_OMX_ErrorBadParameter;
+		goto EXIT;
+	}
+
+	data.handle = handle;
+	status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
+	if (status < 0) {
+		eRPCError = RPC_OMX_ErrorInsufficientResources;
+		goto EXIT;
+	}
+
+ EXIT:
+	return eRPCError;
 }
 
 static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pCompPrv,
@@ -187,16 +224,6 @@ static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pC
 	DOMX_DEBUG("ION being USED for allocation!!!!! handle = %x, ret =%x",temp,ret);
 	if (ret)
 			return OMX_ErrorInsufficientResources;
-	/*
-	ret = ion_share(pCompPrv->ion_fd, temp, &fd);
-	if (ret) {
-		ion_free(pCompPrv->ion_fd, temp);
-		return OMX_ErrorHardware;
-	}
-	RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd, handle);
-	close(fd);
-	ion_free(pCompPrv->ion_fd, temp);
-	*/
 	*handle = temp;
 	return OMX_ErrorNone;
 }
@@ -853,6 +880,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
 	OMX_BOOL bSlotFound = OMX_FALSE;
 	OMX_PTR pAuxBuf0 = pBuffer;
+	OMX_PTR pMappedMetaDataBuffer = NULL;
 	OMX_TI_PARAM_METADATABUFFERINFO tMetaDataBuffer;
 	OMX_U32 nBufferHeight = 0;
 	OMX_CONFIG_RECTTYPE tParamRect;
@@ -983,8 +1011,55 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		pCompPrv->tBufList[currentBuffer].pMetaDataBuffer = ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->
 			pPlatformPrivate)->pMetaDataBuffer;
 		DOMX_DEBUG("Metadata buffer ion handle = %d",((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer);
+		if (pCompPrv->bMapIonBuffers == OMX_TRUE) {
+			if (ion_map(pCompPrv->ion_fd, pPlatformPrivate->pMetaDataBuffer,
+				    pPlatformPrivate->nMetaDataSize,
+				    PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+				    &pMetadataBuffer,
+				    &(pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff)) < 0)
+			{
+				DOMX_ERROR("userspace mapping of ION metadata buffers returned error");
+				eError = OMX_ErrorInsufficientResources;
+				goto EXIT;
+			}
+		}
 #endif
 	}
+
+#ifdef USE_ION
+	{
+		// Need to register buffers when using ion and rpmsg
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pAuxBuf0,
+					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0);
+		PROXY_checkRpcError();
+		if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0)
+			pAuxBuf0 = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux0;
+		if (pPlatformPrivate->pAuxBuf1 != NULL)
+		{
+			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp,
+								(int)pPlatformPrivate->pAuxBuf1,
+								&pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1);
+			PROXY_checkRpcError();
+			if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1)
+				pPlatformPrivate->pAuxBuf1 = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux1;
+		}
+		if (pPlatformPrivate->pMetaDataBuffer != NULL)
+		{
+			int fd = -1;
+			if (pCompPrv->bMapIonBuffers == OMX_TRUE) {
+				fd = pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff;
+			} else {
+				ion_share (pCompPrv->ion_fd, pPlatformPrivate->pMetaDataBuffer, &fd);
+				pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff = fd;
+			}
+			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd,
+					   &pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2);
+			PROXY_checkRpcError();
+			if (pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2)
+				pPlatformPrivate->pMetaDataBuffer = pCompPrv->tBufList[currentBuffer].pRegisteredAufBux2;
+		}
+	}
+#endif
 
 	eRPCError = RPC_UseBuffer(pCompPrv->hRemoteComp, &pBufferHeader, nPortIndex,
 		pAppPrivate, nSizeBytes, pAuxBuf0, &pBufHeaderRemote, &eCompReturn);
@@ -999,15 +1074,6 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 #ifdef USE_ION
 	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapIonBuffers == OMX_TRUE && tMetaDataBuffer.bIsMetaDataEnabledOnPort)
 	{
-		DOMX_DEBUG("Metadata buffer ion handle given to ion map = %d",
-			((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer);
-        	if (ion_map(pCompPrv->ion_fd, ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer,
-			((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nMetaDataSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-				(unsigned char **)(&pMetadataBuffer),&(pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff)) < 0)
-		{
-			DOMX_ERROR("userspace mapping of ION metadata buffers returned error");
-			return OMX_ErrorInsufficientResources;
-		}
 		((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer = pMetadataBuffer;
 		//ion_free(pCompPrv->ion_fd, handleToMap);
 		memset(((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer,
@@ -1062,6 +1128,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_U32 pBuffer = 0;
 	OMX_PTR pMetaDataBuffer = NULL;
 	OMX_PTR pAuxBuf0 = NULL;
+	OMX_TI_PLATFORMPRIVATE * pPlatformPrivate = NULL;
 
 	PROXY_require(pBufferHdr != NULL, OMX_ErrorBadParameter, NULL);
 	PROXY_require(hComp->pComponentPrivate != NULL, OMX_ErrorBadParameter,
@@ -1122,6 +1189,9 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if (eRPCError != RPC_OMX_ErrorNone)
 		eTmpRPCError = eRPCError;
 
+	pPlatformPrivate = (OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
+			pPlatformPrivate;
+
 	if (pCompPrv->tBufList[count].pBufHeader)
 	{
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
@@ -1141,8 +1211,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		}
 #endif
 #endif
-		pMetaDataBuffer = ((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
-			pPlatformPrivate)->pMetaDataBuffer;
+		pMetaDataBuffer = pPlatformPrivate->pMetaDataBuffer;
 		if (pMetaDataBuffer)
 		{
 #ifdef USE_ION
@@ -1150,16 +1219,45 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 			{
 				if(pCompPrv->bMapIonBuffers == OMX_TRUE)
 				{
-	                                munmap(pMetaDataBuffer, ((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
-							pPlatformPrivate)->nMetaDataSize);
-        				close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
+					munmap(pMetaDataBuffer, pPlatformPrivate->nMetaDataSize);
 				}
+				close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
 				ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[count].pMetaDataBuffer);
-				((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
-					pPlatformPrivate)->pMetaDataBuffer = NULL;
+				pPlatformPrivate->pMetaDataBuffer = NULL;
 			}
 #endif
 		}
+
+#ifdef USE_ION
+	{
+		// Need to unregister buffers when using ion and rpmsg
+		if (pCompPrv->tBufList[count].pRegisteredAufBux0 != NULL)
+		{
+			eTmpRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+								pCompPrv->tBufList[count].pRegisteredAufBux0);
+			if (eTmpRPCError != RPC_OMX_ErrorNone) {
+				eRPCError = eTmpRPCError;
+			}
+		}
+
+		if (pCompPrv->tBufList[count].pRegisteredAufBux1 != NULL)
+		{
+			eTmpRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+								pCompPrv->tBufList[count].pRegisteredAufBux1);
+			if (eTmpRPCError != RPC_OMX_ErrorNone) {
+				eRPCError = eTmpRPCError;
+			}
+		}
+		if (pCompPrv->tBufList[count].pRegisteredAufBux2 != NULL)
+		{
+			eTmpRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+								pCompPrv->tBufList[count].pRegisteredAufBux2);
+			if (eTmpRPCError != RPC_OMX_ErrorNone) {
+				eRPCError = eTmpRPCError;
+			}
+		}
+	}
+#endif
 		if (pCompPrv->tBufList[count].pBufHeader->pPlatformPrivate)
 		{
 			TIMM_OSAL_Free(pCompPrv->tBufList[count].pBufHeader->
@@ -1200,6 +1298,10 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
 #ifdef ENABLE_GRALLOC_BUFFERS
 	OMX_TI_PARAMUSENATIVEBUFFER *pParamNativeBuffer = NULL;
+#endif
+#ifdef USE_ION
+	OMX_PTR *pAuxBuf = pLocBufNeedMap;
+	OMX_PTR pRegistered = NULL;
 #endif
 
 	PROXY_require((pParamStruct != NULL), OMX_ErrorBadParameter, NULL);
@@ -1254,9 +1356,30 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 					pLocBufNeedMap, nNumOfLocalBuf, &eCompReturn);
 		     break;
 		default:
+		{
+#ifdef USE_ION
+			if (pAuxBuf != NULL) {
+				int fd = *((int*)pAuxBuf);
+				if (fd > -1) {
+					eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
+							   &pRegistered);
+					PROXY_checkRpcError();
+					if (pRegistered)
+						*pAuxBuf = pRegistered;
+				}
+			}
+#endif
 			eRPCError =
 				RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 					pLocBufNeedMap, nNumOfLocalBuf, &eCompReturn);
+#ifdef USE_ION
+			PROXY_checkRpcError();
+			if (pRegistered != NULL) {
+				eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pRegistered);
+				PROXY_checkRpcError();
+			}
+#endif
+		}
 	}
 
 	PROXY_checkRpcError();
@@ -1302,6 +1425,10 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
 	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
+#ifdef USE_ION
+	OMX_PTR *pAuxBuf = pLocBufNeedMap;
+	OMX_PTR pRegistered = NULL;
+#endif
 
 	PROXY_require((pParamStruct != NULL), OMX_ErrorBadParameter, NULL);
 	PROXY_assert((hComp->pComponentPrivate != NULL),
@@ -1330,8 +1457,29 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		     break;
 
 		default:
+		{
+#ifdef USE_ION
+			if (pAuxBuf != NULL) {
+				int fd = *((int*)pAuxBuf);
+				if (fd > -1) {
+					eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
+							   &pRegistered);
+					PROXY_checkRpcError();
+					if (pRegistered)
+						*pAuxBuf = pRegistered;
+				}
+			}
+#endif
 			eRPCError = RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 				pLocBufNeedMap, &eCompReturn);
+#ifdef USE_ION
+			PROXY_checkRpcError();
+			if (pRegistered != NULL) {
+				eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pRegistered);
+				PROXY_checkRpcError();
+			}
+#endif
+		}
 	}
 
 	PROXY_checkRpcError();
@@ -1370,6 +1518,10 @@ OMX_ERRORTYPE PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 OMX_ERRORTYPE __PROXY_GetConfig(OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nConfigIndex, OMX_PTR pConfigStruct, OMX_PTR pLocBufNeedMap)
 {
+#ifdef USE_ION
+	OMX_PTR *pAuxBuf = pLocBufNeedMap;
+	OMX_PTR pRegistered = NULL;
+#endif
 
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
@@ -1387,9 +1539,29 @@ OMX_ERRORTYPE __PROXY_GetConfig(OMX_HANDLETYPE hComponent,
 				hComponent, pCompPrv, nConfigIndex,
 				pConfigStruct);
 
+#ifdef USE_ION
+	if (pAuxBuf != NULL) {
+		int fd = *((int*)pAuxBuf);
+		if (fd > -1) {
+			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
+					   &pRegistered);
+			PROXY_checkRpcError();
+			if (pRegistered)
+				*pAuxBuf = pRegistered;
+		}
+	}
+#endif
+
 	eRPCError =
 		RPC_GetConfig(pCompPrv->hRemoteComp, nConfigIndex, pConfigStruct,
 			pLocBufNeedMap, &eCompReturn);
+#ifdef USE_ION
+	PROXY_checkRpcError();
+	if (pRegistered != NULL) {
+		eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pRegistered);
+		PROXY_checkRpcError();
+	}
+#endif
 
 	PROXY_checkRpcError();
 
@@ -1428,6 +1600,10 @@ OMX_ERRORTYPE __PROXY_SetConfig(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_IN OMX_INDEXTYPE nConfigIndex, OMX_IN OMX_PTR pConfigStruct,
 	OMX_PTR pLocBufNeedMap)
 {
+#ifdef USE_ION
+	OMX_PTR *pAuxBuf = pLocBufNeedMap;
+	OMX_PTR pRegistered = NULL;
+#endif
 
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
@@ -1446,9 +1622,30 @@ OMX_ERRORTYPE __PROXY_SetConfig(OMX_IN OMX_HANDLETYPE hComponent,
 				hComponent, pCompPrv, nConfigIndex,
 				pConfigStruct);
 
+#ifdef USE_ION
+	if (pAuxBuf != NULL) {
+		int fd = *((int*)pAuxBuf);
+		if (fd > -1) {
+			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, *((int*)pAuxBuf),
+					   &pRegistered);
+			PROXY_checkRpcError();
+			if (pRegistered)
+				*pAuxBuf = pRegistered;
+		}
+	}
+#endif
+
 	eRPCError =
 		RPC_SetConfig(pCompPrv->hRemoteComp, nConfigIndex, pConfigStruct,
 			pLocBufNeedMap, &eCompReturn);
+
+#ifdef USE_ION
+	PROXY_checkRpcError();
+	if (pRegistered != NULL) {
+		eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pRegistered);
+		PROXY_checkRpcError();
+	}
+#endif
 
 	PROXY_checkRpcError();
 
@@ -1928,8 +2125,8 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 					{
 			                        munmap(pMetaDataBuffer, ((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
 								pPlatformPrivate)->nMetaDataSize);
-						close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
 					}
+					close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
 					ion_free(pCompPrv->ion_fd, pMetaDataBuffer);
 					((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
 						pPlatformPrivate)->pMetaDataBuffer = NULL;
