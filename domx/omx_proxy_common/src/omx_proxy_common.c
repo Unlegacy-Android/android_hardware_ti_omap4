@@ -1223,7 +1223,13 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 			{
 				pCompPrv->proxyPortBuffers[pParamNativeBuffer->nPortIndex].proxyBufferType = GrallocPointers;
 				pCompPrv->proxyPortBuffers[pParamNativeBuffer->nPortIndex].IsBuffer2D = OMX_TRUE;
+			} else
+			{
+				/* Reset to defaults */
+				pCompPrv->proxyPortBuffers[pParamNativeBuffer->nPortIndex].proxyBufferType = VirtualPointers;
+				pCompPrv->proxyPortBuffers[pParamNativeBuffer->nPortIndex].IsBuffer2D = OMX_FALSE;
 			}
+
 			break;
 		}
 #endif
@@ -1243,6 +1249,9 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType = VirtualPointers;
 			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].IsBuffer2D = OMX_FALSE;
 		     }
+			eRPCError =
+				RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
+					pLocBufNeedMap, nNumOfLocalBuf, &eCompReturn);
 		     break;
 		default:
 			eRPCError =
