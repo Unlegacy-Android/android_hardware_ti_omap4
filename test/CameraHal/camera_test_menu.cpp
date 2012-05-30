@@ -561,8 +561,10 @@ void my_raw_callback(const sp<IMemory>& mem) {
     if (mem == NULL)
         goto out;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
+        //Start preview after capture.
+        camera->startPreview();
+    }
 
     fn[0] = 0;
     sprintf(fn, "%s/img%03d.raw", images_dir_path, counter);
@@ -691,8 +693,10 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
 
     LOG_FUNCTION_NAME;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
+        //Start preview after capture.
+        camera->startPreview();
+    }
 
     if (mem == NULL)
         goto out;
