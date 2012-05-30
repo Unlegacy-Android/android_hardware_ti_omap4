@@ -1231,11 +1231,7 @@ int execute_functional_script(char *script) {
                 if (bufferSourceOutputThread.get() &&
                     bufferSourceOutputThread->hasBuffer())
                 {
-                    CameraParameters temp = params;
-                    // Set pipeline to capture 2592x1944 JPEG
-                    temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
-                    temp.setPictureSize(2592, 1944);
-                    if (hardwareActive) camera->setParameters(temp.flatten());
+                    if (hardwareActive) camera->setParameters(params.flatten());
 
                     if (bufferSourceInput.get()) {
                         buffer_info_t info = bufferSourceOutputThread->popBuffer();
