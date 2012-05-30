@@ -47,11 +47,17 @@ private:
 
         ~ReturnFrame() {
             android::AutoMutex lock(mReturnFrameMutex);
-            mDestroying = true;
-            mReturnFrameCondition.signal();
          }
 
         void signal() {
+            mReturnFrameCondition.signal();
+        }
+
+        virtual void requestExit() {
+            Thread::requestExit();
+
+            android::AutoMutex lock(mReturnFrameMutex);
+            mDestroying = true;
             mReturnFrameCondition.signal();
         }
 
@@ -77,6 +83,17 @@ private:
         }
 
         ~QueueFrame() {
+         }
+
+        void addFrame(CameraFrame *frame) {
+            android::AutoMutex lock(mFramesMutex);
+            mFrames.add(new CameraFrame(*frame));
+            mFramesCondition.signal();
+        }
+
+        virtual void requestExit() {
+            Thread::requestExit();
+
             mDestroying = true;
 
             android::AutoMutex lock(mFramesMutex);
@@ -85,12 +102,6 @@ private:
                 mFrames.removeAt(0);
                 delete frame;
             }
-            mFramesCondition.signal();
-         }
-
-        void addFrame(CameraFrame *frame) {
-            android::AutoMutex lock(mFramesMutex);
-            mFrames.add(new CameraFrame(*frame));
             mFramesCondition.signal();
         }
 

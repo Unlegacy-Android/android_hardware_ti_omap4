@@ -123,6 +123,8 @@ BufferSourceAdapter::~BufferSourceAdapter()
 {
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     destroy();
 
     if (mFrameProvider) {
@@ -732,7 +734,9 @@ bool BufferSourceAdapter::handleFrameReturn()
     void *y_uv[2];
     android::Rect bounds(mFrameWidth, mFrameHeight);
 
-    if ( NULL == mBufferSource ) {
+    android::AutoMutex lock(mLock);
+
+    if ( (NULL == mBufferSource) || (NULL == mBuffers) ) {
         return false;
     }
 
