@@ -233,6 +233,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 #endif
 
     mDeviceOrientation = 0;
+    mFaceOrientation = 0;
     mCapabilities = caps;
     mZoomUpdating = false;
     mZoomUpdate = false;

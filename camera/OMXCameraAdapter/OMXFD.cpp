@@ -24,8 +24,6 @@
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-#define FACE_DETECTION_THRESHOLD 80
-
 // constants used for face smooth filtering
 static const int HorizontalFilterThreshold = 40;
 static const int VerticalFilterThreshold = 40;
@@ -35,6 +33,8 @@ static const int VerticalFaceSizeThreshold = 30;
 
 namespace Ti {
 namespace Camera {
+
+const uint32_t OMXCameraAdapter::FACE_DETECTION_THRESHOLD = 80;
 
 status_t OMXCameraAdapter::setParametersFD(const android::CameraParameters &params,
                                            BaseCameraAdapter::AdapterState state)
@@ -54,7 +54,7 @@ status_t OMXCameraAdapter::startFaceDetection()
 
     android::AutoMutex lock(mFaceDetectionLock);
 
-    ret = setFaceDetection(true, mDeviceOrientation);
+    ret = setFaceDetection(true, mFaceOrientation);
     if (ret != NO_ERROR) {
         goto out;
     }
@@ -81,7 +81,7 @@ status_t OMXCameraAdapter::stopFaceDetection()
 
     android::AutoMutex lock(mFaceDetectionLock);
 
-    ret = setFaceDetection(false, mDeviceOrientation);
+    ret = setFaceDetection(false, mFaceOrientation);
     if (ret != NO_ERROR) {
         goto out;
     }
@@ -120,6 +120,8 @@ status_t OMXCameraAdapter::setFaceDetectionOrientation(OMX_U32 orientation)
     status_t ret = NO_ERROR;
 
     android::AutoMutex lock(mFaceDetectionLock);
+
+    mFaceOrientation = orientation;
 
     if (mFaceDetectionRunning) {
         // restart face detection with new rotation
@@ -177,7 +179,9 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
 
     if ( NO_ERROR == ret )
         {
-        ret = setExtraData(enable, mCameraAdapterParameters.mPrevPortIndex, OMX_FaceDetection);
+        // TODO(XXX): Should enable/disable FD extra data separately
+        // on each port.
+        ret = setExtraData(enable, OMX_ALL, OMX_FaceDetection);
 
         if ( NO_ERROR != ret )
             {
@@ -369,7 +373,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         / *               (r, b)
           */
 
-        if (mDeviceOrientation == 180) {
+        if (mFaceOrientation == 180) {
             orient_mult = -1;
             trans_left = 2; // right is now left
             trans_top = 3; // bottom is now top
@@ -396,7 +400,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
             if(faceData->tFacePosition[j].nScore <= FACE_DETECTION_THRESHOLD)
              continue;
 
-            if (mDeviceOrientation == 180) {
+            if (mFaceOrientation == 180) {
                 // from sensor pov, the left pos is the right corner of the face in pov of frame
                 nLeft = faceData->tFacePosition[j].nLeft + faceData->tFacePosition[j].nWidth;
                 nTop =  faceData->tFacePosition[j].nTop + faceData->tFacePosition[j].nHeight;

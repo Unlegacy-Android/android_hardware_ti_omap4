@@ -1390,10 +1390,6 @@ status_t OMXCameraAdapter::stopImageCapture()
         }
     }
 
-    // After capture, face detection should be disabled
-    // and application needs to restart face detection
-    stopFaceDetection();
-
     //Wait here for the capture to be done, in worst case timeout and proceed with cleanup
     mCaptureSem.WaitTimeout(OMX_CAPTURE_TIMEOUT);
 
