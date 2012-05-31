@@ -453,9 +453,13 @@ private:
 class BufferSourceInput : public RefBase {
 public:
     BufferSourceInput(sp<Camera> camera) : mCamera(camera) {
+        mTapOut = new BufferSourceThread(camera);
+        mTapOut->run();
     }
 
     virtual ~BufferSourceInput() {
+        mTapOut->requestExit();
+        mTapOut.clear();
     }
 
     virtual void init() = 0;
@@ -463,6 +467,7 @@ public:
     virtual void setInput(buffer_info_t, const char *format);
 
 protected:
+    sp<BufferSourceThread> mTapOut;
     sp<ANativeWindow> mWindowTapIn;
     sp<Camera> mCamera;
 };

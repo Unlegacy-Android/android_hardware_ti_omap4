@@ -3436,11 +3436,8 @@ int functional_menu() {
 
         case 'P':
         {
-            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                msgType |= CAMERA_MSG_RAW_BURST;
-#endif
+            int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+
             gettimeofday(&picture_start, 0);
             if (!bufferSourceInput.get()) {
 #ifdef ANDROID_API_JB_OR_LATER
