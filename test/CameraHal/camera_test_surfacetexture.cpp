@@ -483,44 +483,55 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     native_window_set_buffer_count(mWindowTapIn.get(), 1);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
-    mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
-    mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
-    // copy buffer to input buffer if available
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
-    }
-    if (input) {
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
-            memcpy(data, input, size);
-        } else {
-            if (bufinfo.width == aligned_width) {
-                memcpy(data, input, bufinfo.size);
+
+    // if buffer dimensions are the same as the aligned dimensions, then we can
+    // queue the buffer directly to tapin surface. if the dimensions are different
+    // then the aligned ones, then we have to copy the buffer into our own buffer
+    // to make sure the stride of the buffer is correct
+    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
+        mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
+        mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
+        // copy buffer to input buffer if available
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
+        }
+        if (input) {
+            if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
+                int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+                memcpy(data, input, size);
             } else {
-                // need to copy line by line to adjust for stride
-                uint8_t *dst = (uint8_t*) data;
-                uint8_t *src = (uint8_t*) input;
-                // hrmm this copy only works for NV12 and YV12
-                // copy Y first
-                for (int i = 0; i < aligned_height; i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width;
-                    src += bufinfo.width;
-                }
-                // copy UV plane
-                for (int i = 0; i < (aligned_height / 2); i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width ;
-                    src += bufinfo.width ;
+                if (bufinfo.width == aligned_width) {
+                    memcpy(data, input, bufinfo.size);
+                } else {
+                    // need to copy line by line to adjust for stride
+                    uint8_t *dst = (uint8_t*) data;
+                    uint8_t *src = (uint8_t*) input;
+                    // hrmm this copy only works for NV12 and YV12
+                    // copy Y first
+                    for (int i = 0; i < aligned_height; i++) {
+                        memcpy(dst, src, bufinfo.width);
+                        dst += aligned_width;
+                        src += bufinfo.width;
+                    }
+                    // copy UV plane
+                    for (int i = 0; i < (aligned_height / 2); i++) {
+                        memcpy(dst, src, bufinfo.width);
+                        dst += aligned_width ;
+                        src += bufinfo.width ;
+                    }
                 }
             }
         }
-    }
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->unlock();
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->unlock();
+        }
+
+        mapper.unlock(anb->handle);
+    } else {
+        mWindowTapIn->perform(mWindowTapIn.get(), NATIVE_WINDOW_ADD_BUFFER_SLOT, &bufinfo.buf);
+        anb = bufinfo.buf->getNativeBuffer();
     }
 
-    mapper.unlock(anb->handle);
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
 }
 
