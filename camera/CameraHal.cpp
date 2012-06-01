@@ -1258,8 +1258,17 @@ int CameraHal::setParameters(const android::CameraParameters& params)
         ret = restartPreview();
     } else if (restartPreviewRequired && !previewEnabled() &&
                 mDisplayPaused && !mRecordingEnabled) {
-        CAMHAL_LOGDA("Stopping Preview");
-        forceStopPreview();
+        CAMHAL_LOGDA("Restarting preview in paused mode");
+        ret = restartPreview();
+
+        // TODO(XXX): If there is some delay between the restartPreview call and the code
+        // below, then the user could see some preview frames and callbacks. Let's find
+        // a better place to put this later...
+        if (ret == NO_ERROR) {
+            mDisplayPaused = true;
+            mPreviewEnabled = false;
+            ret = mDisplayAdapter->pauseDisplay(mDisplayPaused);
+        }
     }
 
     if ( !mBracketingRunning && mBracketingEnabled ) {
