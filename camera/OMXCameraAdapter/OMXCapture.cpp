@@ -1490,6 +1490,8 @@ status_t OMXCameraAdapter::disableImagePort(){
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
     imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex]; // for RAW capture
 
+    flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
+
     ///Register for Image port Disable event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                                 OMX_EventCmdComplete,
