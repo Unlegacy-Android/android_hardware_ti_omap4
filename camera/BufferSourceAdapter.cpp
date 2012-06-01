@@ -672,12 +672,12 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     int i;
     android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
 
+    android::AutoMutex lock(mLock);
+
     if (!mBuffers || !frame->mBuffer) {
         CAMHAL_LOGEA("Adapter sent BufferSourceAdapter a NULL frame?");
         return;
     }
-
-    android::AutoMutex lock(mLock);
 
     for ( i = 0; i < mBufferCount; i++ ) {
         if (frame->mBuffer == &mBuffers[i]) {
