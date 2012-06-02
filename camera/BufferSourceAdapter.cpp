@@ -96,6 +96,19 @@ static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
     return CameraFrame::RAW_FRAME;
 }
 
+static int getHeightFromFormat(const char* format, int stride, int size) {
+    CAMHAL_ASSERT((NULL != format) && (0 <= stride) && (0 <= size));
+    switch (getANWFormat(format)) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+            return (size / (3 * stride)) * 2;
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            return (size / stride) / 2;
+        default:
+            break;
+    }
+    return 0;
+}
+
 /*--------------------BufferSourceAdapter Class STARTS here-----------------------------*/
 
 
@@ -292,7 +305,7 @@ void BufferSourceAdapter::destroy()
     LOG_FUNCTION_NAME_EXIT;
 }
 
-CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, const char* format,
+CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int dummyHeight, const char* format,
                                                       int &bytes, int numBufs)
 {
     LOG_FUNCTION_NAME;
@@ -341,6 +354,9 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
 
     CAMHAL_LOGDB("Configuring %d buffers for ANativeWindow", numBufs);
     mBufferCount = numBufs;
+
+    // re-calculate height depending on stride and size
+    int height = getHeightFromFormat(format, width, bytes);
 
     // Set window geometry
     err = mBufferSource->set_buffers_geometry(mBufferSource,

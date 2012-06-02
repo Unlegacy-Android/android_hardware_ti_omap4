@@ -142,7 +142,7 @@ public:
     virtual status_t setSnapshotTimeRef(struct timeval *refTime = NULL) { return NO_ERROR; }
 #endif
     virtual bool supportsExternalBuffering();
-    virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer * allocateBufferList(int width, int dummyHeight, const char* format, int &bytes, int numBufs);
     virtual CameraBuffer *getBufferList(int *numBufs);
     virtual uint32_t * getOffsets() ;
     virtual int getFd() ;
