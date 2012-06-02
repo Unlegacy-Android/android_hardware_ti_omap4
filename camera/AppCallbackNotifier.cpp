@@ -755,7 +755,7 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
                 (frame->mAlignment != frame->mWidth)) {
             size_t size;
 
-            size = calculateBufferSize(frame->mWidth, frame->mHeight, frame->mBuffer->format);
+            size = CameraHal::calculateBufferSize(frame->mBuffer->format, frame->mWidth, frame->mHeight);
             picture = mRequestMemory(-1, size, 1, NULL);
             if (picture && picture->data) {
                 copyCroppedNV12(frame, (unsigned char*) picture->data);
@@ -1039,9 +1039,9 @@ void AppCallbackNotifier::notifyFrame()
                         current_snapshot = (mPreviewBufCount + MAX_BUFFERS - 1) % MAX_BUFFERS;
                         tn_jpeg->src = (uint8_t *)mPreviewBuffers[current_snapshot].mapped;
                         tn_jpeg->src_size = mPreviewMemory->size / MAX_BUFFERS;
-                        tn_jpeg->dst_size = calculateBufferSize(tn_width,
-                                                                tn_height,
-                                                                previewFormat);
+                        tn_jpeg->dst_size = CameraHal::calculateBufferSize(previewFormat,
+                                                                tn_width,
+                                                                tn_height);
                         tn_jpeg->dst = (uint8_t*) malloc(tn_jpeg->dst_size);
                         tn_jpeg->quality = tn_quality;
                         tn_jpeg->in_width = width;
@@ -1509,49 +1509,6 @@ void AppCallbackNotifier::setFrameProvider(FrameNotifier *frameNotifier)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-size_t AppCallbackNotifier::calculateBufferSize(size_t width, size_t height, const char *pixelFormat)
-{
-    size_t res = 0;
-
-    LOG_FUNCTION_NAME
-
-    if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
-        res = width*height*2;
-    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
-        res = (width*height*3)/2;
-    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
-        res = width*height*2;
-    } else if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
-        size_t yStride, uvStride, ySize, uvSize;
-        alignYV12(width, height, yStride, uvStride, ySize, uvSize, res);
-        mPreviewPixelFormat = android::CameraParameters::PIXEL_FORMAT_YUV420P;
-    }
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return res;
-}
-
-const char* AppCallbackNotifier::getContstantForPixelFormat(const char *pixelFormat) {
-    if (!pixelFormat) {
-        // returning NV12 as default
-        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-    }
-
-    if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
-        return android::CameraParameters::PIXEL_FORMAT_YUV422I;
-    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
-        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
-        return android::CameraParameters::PIXEL_FORMAT_RGB565;
-    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
-        return android::CameraParameters::PIXEL_FORMAT_YUV420P;
-    } else {
-        // returning NV12 as default
-        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-    }
-}
-
 status_t AppCallbackNotifier::startPreviewCallbacks(android::CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
 {
     unsigned int *bufArr;
@@ -1581,8 +1538,8 @@ status_t AppCallbackNotifier::startPreviewCallbacks(android::CameraParameters &p
     mPreviewWidth = w;
     mPreviewHeight = h;
     mPreviewStride = 4096;
-    mPreviewPixelFormat = getContstantForPixelFormat(params.getPreviewFormat());
-    size = calculateBufferSize(w, h, mPreviewPixelFormat);
+    mPreviewPixelFormat = CameraHal::getPixelFormatConstant(params.getPreviewFormat());
+    size = CameraHal::calculateBufferSize(mPreviewPixelFormat, w, h);
 
     mPreviewMemory = mRequestMemory(-1, size, AppCallbackNotifier::MAX_BUFFERS, NULL);
     if (!mPreviewMemory) {

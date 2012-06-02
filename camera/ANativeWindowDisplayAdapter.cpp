@@ -66,80 +66,6 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
     return pixFormat;
 }
 
-const char* DisplayAdapter::getPixFormatConstant(const char* parameters_format) const
-{
-    const char* pixFormat;
-
-    if ( parameters_format != NULL )
-    {
-        if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-        {
-            CAMHAL_LOGVA("CbYCrY format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV422I;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-                strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-        {
-            // TODO(XXX): We are treating YV12 the same as YUV420SP
-            CAMHAL_LOGVA("YUV420SP format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-        {
-            CAMHAL_LOGVA("RGB565 format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_RGB565;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0)
-        {
-            CAMHAL_LOGVA("BAYER format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
-        }
-        else
-        {
-            CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-    }
-    else
-    {
-        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
-        pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-    }
-
-    return pixFormat;
-}
-
-size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int height) const
-{
-    int buf_size;
-
-    if ( parameters_format != NULL ) {
-        if (strcmp(parameters_format,
-                  android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if((strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) ||
-                (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0)) {
-            buf_size = width * height * 3 / 2;
-        }
-        else if(strcmp(parameters_format,
-                      android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if (strcmp(parameters_format,
-                  android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
-            buf_size = width * height * 2;
-        } else {
-            CAMHAL_LOGEA("Invalid format");
-            buf_size = 0;
-        }
-    } else {
-        CAMHAL_LOGEA("Preview format is NULL");
-        buf_size = 0;
-    }
-
-    return buf_size;
-}
 /*--------------------ANativeWindowDisplayAdapter Class STARTS here-----------------------------*/
 
 
@@ -631,7 +557,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
                             CameraFrame::PREVIEW_FRAME_SYNC);
         }
 
-        bytes =  getBufSize(format, width, height);
+        bytes = CameraHal::calculateBufferSize(format, width, height);
 
     }
 
@@ -678,7 +604,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mFirstInit = true;
-    mPixelFormat = getPixFormatConstant(format);
+    mPixelFormat = CameraHal::getPixelFormatConstant(format);
     mFrameWidth = width;
     mFrameHeight = height;
 

@@ -117,5 +117,66 @@ void CameraHal::PPM(const char* str, struct timeval* ppm_first, ...){
 
 #endif
 
+
+/** Common utility function definitions used all over the HAL */
+
+const char* CameraHal::getPixelFormatConstant(const char* parametersFormat)
+{
+    const char *pixelFormat = NULL;
+
+    if ( NULL != parametersFormat ) {
+        if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_YUV422I) ) {
+            CAMHAL_LOGVA("CbYCrY format selected");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_YUV422I;
+        } else if ( (0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420SP)) ||
+                    (0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420P)) ) {
+            // TODO(XXX): We are treating YV12 the same as YUV420SP
+            CAMHAL_LOGVA("YUV420SP format selected");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+        } else if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_RGB565) ) {
+            CAMHAL_LOGVA("RGB565 format selected");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_RGB565;
+        } else if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) ) {
+            CAMHAL_LOGVA("BAYER format selected");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+        } else {
+            CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+        }
+    } else {
+        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
+        pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+    }
+
+    return pixelFormat;
+}
+
+size_t CameraHal::calculateBufferSize(const char* parametersFormat, int width, int height)
+{
+    int bufferSize = -1;
+
+    if ( NULL != parametersFormat ) {
+        if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_YUV422I) ) {
+            bufferSize = width * height * 2;
+        } else if ( (0 == strcmp(parametersFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP)) ||
+                    (0 == strcmp(parametersFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P)) ) {
+            bufferSize = width * height * 3 / 2;
+        } else if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_RGB565) ) {
+            bufferSize = width * height * 2;
+        } else if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) ) {
+            bufferSize = width * height * 2;
+        } else {
+            CAMHAL_LOGEA("Invalid format");
+            bufferSize = 0;
+        }
+    } else {
+        CAMHAL_LOGEA("Preview format is NULL");
+        bufferSize = 0;
+    }
+
+    return bufferSize;
+}
+
+
 } // namespace Camera
 } // namespace Ti
