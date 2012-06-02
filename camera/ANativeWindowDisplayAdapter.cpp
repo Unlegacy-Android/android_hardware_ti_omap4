@@ -1045,41 +1045,24 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
     {
+        uint32_t xOff, yOff;
+
         android::AutoMutex lock(mLock);
-        uint32_t xOff = (dispFrame.mOffset% PAGE_SIZE);
-        uint32_t yOff = (dispFrame.mOffset / PAGE_SIZE);
+
+        CameraHal::getXYFromOffset(&xOff, &yOff, dispFrame.mOffset, PAGE_SIZE, mPixelFormat);
 
         // Set crop only if current x and y offsets do not match with frame offsets
-        if((mXOff!=xOff) || (mYOff!=yOff))
-        {
-            CAMHAL_LOGDB("Offset %d xOff = %d, yOff = %d", dispFrame.mOffset, xOff, yOff);
-            uint8_t bytesPerPixel;
-            ///Calculate bytes per pixel based on the pixel format
-            if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
-                {
-                bytesPerPixel = 1;
-                }
-            else
-                {
-                bytesPerPixel = 1;
-            }
+        if ((mXOff != xOff) || (mYOff != yOff)) {
+            CAMHAL_LOGDB("offset = %u left = %d top = %d right = %d bottom = %d",
+                          dispFrame.mOffset, xOff, yOff ,
+                          xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            CAMHAL_LOGVB(" crop.left = %d crop.top = %d crop.right = %d crop.bottom = %d",
-                          xOff/bytesPerPixel, yOff , (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
             // We'll ignore any errors here, if the surface is
             // already invalid, we'll know soon enough.
-            mANativeWindow->set_crop(mANativeWindow, xOff/bytesPerPixel, yOff,
-                                     (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
+            mANativeWindow->set_crop(mANativeWindow, xOff, yOff,
+                                     xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            ///Update the current x and y offsets
+            // Update the current x and y offsets
             mXOff = xOff;
             mYOff = yOff;
         }

@@ -120,6 +120,29 @@ void CameraHal::PPM(const char* str, struct timeval* ppm_first, ...){
 
 /** Common utility function definitions used all over the HAL */
 
+void CameraHal::getXYFromOffset(unsigned int *x, unsigned int *y,
+                                unsigned int offset, unsigned int stride,
+                                const char* format)
+{
+    uint8_t bytesPerPixel;
+
+   CAMHAL_ASSERT( x && y && format && (0U < stride) );
+
+   // Calculate bytes per pixel based on the pixel format
+   if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+       bytesPerPixel = 2;
+   } else if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+       bytesPerPixel = 2;
+   } else if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+       bytesPerPixel = 1;
+   } else {
+       bytesPerPixel = 1;
+   }
+
+   *x = (offset % stride) / bytesPerPixel;
+   *y = (offset / stride);
+}
+
 const char* CameraHal::getPixelFormatConstant(const char* parametersFormat)
 {
     const char *pixelFormat = NULL;

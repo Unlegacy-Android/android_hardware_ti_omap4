@@ -129,6 +129,7 @@ static void orientation_cb(uint32_t orientation, uint32_t tilt, void* cookie) {
     }
 
 }
+
 /*-------------Camera Hal Interface Method definitions STARTS here--------------------*/
 
 /**

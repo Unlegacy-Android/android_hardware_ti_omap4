@@ -1235,7 +1235,10 @@ public:
     void setEventProvider(int32_t eventMask, MessageNotifier * eventProvider);
 
     static const char* getPixelFormatConstant(const char* parameters_format);
-    static size_t calculateBufferSize(const char* parametersFormat, int width, int height);
+    static size_t calculateBufferSize(const char* parameters_format, int width, int height);
+    static void getXYFromOffset(unsigned int *x, unsigned int *y,
+                                unsigned int offset, unsigned int stride,
+                                const char* format);
 
 /*--------------------Internal Member functions - Private---------------------------------*/
 private:
