@@ -526,6 +526,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeued);
+    mPixelFormat = CameraHal::getPixelFormatConstant(format);
 
     for ( i=0; i < mBufferCount; i++ )
     {
@@ -549,6 +550,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         CAMHAL_LOGDB("got handle %p", handle);
         mBuffers[i].opaque = (void *)handle;
         mBuffers[i].type = CAMERA_BUFFER_ANW;
+        mBuffers[i].format = mPixelFormat;
         mFramesWithCameraAdapterMap.add(handle, i);
 
         // Tag remaining preview buffers as preview frames
@@ -604,7 +606,6 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mFirstInit = true;
-    mPixelFormat = CameraHal::getPixelFormatConstant(format);
     mFrameWidth = width;
     mFrameHeight = height;
 

@@ -118,6 +118,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
             buffers[i].ion_fd = mIonFd;
             buffers[i].fd = mmap_fd;
             buffers[i].size = size;
+            buffers[i].format = CameraHal::getPixelFormatConstant(format);
 
         }
     }
