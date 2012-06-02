@@ -699,6 +699,44 @@ static void copy2Dto1D(void *dst,
     }
 }
 
+static void copyCroppedNV12(CameraFrame* frame, unsigned char *dst)
+{
+    unsigned int stride, width, height;
+    uint32_t offset, uvoffset;
+    size_t size;
+
+    CAMHAL_ASSERT(frame && dst);
+
+    offset = frame->mOffset;
+    stride = frame->mAlignment;
+    width = frame->mWidth;
+    height = frame->mHeight;
+    size = frame->mLength;
+    unsigned const char *src = (unsigned char *) frame->mBuffer->mapped;
+
+    // offset to beginning of uv plane
+    uvoffset = (offset + size) * 2 / 3;
+    // offset to beginning of valid region of uv plane
+    uvoffset += (offset - (offset % stride)) / 2 + (offset % stride);
+
+    // start of valid luma region
+    unsigned const char *luma = src + offset;
+    // start of valid chroma region
+    unsigned const char *chroma = src + uvoffset;
+
+    // copy luma and chroma line x line
+    for (unsigned int i = 0; i < height; i++) {
+        memcpy(dst, luma, width);
+        luma += stride;
+        dst += width;
+    }
+    for (unsigned int i = 0; i < height / 2; i++) {
+        memcpy(dst, chroma, width);
+        chroma += stride;
+        dst += width;
+    }
+}
+
 void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t msgType)
 {
     camera_memory_t* picture = NULL;
@@ -712,13 +750,25 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
             goto exit;
         }
 
-        picture = mRequestMemory(-1, frame->mLength, 1, NULL);
+        if (frame->mBuffer->format &&
+                (strcmp(frame->mBuffer->format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) &&
+                (frame->mAlignment != frame->mWidth)) {
+            size_t size;
 
-        if (NULL != picture) {
-            dest = picture->data;
-            if (NULL != dest) {
-                src = (void *) ((unsigned int) frame->mBuffer->mapped + frame->mOffset);
-                memcpy(dest, src, frame->mLength);
+            size = calculateBufferSize(frame->mWidth, frame->mHeight, frame->mBuffer->format);
+            picture = mRequestMemory(-1, size, 1, NULL);
+            if (picture && picture->data) {
+                copyCroppedNV12(frame, (unsigned char*) picture->data);
+            }
+        } else {
+            picture = mRequestMemory(-1, frame->mLength, 1, NULL);
+
+            if (NULL != picture) {
+                dest = picture->data;
+                if (NULL != dest) {
+                    src = (void *) ((unsigned int) frame->mBuffer->mapped + frame->mOffset);
+                    memcpy(dest, src, frame->mLength);
+                }
             }
         }
     }
