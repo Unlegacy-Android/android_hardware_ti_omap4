@@ -218,6 +218,7 @@ typedef struct buffer_info {
     int width;
     int height;
     int format;
+    Rect crop;
     sp<GraphicBuffer> buf;
 } buffer_info_t;
 
@@ -321,6 +322,7 @@ public:
                 uint8_t *mappedBuffer;
                 unsigned int count;
                 unsigned int slot;
+                Rect crop;
             };
         public:
             Defer(BufferSourceThread* bst) :
@@ -352,7 +354,8 @@ public:
                 if (!mExiting) {
                     DeferContainer defer = mDeferQueue.itemAt(0);
                     printf ("=== handling buffer %d\n", defer.count);
-                    mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
+                    mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer,
+                                       defer.count, defer.crop);
                     defer.graphicBuffer->unlock();
                     mDeferQueue.removeAt(0);
                     mBST->onHandled(defer.graphicBuffer, defer.slot);
@@ -360,12 +363,14 @@ public:
                 }
                 return false;
             }
-            void add(sp<GraphicBuffer> &gbuf, unsigned int count, unsigned int slot = 0) {
+            void add(sp<GraphicBuffer> &gbuf, const Rect &crop,
+                     unsigned int count, unsigned int slot = 0) {
                 Mutex::Autolock lock(mFrameQueueMutex);
                 DeferContainer defer;
                 defer.graphicBuffer = gbuf;
                 defer.count = count;
                 defer.slot = slot;
+                defer.crop = crop;
                 gbuf->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &defer.mappedBuffer);
                 mDeferQueue.add(defer);
                 mFrameQueueCondition.signal();
@@ -426,7 +431,8 @@ public:
         return !mReturnedBuffers.isEmpty();
     }
 
-    void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
+    void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int, const Rect &);
+    Rect getCrop(sp<GraphicBuffer> &buffer, const float *mtx);
     void showMetadata(sp<IMemory> data);
 protected:
     void restartCapture() {

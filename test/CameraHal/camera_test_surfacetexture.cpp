@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <climits>
+#include <math.h>
 
 #include <gui/SurfaceTexture.h>
 #include <gui/SurfaceTextureClient.h>
@@ -84,6 +85,26 @@ static size_t calcBufSize(int format, int width, int height)
     return buf_size;
 }
 
+static unsigned int calcOffset(int format, unsigned int width, unsigned int top, unsigned int left)
+{
+    unsigned int bpp;
+
+    switch (format) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+            bpp = 1;
+            break;
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            bpp = 2;
+            break;
+        // add more formats later
+        default:
+            bpp = 1;
+            break;
+    }
+
+    return top * width + left * bpp;
+}
+
 static int getHalPixFormat(const char *format)
 {
     int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
@@ -117,6 +138,61 @@ static int getUsageFromANW(int format)
             break;
     }
     return usage;
+}
+
+static status_t writeCroppedNV12(unsigned int offset, unsigned int stride,
+                                 unsigned int bufWidth, unsigned int bufHeight,
+                                 const Rect &crop,
+                                 int format, int fd, unsigned char *buffer)
+{
+    unsigned char *luma = NULL, *chroma = NULL, *src = NULL;
+    unsigned int uvoffset;
+    size_t size;
+    int write_size;
+
+    if (!buffer || !crop.isValid()) {
+        return BAD_VALUE;
+    }
+
+    size = calcBufSize(format, stride, bufHeight);
+    src = buffer;
+
+    // offset to beginning of uv plane
+    uvoffset =  stride * bufHeight;
+    // offset to beginning of valid region of uv plane
+    uvoffset += (offset - (offset % stride)) / 2 + (offset % stride);
+
+    // start of valid luma region
+    luma = src + offset;
+    // start of valid chroma region
+    chroma = src + uvoffset;
+
+    // write luma line x line
+    unsigned int height = crop.height();
+    unsigned int width = crop.width();
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, luma, width)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        luma += stride;
+    }
+
+    // write chroma line x line
+    height /= 2;
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, chroma, width)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        chroma += stride;
+    }
+
+    return NO_ERROR;
 }
 
 void GLSurface::initialize(int display) {
@@ -428,9 +504,11 @@ void SurfaceTextureGL::drawTexture() {
 }
 
 // buffer source stuff
-void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t *buffer, unsigned int count) {
+void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t *buffer,
+                                        unsigned int count, const Rect &crop) {
     int size;
     buffer_info_t info;
+    unsigned int offset = 0;
     int fd = -1;
     char fn[256];
 
@@ -457,12 +535,17 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     info.height = graphic_buffer->getHeight();
     info.format = graphic_buffer->getPixelFormat();
     info.buf = graphic_buffer;
+    info.crop = crop;
 
     {
         Mutex::Autolock lock(mReturnedBuffersMutex);
         if (mReturnedBuffers.size() >= kReturnedBuffersMaxCapacity) mReturnedBuffers.removeAt(0);
     }
     mReturnedBuffers.add(info);
+
+    // re-calculate size and offset
+    size = calcBufSize((int) graphic_buffer->getPixelFormat(), crop.width(), crop.height());
+    offset = calcOffset((int) graphic_buffer->getPixelFormat(), info.width, crop.top, crop.left);
 
     // Do not write buffer to file if we are streaming capture
     // It adds too much latency
@@ -471,16 +554,72 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
         sprintf(fn, "/sdcard/img%03d.raw", count);
         fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
         if (fd >= 0) {
-            if (size != write(fd, buffer, size)) {
+            if (offset && (info.format == HAL_PIXEL_FORMAT_TI_NV12)) {
+                writeCroppedNV12(offset, info.width, info.width, info.height,
+                                 crop, info.format, fd, buffer);
+            } else if (size != write(fd, buffer + offset, size)) {
                 printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
             }
-            printf("%s: buffer=%08X, size=%d stored at %s\n",
-                        __FUNCTION__, (int)buffer, info.size, fn);
+            printf("%s: buffer=%08X, size=%d stored at %s\n"
+                   "\tRect: top[%d] left[%d] right[%d] bottom[%d] width[%d] height[%d]\n",
+                        __FUNCTION__, (int)buffer, size, fn,
+                        crop.top, crop.left, crop.right, crop.bottom,
+                        crop.width(), crop.height());
             close(fd);
         } else {
             printf("error opening or creating %s\n", fn);
         }
     }
+}
+
+Rect BufferSourceThread::getCrop(sp<GraphicBuffer> &graphic_buffer, const float *mtx) {
+    Rect crop(graphic_buffer->getWidth(), graphic_buffer->getHeight());
+
+    // calculate crop rectangle from tranformation matrix
+    float sx, sy, tx, ty, h, w;
+    unsigned int rect_x, rect_y;
+    /*   sx, 0, 0, 0,
+         0, sy, 0, 0,
+         0, 0, 1, 0,
+         tx, ty, 0, 1 */
+
+    sx = mtx[0];
+    sy = mtx[5];
+    tx = mtx[12];
+    ty = mtx[13];
+    w = float(graphic_buffer->getWidth());
+    h = float(graphic_buffer->getHeight());
+
+    unsigned int bottom = (unsigned int)(h - (ty * h + 1));
+    unsigned int left = (unsigned int)(tx * w -1);
+    rect_y = (unsigned int)(fabsf(sy) * h);
+    rect_x = (unsigned int)(fabsf(sx) * w);
+
+    // handle v-flip
+    if (sy < 0.0f) {
+        bottom = h - bottom;
+    }
+
+    // handle h-flip
+    if (sx < 0.0f) {
+        left = w - left;
+    }
+
+    unsigned int top = bottom - rect_y;
+    unsigned int right = left + rect_x;
+
+    Rect updatedCrop(left, top, right, bottom);
+    if (updatedCrop.isValid()) {
+        crop = updatedCrop;
+    } else {
+        printf("Crop for buffer %d is not valid: "
+               "left=%u, top=%u, right=%u, bottom=%u. "
+               "Will use default.\n",
+               mCounter,
+               left, top, right, bottom);
+    }
+
+    return crop;
 }
 
 void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, ShotParameters &params) {
