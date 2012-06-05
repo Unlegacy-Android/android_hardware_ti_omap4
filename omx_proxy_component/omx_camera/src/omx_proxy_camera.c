@@ -80,6 +80,7 @@
 #include <sys/mman.h>
 #include <sys/eventfd.h>
 #include <fcntl.h>
+#include <errno.h>
 #endif
 
 #define COMPONENT_NAME "OMX.TI.DUCATI1.VIDEO.CAMERA"
@@ -602,6 +603,7 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 #ifdef USE_ION
 	int ret;
+	size_t stride;
 #endif
 
 	OMX_S32 status = 0;
@@ -661,8 +663,17 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	dccbuf_size = (dccbuf_size + LINUX_PAGE_SIZE -1) & ~(LINUX_PAGE_SIZE - 1);
 	ret = ion_alloc(ion_fd, dccbuf_size, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT,
 		(struct ion_handle **)&DCC_Buff);
-	if (ret)
-			return OMX_ErrorInsufficientResources;
+
+        if (ret || ((int)DCC_Buff == -ENOMEM)) {
+                ret = ion_alloc_tiler(ion_fd, dccbuf_size, 1, TILER_PIXEL_FMT_PAGE,
+                                OMAP_ION_HEAP_TILER_MASK, &DCC_Buff, &stride);
+        }
+
+        if (ret || ((int)DCC_Buff == -ENOMEM)) {
+                DOMX_ERROR("FAILED to allocate DCC buffer of size=%d. ret=0x%x",
+                                        dccbuf_size, ret);
+                return OMX_ErrorInsufficientResources;
+        }
 
 	if (ion_map(ion_fd, DCC_Buff, dccbuf_size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
                    (unsigned char **)&DCC_Buff_ptr, &mmap_fd) < 0)

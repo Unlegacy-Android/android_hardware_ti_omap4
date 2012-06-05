@@ -216,9 +216,20 @@ static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pC
 	int fd;
 	int ret;
 	struct ion_handle *temp;
+	size_t stride;
 
 	ret = ion_alloc(pCompPrv->ion_fd, len, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT, &temp);
-	DOMX_DEBUG("ION being USED for allocation!!!!! handle = %x, ret =%x",temp,ret);
+
+       if (ret || ((int)temp == -ENOMEM)) {
+               ret = ion_alloc_tiler(pCompPrv->ion_fd, len, 1, TILER_PIXEL_FMT_PAGE,
+                       OMAP_ION_HEAP_TILER_MASK, &temp, &stride);
+       }
+
+       if (ret || ((int)temp == -ENOMEM)) {
+               DOMX_ERROR("FAILED to allocate buffer of size=%d. ret=0x%x",len, ret);
+               return OMX_ErrorInsufficientResources;
+       }
+
 	if (ret)
 			return OMX_ErrorInsufficientResources;
 	*handle = temp;
