@@ -97,10 +97,6 @@
 
 static OMX_ERRORTYPE _RPC_IsProxyComponent(OMX_HANDLETYPE hComponent,
     OMX_BOOL * bIsProxy);
-OMX_ERRORTYPE RPC_UTIL_GetStride(OMX_COMPONENTTYPE * hRemoteComp,
-    OMX_U32 nPortIndex, OMX_U32 * nStride);
-OMX_ERRORTYPE RPC_UTIL_GetNumLines(OMX_COMPONENTTYPE * hComp,
-    OMX_U32 nPortIndex, OMX_U32 * nNumOfLines);
 
 #endif
 
@@ -778,7 +774,6 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 
 	//Round Off the size to allocate and map to next page boundary.
 	OMX_U32 nSize = (nSizeBytes + LINUX_PAGE_SIZE - 1) & ~(LINUX_PAGE_SIZE - 1);
-	OMX_U32 nStride = 0;
 	OMX_U8* pMemptr = NULL;
 	OMX_CONFIG_RECTTYPE tParamRect;
 	OMX_PARAM_PORTDEFINITIONTYPE tParamPortDef;
@@ -815,23 +810,8 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		currentBuffer = pCompPrv->nTotalBuffers;
 	}
 
-	/*To find whether buffer is 2D or 1D */
-	eError =
-	    RPC_UTIL_GetStride(pCompPrv->hRemoteComp, nPortIndex, &nStride);
-	PROXY_assert(eError == OMX_ErrorNone, eError,
-	    "Failed to get stride of component");
-
-	if (nStride == LINUX_PAGE_SIZE && \
-			pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType != EncoderMetadataPointers) //Allocate 2D buffer
-	{
-#if USE_ION
-		DOMX_ERROR ("Tiler 2d port buffers not implemented");
-		eError = OMX_ErrorNotImplemented;
-		goto EXIT;
-#endif
-	}
 #ifdef USE_ION
-	else if (pCompPrv->bUseIon == OMX_TRUE)
+	if (pCompPrv->bUseIon == OMX_TRUE)
 	{
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, nSize, &handle);
 		pCompPrv->tBufList[currentBuffer].pYBuffer = handle;
@@ -1011,7 +991,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_BUFFERHEADERTYPE *pBufferHeader = NULL;
 	OMX_U32 pBufHeaderRemote = 0;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
-	OMX_U32 currentBuffer = 0, i = 0, nStride = 0, nNumLines = 0;
+	OMX_U32 currentBuffer = 0, i = 0;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_TI_PLATFORMPRIVATE *pPlatformPrivate = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
@@ -1080,49 +1060,29 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->nSize = sizeof(OMX_TI_PLATFORMPRIVATE);
 
 #ifdef ENABLE_GRALLOC_BUFFERS
-
 	if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == GrallocPointers)
 	{
 		//Extracting buffer pointer from the gralloc buffer
 		pAuxBuf0 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[0]);
+		((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+			pAuxBuf1 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[1]);
 	}
 #endif
 
 	DOMX_DEBUG("Preparing buffer to Remote Core...");
 	pBufferHeader->pBuffer = pBuffer;
-	/*To find whether buffer is 2D or 1D */
-	eError =
-	    RPC_UTIL_GetStride(pCompPrv->hRemoteComp, nPortIndex, &nStride);
-	PROXY_assert(eError == OMX_ErrorNone, eError,
-	    "Failed to get stride of component");
-	if (nStride == LINUX_PAGE_SIZE)
+
+	if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == EncoderMetadataPointers)
 	{
-		// Change this to extract UV pointer from gralloc handle once new gralloc interface is available
-		/*2D buffer, assume NV12 format */
-		eError =
-		    RPC_UTIL_GetNumLines(pCompPrv->hRemoteComp, nPortIndex,
-		    &nNumLines);
-		PROXY_assert(eError == OMX_ErrorNone, eError,
-		    "Failed to get num of lines");
+		((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+			pAuxBuf1 = NULL;
+	}
+	if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+	{
+		pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
 
-		if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == GrallocPointers)
-		{
-			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
-				pAuxBuf1 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[1]);
-		}
-
-		if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == EncoderMetadataPointers)
-		{
-			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
-				pAuxBuf1 = NULL;
-		}
-		if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
-		{
-			pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
-
-			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
-				pAuxBuf1 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[1]);
-		}
+		((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+			pAuxBuf1 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[1]);
 	}
 
 	/*Initializing Structure */
@@ -1256,7 +1216,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone, eTmpRPCError =
 	    RPC_OMX_ErrorNone;
-	OMX_U32 count = 0, nStride = 0;
+	OMX_U32 count = 0;
 	OMX_U32 pBuffer = 0;
 	OMX_PTR pMetaDataBuffer = NULL;
 	OMX_PTR pAuxBuf0 = NULL;
@@ -1297,17 +1257,9 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	}
 #endif
 
-	/*To find whether buffer is 2D or 1D */
-	/*Not having asserts from this point since even if error occurs during
-	   unmapping/freeing, still trying to clean up as much as possible */
-	eError =
-	    RPC_UTIL_GetStride(pCompPrv->hRemoteComp, nPortIndex, &nStride);
-	if (eError == OMX_ErrorNone && nStride == LINUX_PAGE_SIZE)
+	if (pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
 	{
-		if (pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
-		{
-			pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
-		}
+		pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
 	}
 
 	/*Not having asserts from this point since even if error occurs during
@@ -2399,199 +2351,6 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
 
 	return eError;
 }
-
-
-
-/* ===========================================================================*/
-/**
- * @name RPC_UTIL_GetStride()
- * @brief Gets stride on this port. Used to determine whether buffer is 1D or 2D
- * @param hRemoteComp [IN]  : Remote component handle.
- * @param nPortIndex [IN]   : Port index.
- * @param nStride [OUT]     : Stride returned by the component.
- * @return OMX_ErrorNone = Successful
- */
-/* ===========================================================================*/
-OMX_ERRORTYPE RPC_UTIL_GetStride(OMX_COMPONENTTYPE * hRemoteComp,
-    OMX_U32 nPortIndex, OMX_U32 * nStride)
-{
-	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
-	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
-	OMX_PARAM_PORTDEFINITIONTYPE sPortDef;
-
-	/*Initializing Structure */
-	sPortDef.nSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
-	sPortDef.nVersion.s.nVersionMajor = OMX_VER_MAJOR;
-	sPortDef.nVersion.s.nVersionMinor = OMX_VER_MINOR;
-	sPortDef.nVersion.s.nRevision = 0x0;
-	sPortDef.nVersion.s.nStep = 0x0;
-	sPortDef.nPortIndex = nPortIndex;
-
-	eRPCError =
-	    RPC_GetParameter(hRemoteComp, OMX_IndexParamPortDefinition,
-	    (OMX_PTR) (&sPortDef), NULL, &eCompReturn);
-	PROXY_checkRpcError();
-
-	if (sPortDef.eDomain == OMX_PortDomainVideo)
-	{
-		*nStride = sPortDef.format.video.nStride;
-	} else if (sPortDef.eDomain == OMX_PortDomainImage)
-	{
-		*nStride = sPortDef.format.image.nStride;
-	} else if (sPortDef.eDomain == OMX_PortDomainMax && nPortIndex == 0)
-	{
-		/*Temp - just for testing sample */
-		*nStride = LINUX_PAGE_SIZE;
-	} else
-	{
-		*nStride = 0;
-	}
-
-      EXIT:
-	return eError;
-}
-
-
-
-/* ===========================================================================*/
-/**
- * @name RPC_UTIL_GetNumLines()
- * @brief
- * @param void
- * @return OMX_ErrorNone = Successful
- * @sa TBD
- *
- */
-/* ===========================================================================*/
-OMX_ERRORTYPE RPC_UTIL_GetNumLines(OMX_COMPONENTTYPE * hRemoteComp,
-    OMX_U32 nPortIndex, OMX_U32 * nNumOfLines)
-{
-	OMX_ERRORTYPE eError = OMX_ErrorNone;
-	OMX_ERRORTYPE eCompReturn;
-	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
-	OMX_BOOL bUseEnhancedPortReconfig = OMX_FALSE;
-
-	OMX_PARAM_PORTDEFINITIONTYPE portDef;
-	OMX_CONFIG_RECTTYPE sRect;
-
-	DOMX_ENTER("");
-
-	/*initializing Structure */
-	portDef.nSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
-	portDef.nVersion.s.nVersionMajor = 0x1;
-	portDef.nVersion.s.nVersionMinor = 0x1;
-	portDef.nVersion.s.nRevision = 0x0;
-	portDef.nVersion.s.nStep = 0x0;
-
-	portDef.nPortIndex = nPortIndex;
-
-	sRect.nSize = sizeof(OMX_CONFIG_RECTTYPE);
-	sRect.nVersion.s.nVersionMajor = 0x1;
-	sRect.nVersion.s.nVersionMinor = 0x1;
-	sRect.nVersion.s.nRevision = 0x0;
-	sRect.nVersion.s.nStep = 0x0;
-
-	sRect.nPortIndex = nPortIndex;
-	sRect.nLeft = 0;
-	sRect.nTop = 0;
-	sRect.nHeight = 0;
-	sRect.nWidth = 0;
-
-#ifdef USE_ENHANCED_PORTRECONFIG
-	bUseEnhancedPortReconfig = OMX_TRUE;
-#endif
-	eRPCError = RPC_GetParameter(hRemoteComp,
-	    OMX_TI_IndexParam2DBufferAllocDimension,
-	    (OMX_PTR) & sRect, NULL, &eCompReturn);
-	if (eRPCError == RPC_OMX_ErrorNone)
-	{
-		DOMX_DEBUG(" PROXY_UTIL Get Parameter Successful");
-		eError = eCompReturn;
-	} else
-	{
-		DOMX_ERROR("RPC_GetParameter returned error 0x%x", eRPCError);
-		eError = OMX_ErrorUndefined;
-		goto EXIT;
-	}
-
-	if (eCompReturn == OMX_ErrorNone && bUseEnhancedPortReconfig == OMX_FALSE)
-	{
-		*nNumOfLines = sRect.nHeight;
-	} else if (eCompReturn == OMX_ErrorUnsupportedIndex || bUseEnhancedPortReconfig == OMX_TRUE)
-	{
-		eRPCError =
-		    RPC_GetParameter(hRemoteComp,
-		    OMX_IndexParamPortDefinition, (OMX_PTR) & portDef,
-		    NULL, &eCompReturn);
-
-		if (eRPCError == RPC_OMX_ErrorNone)
-		{
-			DOMX_DEBUG(" PROXY_UTIL Get Parameter Successful");
-			eError = eCompReturn;
-		} else
-		{
-			DOMX_ERROR("RPC_GetParameter returned error 0x%x",
-			    eRPCError);
-			eError = OMX_ErrorUndefined;
-			goto EXIT;
-		}
-
-		if (eCompReturn == OMX_ErrorNone)
-		{
-
-			//start with 1 meaning 1D buffer
-			*nNumOfLines = 1;
-
-			if (portDef.eDomain == OMX_PortDomainVideo)
-			{
-				*nNumOfLines =
-				    portDef.format.video.nFrameHeight;
-				//DOMX_DEBUG("Port definition Type is video...");
-				//DOMX_DEBUG("&&Colorformat is:%p", portDef.format.video.eColorFormat);
-				//DOMX_DEBUG("nFrameHeight is:%d", portDef.format.video.nFrameHeight);
-				//*nNumOfLines = portDef.format.video.nFrameHeight;
-
-				//if((portDef.format.video.eColorFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar) ||
-				//  (portDef.format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar))
-				//{
-				//DOMX_DEBUG("Setting FrameHeight as Number of lines...");
-				//*nNumOfLines = portDef.format.video.nFrameHeight;
-				//}
-			} else if (portDef.eDomain == OMX_PortDomainImage)
-			{
-				DOMX_DEBUG
-				    ("Image DOMAIN TILER SUPPORT for NV12 format only");
-				*nNumOfLines =
-				    portDef.format.image.nFrameHeight;
-			} else if (portDef.eDomain == OMX_PortDomainAudio)
-			{
-				DOMX_DEBUG("Audio DOMAIN TILER SUPPORT");
-			} else if (portDef.eDomain == OMX_PortDomainOther)
-			{
-				DOMX_DEBUG("Other DOMAIN TILER SUPPORT");
-			} else
-			{	//this is the sample component test
-				//Temporary - just to get check functionality
-				DOMX_DEBUG("Sample component TILER SUPPORT");
-				*nNumOfLines = 4;
-			}
-		} else
-		{
-			DOMX_ERROR(" ERROR IN RECOVERING UV POINTER");
-		}
-	} else
-	{
-		DOMX_ERROR(" ERROR IN RECOVERING UV POINTER");
-	}
-
-	DOMX_DEBUG("Port Number: %d :: NumOfLines %d", nPortIndex,
-	    *nNumOfLines);
-
-      EXIT:
-	DOMX_EXIT("eError: %d", eError);
-	return eError;
-}
-
 
 /* ===========================================================================*/
 /**
