@@ -162,6 +162,9 @@ const char* CameraHal::getPixelFormatConstant(const char* parametersFormat)
         } else if ( 0 == strcmp(parametersFormat, (const char *) android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) ) {
             CAMHAL_LOGVA("BAYER format selected");
             pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+        } else if ( 0 == strcmp(parametersFormat, android::CameraParameters::PIXEL_FORMAT_JPEG) ) {
+            CAMHAL_LOGVA("JPEG format selected");
+            pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_JPEG;
         } else {
             CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
             pixelFormat = (const char *) android::CameraParameters::PIXEL_FORMAT_YUV420SP;
