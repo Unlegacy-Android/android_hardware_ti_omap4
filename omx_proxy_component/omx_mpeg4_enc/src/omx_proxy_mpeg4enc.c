@@ -803,18 +803,17 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		{
 			return OMX_ErrorBadParameter;
 		}
-	}
-
 #ifdef ENABLE_GRALLOC_BUFFER
-	eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
-								   &pAuxBuf0, &pAuxBuf1,
-								   GrallocPointers);
-	PROXY_checkRpcError();
-	if (pAuxBuf0)
-		pBufferHdr->pBuffer = pAuxBuf0;
-	if (pAuxBuf1)
-		((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = pAuxBuf1;
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
+									   &pAuxBuf0, &pAuxBuf1,
+									   GrallocPointers);
+		PROXY_checkRpcError();
+		if (pAuxBuf0)
+			pBufferHdr->pBuffer = pAuxBuf0;
+		if (pAuxBuf1)
+			((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = pAuxBuf1;
 #endif
+	}
 
 	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
@@ -827,14 +826,13 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	}
 #endif
 
-#ifdef ENABLE_GRALLOC_BUFFER
-	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
-	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
-#endif
-
-	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
+	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers) {
 		pBufferHdr->pBuffer = pBufferOrig;
-
+#ifdef ENABLE_GRALLOC_BUFFER
+		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
+		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+#endif
+	}
 	EXIT:
 		return eError;
 }
