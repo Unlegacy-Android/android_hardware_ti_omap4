@@ -120,18 +120,14 @@ void CameraHal::PPM(const char* str, struct timeval* ppm_first, ...){
 
 /** Common utility function definitions used all over the HAL */
 
-void CameraHal::getXYFromOffset(unsigned int *x, unsigned int *y,
-                                unsigned int offset, unsigned int stride,
-                                const char* format)
-{
-    uint8_t bytesPerPixel;
-
-   CAMHAL_ASSERT( x && y && format && (0U < stride) );
+unsigned int CameraHal::getBPP(const char* format) {
+    unsigned int bytesPerPixel;
 
    // Calculate bytes per pixel based on the pixel format
    if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
        bytesPerPixel = 2;
-   } else if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+   } else if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0 ||
+              strcmp(format, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
        bytesPerPixel = 2;
    } else if (strcmp(format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
        bytesPerPixel = 1;
@@ -139,7 +135,16 @@ void CameraHal::getXYFromOffset(unsigned int *x, unsigned int *y,
        bytesPerPixel = 1;
    }
 
-   *x = (offset % stride) / bytesPerPixel;
+   return bytesPerPixel;
+}
+
+void CameraHal::getXYFromOffset(unsigned int *x, unsigned int *y,
+                                unsigned int offset, unsigned int stride,
+                                const char* format)
+{
+   CAMHAL_ASSERT( x && y && format && (0U < stride) );
+
+   *x = (offset % stride) / getBPP(format);
    *y = (offset / stride);
 }
 
