@@ -2211,6 +2211,8 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
 
 	DOMX_ENTER("hComponent = %p", hComponent);
 
+	TIMM_OSAL_UpdateTraceLevel();
+
 	PROXY_require((hComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
 
