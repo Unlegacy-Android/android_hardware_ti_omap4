@@ -1386,9 +1386,9 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, CameraBuffer * bufArr, in
             break;
 
         case CAMERA_IMAGE_CAPTURE:
-            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mMaxQueueable = queueable;
             ret = UseBuffersCapture(bufArr, num);
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             break;
 
         case CAMERA_VIDEO:
