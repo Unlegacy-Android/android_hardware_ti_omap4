@@ -112,7 +112,7 @@ LOCAL_C_INCLUDES += \
 	system/core/include/cutils \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
-	frameworks/base/include/media/stagefright \
+	frameworks/native/include/media/hardware \
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -147,7 +147,7 @@ LOCAL_C_INCLUDES += \
 	system/core/include/cutils \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
-	frameworks/base/include/media/stagefright \
+	frameworks/native/include/media/hardware \
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
