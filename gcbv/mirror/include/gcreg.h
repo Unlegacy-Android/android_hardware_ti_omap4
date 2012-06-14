@@ -1,28 +1,61 @@
 /*
- * Copyright (c) 2011, Vivante Corporation.
+ * This file is provided under a dual BSD/GPLv2 license.  When using or
+ * redistributing this file, you may do so under either license.
+ *
+ * GPL LICENSE SUMMARY
+ *
+ * Copyright(c) 2012,
+ * Texas Instruments, Inc. and Vivante Corporation.
+ *
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * BSD LICENSE
+ *
+ * Copyright(c) 2012,
+ * Texas Instruments, Inc. and Vivante Corporation.
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of Vivante Corporation nor the names of its
- *       contributors may be used to endorse or promote products derived from
- *       this software without specific prior written permission.
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in
+ *     the documentation and/or other materials provided with the
+ *     distribution.
+ *   * Neither the name of Vivante Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL VIVANTE CORPORATON BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef __gcreg_h
@@ -32,54 +65,52 @@
 ** Register access macros.
 */
 
-#define __GCSTART(reg_field) \
+#define GCREGSTART(reg_field) \
 ( \
 	0 ? reg_field \
 )
 
-#define __GCEND(reg_field) \
+#define GCREGEND(reg_field) \
 ( \
 	1 ? reg_field \
 )
 
-#define __GCGETSIZE(reg_field) \
+#define GCREGSIZE(reg_field) \
 ( \
-	__GCEND(reg_field) - __GCSTART(reg_field) + 1 \
+	GCREGEND(reg_field) - GCREGSTART(reg_field) + 1 \
 )
 
-#define __GCALIGN(data, reg_field) \
+#define GCREGALIGN(data, reg_field) \
 ( \
-	((unsigned int) (data)) << __GCSTART(reg_field) \
+	((unsigned int) (data)) << GCREGSTART(reg_field) \
 )
 
-#define __GCMASK(reg_field) \
-	((__GCGETSIZE(reg_field) == 32) \
-		?  ~0U \
-		: (unsigned int) (~(~0UL << __GCGETSIZE(reg_field))))
-
-#define SETFIELDVAL(data, reg, field, value) \
+#define GCREGMASK(reg_field) \
 ( \
-	(((unsigned int) (data)) \
-		& ~__GCALIGN(__GCMASK(reg##_##field), reg##_##field)) \
-		|  __GCALIGN(reg##_##field##_##value \
-			&  __GCMASK(reg##_##field), reg##_##field) \
+	GCREGALIGN(~0UL >> (32 - GCREGSIZE(reg_field)), reg_field) \
 )
 
-#define SETFIELD(data, reg, field, value) \
+#define GCSETFIELDVAL(data, reg, field, value) \
 ( \
-	(((unsigned int) (data)) \
-		& ~__GCALIGN(__GCMASK(reg##_##field), reg##_##field)) \
-		|  __GCALIGN((unsigned int) (value) \
-			&  __GCMASK(reg##_##field), reg##_##field) \
+	(((unsigned int) (data)) & ~GCREGMASK(reg##_##field)) \
+	| (GCREGALIGN(reg##_##field##_##value, reg##_##field) \
+		& GCREGMASK(reg##_##field)) \
 )
 
-#define GETFIELD(data, reg, field) \
+#define GCSETFIELD(data, reg, field, value) \
 ( \
-	((((unsigned int) (data)) >> __GCSTART(reg##_##field)) \
-		& __GCMASK(reg##_##field)) \
+	(((unsigned int) (data)) & ~GCREGMASK(reg##_##field)) \
+	| (GCREGALIGN((unsigned int) (value), reg##_##field) \
+		& GCREGMASK(reg##_##field)) \
 )
 
-#define REGVALUE(reg, field, val) \
+#define GCGETFIELD(data, reg, field) \
+( \
+	(((unsigned int) (data)) & GCREGMASK(reg##_##field)) \
+	>> GCREGSTART(reg##_##field) \
+)
+
+#define GCREGVALUE(reg, field, val) \
 ( \
 	reg##_##field##_##val \
 )
@@ -1456,6 +1487,339 @@ union gcidle {
 #define GC_TOTAL_READ_LASTS_COUNT_Type                                       U32
 
 /*******************************************************************************
+** Register gcGpOut0
+*/
+
+/* General Purpose output register0. R/W but not connected to anywhere. */
+
+#define GC_GP_OUT0_Address                                               0x00064
+#define GC_GP_OUT0_MSB                                                        15
+#define GC_GP_OUT0_LSB                                                         0
+#define GC_GP_OUT0_BLK                                                         0
+#define GC_GP_OUT0_Count                                                       1
+#define GC_GP_OUT0_FieldMask                                          0xFFFFFFFF
+#define GC_GP_OUT0_ReadMask                                           0xFFFFFFFF
+#define GC_GP_OUT0_WriteMask                                          0xFFFFFFFF
+#define GC_GP_OUT0_ResetValue                                         0x00000000
+
+#define GC_GP_OUT0_COUNT                                                  31 : 0
+#define GC_GP_OUT0_COUNT_End                                                  31
+#define GC_GP_OUT0_COUNT_Start                                                 0
+#define GC_GP_OUT0_COUNT_Type                                                U32
+
+/*******************************************************************************
+** Register gcGpOut1
+*/
+
+/* General Purpose output register1. R/W but not connected to anywhere. */
+
+#define GC_GP_OUT1_Address                                               0x00068
+#define GC_GP_OUT1_MSB                                                        15
+#define GC_GP_OUT1_LSB                                                         0
+#define GC_GP_OUT1_BLK                                                         0
+#define GC_GP_OUT1_Count                                                       1
+#define GC_GP_OUT1_FieldMask                                          0xFFFFFFFF
+#define GC_GP_OUT1_ReadMask                                           0xFFFFFFFF
+#define GC_GP_OUT1_WriteMask                                          0xFFFFFFFF
+#define GC_GP_OUT1_ResetValue                                         0x00000000
+
+#define GC_GP_OUT1_COUNT                                                  31 : 0
+#define GC_GP_OUT1_COUNT_End                                                  31
+#define GC_GP_OUT1_COUNT_Start                                                 0
+#define GC_GP_OUT1_COUNT_Type                                                U32
+
+/*******************************************************************************
+** Register gcGpOut2
+*/
+
+/* General Purpose output register2. R/W but not connected to anywhere. */
+
+#define GC_GP_OUT2_Address                                               0x0006C
+#define GC_GP_OUT2_MSB                                                        15
+#define GC_GP_OUT2_LSB                                                         0
+#define GC_GP_OUT2_BLK                                                         0
+#define GC_GP_OUT2_Count                                                       1
+#define GC_GP_OUT2_FieldMask                                          0xFFFFFFFF
+#define GC_GP_OUT2_ReadMask                                           0xFFFFFFFF
+#define GC_GP_OUT2_WriteMask                                          0xFFFFFFFF
+#define GC_GP_OUT2_ResetValue                                         0x00000000
+
+#define GC_GP_OUT2_COUNT                                                  31 : 0
+#define GC_GP_OUT2_COUNT_End                                                  31
+#define GC_GP_OUT2_COUNT_Start                                                 0
+#define GC_GP_OUT2_COUNT_Type                                                U32
+
+/*******************************************************************************
+** Register gcAxiControl
+*/
+
+/* Special Handling on AXI Bus */
+
+#define GC_AXI_CONTROL_Address                                           0x00070
+#define GC_AXI_CONTROL_MSB                                                    15
+#define GC_AXI_CONTROL_LSB                                                     0
+#define GC_AXI_CONTROL_BLK                                                     0
+#define GC_AXI_CONTROL_Count                                                   1
+#define GC_AXI_CONTROL_FieldMask                                      0x00000001
+#define GC_AXI_CONTROL_ReadMask                                       0x00000001
+#define GC_AXI_CONTROL_WriteMask                                      0x00000001
+#define GC_AXI_CONTROL_ResetValue                                     0x00000000
+
+#define GC_AXI_CONTROL_WR_FULL_BURST_MODE                                  0 : 0
+#define GC_AXI_CONTROL_WR_FULL_BURST_MODE_End                                  0
+#define GC_AXI_CONTROL_WR_FULL_BURST_MODE_Start                                0
+#define GC_AXI_CONTROL_WR_FULL_BURST_MODE_Type                               U01
+#define   GC_AXI_CONTROL_WR_FULL_BURST_MODE_NO_BURST_RESET_VALUE             0x0
+#define   GC_AXI_CONTROL_WR_FULL_BURST_MODE_BURST_RESET_VALUE                0x1
+
+/*******************************************************************************
+** Register GCMinorFeatures1
+*/
+
+/* Shows which features are enabled in this chip. This register has no set
+   reset value. It varies with the implementation. */
+
+#define GC_MINOR_FEATURES1_Address                                       0x00074
+#define GC_MINOR_FEATURES1_MSB                                                15
+#define GC_MINOR_FEATURES1_LSB                                                 0
+#define GC_MINOR_FEATURES1_BLK                                                 0
+#define GC_MINOR_FEATURES1_Count                                               1
+#define GC_MINOR_FEATURES1_FieldMask                                  0xFFFFFFFF
+#define GC_MINOR_FEATURES1_ReadMask                                   0xFFFFFFFF
+#define GC_MINOR_FEATURES1_WriteMask                                  0x00000000
+#define GC_MINOR_FEATURES1_ResetValue                                 0x00000000
+
+/* Resolve UV swizzle. */
+#define GC_MINOR_FEATURES1_RSUV_SWIZZLE                                    0 : 0
+#define GC_MINOR_FEATURES1_RSUV_SWIZZLE_End                                    0
+#define GC_MINOR_FEATURES1_RSUV_SWIZZLE_Start                                  0
+#define GC_MINOR_FEATURES1_RSUV_SWIZZLE_Type                                 U01
+#define   GC_MINOR_FEATURES1_RSUV_SWIZZLE_NONE                               0x0
+#define   GC_MINOR_FEATURES1_RSUV_SWIZZLE_AVAILABLE                          0x1
+
+/* V2 compression. */
+#define GC_MINOR_FEATURES1_V2_COMPRESSION                                  1 : 1
+#define GC_MINOR_FEATURES1_V2_COMPRESSION_End                                  1
+#define GC_MINOR_FEATURES1_V2_COMPRESSION_Start                                1
+#define GC_MINOR_FEATURES1_V2_COMPRESSION_Type                               U01
+#define   GC_MINOR_FEATURES1_V2_COMPRESSION_NONE                             0x0
+#define   GC_MINOR_FEATURES1_V2_COMPRESSION_AVAILABLE                        0x1
+
+/* Double buffering support for VG (second TS-->VG semaphore is present). */
+#define GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER                                2 : 2
+#define GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER_End                                2
+#define GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER_Start                              2
+#define GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER_Type                             U01
+#define   GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER_NONE                           0x0
+#define   GC_MINOR_FEATURES1_VG_DOUBLE_BUFFER_AVAILABLE                      0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES1                                      3 : 3
+#define GC_MINOR_FEATURES1_BUG_FIXES1_End                                      3
+#define GC_MINOR_FEATURES1_BUG_FIXES1_Start                                    3
+#define GC_MINOR_FEATURES1_BUG_FIXES1_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES1_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES1_AVAILABLE                            0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES2                                      4 : 4
+#define GC_MINOR_FEATURES1_BUG_FIXES2_End                                      4
+#define GC_MINOR_FEATURES1_BUG_FIXES2_Start                                    4
+#define GC_MINOR_FEATURES1_BUG_FIXES2_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES2_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES2_AVAILABLE                            0x1
+
+/* Texture has stride and memory addressing. */
+#define GC_MINOR_FEATURES1_TEXTURE_STRIDE                                  5 : 5
+#define GC_MINOR_FEATURES1_TEXTURE_STRIDE_End                                  5
+#define GC_MINOR_FEATURES1_TEXTURE_STRIDE_Start                                5
+#define GC_MINOR_FEATURES1_TEXTURE_STRIDE_Type                               U01
+#define   GC_MINOR_FEATURES1_TEXTURE_STRIDE_NONE                             0x0
+#define   GC_MINOR_FEATURES1_TEXTURE_STRIDE_AVAILABLE                        0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES3                                      6 : 6
+#define GC_MINOR_FEATURES1_BUG_FIXES3_End                                      6
+#define GC_MINOR_FEATURES1_BUG_FIXES3_Start                                    6
+#define GC_MINOR_FEATURES1_BUG_FIXES3_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES3_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES3_AVAILABLE                            0x1
+
+#define GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE                            7 : 7
+#define GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE_End                            7
+#define GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE_Start                          7
+#define GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE_Type                         U01
+#define   GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE_NONE                       0x0
+#define   GC_MINOR_FEATURES1_CORRECT_AUTO_DISABLE_AVAILABLE                  0x1
+
+#define GC_MINOR_FEATURES1_AUTO_RESTART_TS                                 8 : 8
+#define GC_MINOR_FEATURES1_AUTO_RESTART_TS_End                                 8
+#define GC_MINOR_FEATURES1_AUTO_RESTART_TS_Start                               8
+#define GC_MINOR_FEATURES1_AUTO_RESTART_TS_Type                              U01
+#define   GC_MINOR_FEATURES1_AUTO_RESTART_TS_NONE                            0x0
+#define   GC_MINOR_FEATURES1_AUTO_RESTART_TS_AVAILABLE                       0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES4                                      9 : 9
+#define GC_MINOR_FEATURES1_BUG_FIXES4_End                                      9
+#define GC_MINOR_FEATURES1_BUG_FIXES4_Start                                    9
+#define GC_MINOR_FEATURES1_BUG_FIXES4_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES4_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES4_AVAILABLE                            0x1
+
+#define GC_MINOR_FEATURES1_L2_WINDOWING                                  10 : 10
+#define GC_MINOR_FEATURES1_L2_WINDOWING_End                                   10
+#define GC_MINOR_FEATURES1_L2_WINDOWING_Start                                 10
+#define GC_MINOR_FEATURES1_L2_WINDOWING_Type                                 U01
+#define   GC_MINOR_FEATURES1_L2_WINDOWING_NONE                               0x0
+#define   GC_MINOR_FEATURES1_L2_WINDOWING_AVAILABLE                          0x1
+
+#define GC_MINOR_FEATURES1_HALF_FLOAT_PIPE                               11 : 11
+#define GC_MINOR_FEATURES1_HALF_FLOAT_PIPE_End                                11
+#define GC_MINOR_FEATURES1_HALF_FLOAT_PIPE_Start                              11
+#define GC_MINOR_FEATURES1_HALF_FLOAT_PIPE_Type                              U01
+#define   GC_MINOR_FEATURES1_HALF_FLOAT_PIPE_NONE                            0x0
+#define   GC_MINOR_FEATURES1_HALF_FLOAT_PIPE_AVAILABLE                       0x1
+
+#define GC_MINOR_FEATURES1_PIXEL_DITHER                                  12 : 12
+#define GC_MINOR_FEATURES1_PIXEL_DITHER_End                                   12
+#define GC_MINOR_FEATURES1_PIXEL_DITHER_Start                                 12
+#define GC_MINOR_FEATURES1_PIXEL_DITHER_Type                                 U01
+#define   GC_MINOR_FEATURES1_PIXEL_DITHER_NONE                               0x0
+#define   GC_MINOR_FEATURES1_PIXEL_DITHER_AVAILABLE                          0x1
+
+#define GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE                         13 : 13
+#define GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE_End                          13
+#define GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE_Start                        13
+#define GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE_Type                        U01
+#define   GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE_NONE                      0x0
+#define   GC_MINOR_FEATURES1_TWO_STENCIL_REFERENCE_AVAILABLE                 0x1
+
+#define GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT                         14 : 14
+#define GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT_End                          14
+#define GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT_Start                        14
+#define GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT_Type                        U01
+#define   GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT_NONE                      0x0
+#define   GC_MINOR_FEATURES1_EXTENDED_PIXEL_FORMAT_AVAILABLE                 0x1
+
+/* EEZ and HZ are correct. */
+#define GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH                         15 : 15
+#define GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH_End                          15
+#define GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH_Start                        15
+#define GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH_Type                        U01
+#define   GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH_NONE                      0x0
+#define   GC_MINOR_FEATURES1_CORRECT_MIN_MAX_DEPTH_AVAILABLE                 0x1
+
+/* Dither and filter+alpha available. */
+#define GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D               16 : 16
+#define GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D_End                16
+#define GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D_Start              16
+#define GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D_Type              U01
+#define   GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D_NONE            0x0
+#define   GC_MINOR_FEATURES1_DITHER_AND_FILTER_PLUS_ALPHA_2D_AVAILABLE       0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES5                                    17 : 17
+#define GC_MINOR_FEATURES1_BUG_FIXES5_End                                     17
+#define GC_MINOR_FEATURES1_BUG_FIXES5_Start                                   17
+#define GC_MINOR_FEATURES1_BUG_FIXES5_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES5_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES5_AVAILABLE                            0x1
+
+#define GC_MINOR_FEATURES1_NEW_2D                                        18 : 18
+#define GC_MINOR_FEATURES1_NEW_2D_End                                         18
+#define GC_MINOR_FEATURES1_NEW_2D_Start                                       18
+#define GC_MINOR_FEATURES1_NEW_2D_Type                                       U01
+#define   GC_MINOR_FEATURES1_NEW_2D_NONE                                     0x0
+#define   GC_MINOR_FEATURES1_NEW_2D_AVAILABLE                                0x1
+
+#define GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC                 19 : 19
+#define GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC_End                  19
+#define GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC_Start                19
+#define GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC_Type                U01
+#define   GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC_NONE              0x0
+#define   GC_MINOR_FEATURES1_NEW_FLOATING_POINT_ARITHMETIC_AVAILABLE         0x1
+
+#define GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT           20 : 20
+#define GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT_End            20
+#define GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT_Start          20
+#define GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT_Type          U01
+#define   GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT_NONE        0x0
+#define   GC_MINOR_FEATURES1_TEXTURE_HORIZONTAL_ALIGNMENT_SELECT_AVAILABLE   0x1
+
+#define GC_MINOR_FEATURES1_NON_POWER_OF_TWO                              21 : 21
+#define GC_MINOR_FEATURES1_NON_POWER_OF_TWO_End                               21
+#define GC_MINOR_FEATURES1_NON_POWER_OF_TWO_Start                             21
+#define GC_MINOR_FEATURES1_NON_POWER_OF_TWO_Type                             U01
+#define   GC_MINOR_FEATURES1_NON_POWER_OF_TWO_NONE                           0x0
+#define   GC_MINOR_FEATURES1_NON_POWER_OF_TWO_AVAILABLE                      0x1
+
+#define GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT                        22 : 22
+#define GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT_End                         22
+#define GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT_Start                       22
+#define GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT_Type                       U01
+#define   GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT_NONE                     0x0
+#define   GC_MINOR_FEATURES1_LINEAR_TEXTURE_SUPPORT_AVAILABLE                0x1
+
+#define GC_MINOR_FEATURES1_HALTI0                                        23 : 23
+#define GC_MINOR_FEATURES1_HALTI0_End                                         23
+#define GC_MINOR_FEATURES1_HALTI0_Start                                       23
+#define GC_MINOR_FEATURES1_HALTI0_Type                                       U01
+#define   GC_MINOR_FEATURES1_HALTI0_NONE                                     0x0
+#define   GC_MINOR_FEATURES1_HALTI0_AVAILABLE                                0x1
+
+#define GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG                           24 : 24
+#define GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG_End                            24
+#define GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG_Start                          24
+#define GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG_Type                          U01
+#define   GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG_NONE                        0x0
+#define   GC_MINOR_FEATURES1_CORRECT_OVERFLOW_VG_AVAILABLE                   0x1
+
+#define GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX                              25 : 25
+#define GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX_End                               25
+#define GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX_Start                             25
+#define GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX_Type                             U01
+#define   GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX_NONE                           0x0
+#define   GC_MINOR_FEATURES1_NEGATIVE_LOG_FIX_AVAILABLE                      0x1
+
+#define GC_MINOR_FEATURES1_RESOLVE_OFFSET                                26 : 26
+#define GC_MINOR_FEATURES1_RESOLVE_OFFSET_End                                 26
+#define GC_MINOR_FEATURES1_RESOLVE_OFFSET_Start                               26
+#define GC_MINOR_FEATURES1_RESOLVE_OFFSET_Type                               U01
+#define   GC_MINOR_FEATURES1_RESOLVE_OFFSET_NONE                             0x0
+#define   GC_MINOR_FEATURES1_RESOLVE_OFFSET_AVAILABLE                        0x1
+
+#define GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK                          27 : 27
+#define GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK_End                           27
+#define GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK_Start                         27
+#define GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK_Type                         U01
+#define   GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK_NONE                       0x0
+#define   GC_MINOR_FEATURES1_OK_TO_GATE_AXI_CLOCK_AVAILABLE                  0x1
+
+#define GC_MINOR_FEATURES1_MMU                                           28 : 28
+#define GC_MINOR_FEATURES1_MMU_End                                            28
+#define GC_MINOR_FEATURES1_MMU_Start                                          28
+#define GC_MINOR_FEATURES1_MMU_Type                                          U01
+#define   GC_MINOR_FEATURES1_MMU_NONE                                        0x0
+#define   GC_MINOR_FEATURES1_MMU_AVAILABLE                                   0x1
+
+#define GC_MINOR_FEATURES1_WIDE_LINE                                     29 : 29
+#define GC_MINOR_FEATURES1_WIDE_LINE_End                                      29
+#define GC_MINOR_FEATURES1_WIDE_LINE_Start                                    29
+#define GC_MINOR_FEATURES1_WIDE_LINE_Type                                    U01
+#define   GC_MINOR_FEATURES1_WIDE_LINE_NONE                                  0x0
+#define   GC_MINOR_FEATURES1_WIDE_LINE_AVAILABLE                             0x1
+
+#define GC_MINOR_FEATURES1_BUG_FIXES6                                    30 : 30
+#define GC_MINOR_FEATURES1_BUG_FIXES6_End                                     30
+#define GC_MINOR_FEATURES1_BUG_FIXES6_Start                                   30
+#define GC_MINOR_FEATURES1_BUG_FIXES6_Type                                   U01
+#define   GC_MINOR_FEATURES1_BUG_FIXES6_NONE                                 0x0
+#define   GC_MINOR_FEATURES1_BUG_FIXES6_AVAILABLE                            0x1
+
+#define GC_MINOR_FEATURES1_FC_FLUSH_STALL                                31 : 31
+#define GC_MINOR_FEATURES1_FC_FLUSH_STALL_End                                 31
+#define GC_MINOR_FEATURES1_FC_FLUSH_STALL_Start                               31
+#define GC_MINOR_FEATURES1_FC_FLUSH_STALL_Type                               U01
+#define   GC_MINOR_FEATURES1_FC_FLUSH_STALL_NONE                             0x0
+#define   GC_MINOR_FEATURES1_FC_FLUSH_STALL_AVAILABLE                        0x1
+
+/*******************************************************************************
 ** Register gcTotalCycles
 */
 
@@ -1503,62 +1867,75 @@ union gcidle {
 #define GC_TOTAL_IDLE_CYCLES_CYCLES_Type                                     U32
 
 /*******************************************************************************
+** Command opcodes.
+*/
+
+#define GCREG_COMMAND_OPCODE_LOAD_STATE                                     0x01
+#define GCREG_COMMAND_OPCODE_END                                            0x02
+#define GCREG_COMMAND_OPCODE_NOP                                            0x03
+#define GCREG_COMMAND_OPCODE_STARTDE                                        0x04
+#define GCREG_COMMAND_OPCODE_WAIT                                           0x07
+#define GCREG_COMMAND_OPCODE_LINK                                           0x08
+#define GCREG_COMMAND_OPCODE_STALL                                          0x09
+#define GCREG_COMMAND_OPCODE_CALL                                           0x0A
+#define GCREG_COMMAND_OPCODE_RETURN                                         0x0B
+
+/*******************************************************************************
 ** Command gcregCommandLoadState
 */
 
 /* When enabled, convert 16.16 fixed point into 32-bit floating point. */
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT                           26 : 26
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_End                            26
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_Start                          26
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_Type                          U01
-#define   GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_NORMAL                      0x0
-#define   GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_FIXED16_DOT16               0x1
+#define GCREG_COMMAND_LOAD_STATE_FLOAT                                   26 : 26
+#define GCREG_COMMAND_LOAD_STATE_FLOAT_End                                    26
+#define GCREG_COMMAND_LOAD_STATE_FLOAT_Start                                  26
+#define GCREG_COMMAND_LOAD_STATE_FLOAT_Type                                  U01
+#define   GCREG_COMMAND_LOAD_STATE_FLOAT_NORMAL                              0x0
+#define   GCREG_COMMAND_LOAD_STATE_FLOAT_FIXED16_DOT16                       0x1
 
 /* Number of states. 0 = 1024. */
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT                           25 : 16
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT_End                            25
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT_Start                          16
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT_Type                          U10
+#define GCREG_COMMAND_LOAD_STATE_COUNT                                   25 : 16
+#define GCREG_COMMAND_LOAD_STATE_COUNT_End                                    25
+#define GCREG_COMMAND_LOAD_STATE_COUNT_Start                                  16
+#define GCREG_COMMAND_LOAD_STATE_COUNT_Type                                  U10
 
 /* Starting state address. */
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS                          15 : 0
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS_End                          15
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS_Start                         0
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS_Type                        U16
+#define GCREG_COMMAND_LOAD_STATE_ADDRESS                                  15 : 0
+#define GCREG_COMMAND_LOAD_STATE_ADDRESS_End                                  15
+#define GCREG_COMMAND_LOAD_STATE_ADDRESS_Start                                 0
+#define GCREG_COMMAND_LOAD_STATE_ADDRESS_Type                                U16
 
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE                          31 : 27
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE_End                           31
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE_Start                         27
-#define GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE_Type                         U05
-#define   GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE_LOAD_STATE                0x01
+#define GCREG_COMMAND_LOAD_STATE_OPCODE                                  31 : 27
+#define GCREG_COMMAND_LOAD_STATE_OPCODE_End                                   31
+#define GCREG_COMMAND_LOAD_STATE_OPCODE_Start                                 27
+#define GCREG_COMMAND_LOAD_STATE_OPCODE_Type                                 U05
 
 struct gccmdldstate {
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS */
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_ADDRESS */
 	unsigned int address:16;
 
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT */
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COUNT */
 	unsigned int count:10;
 
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT */
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_FLOAT */
 	unsigned int fixed:1;
 
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE */
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_OPCODE */
 	unsigned int opcode:5;
 };
 
 #define GCLDSTATE(Address, Count) \
 { \
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_ADDRESS */ \
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_ADDRESS */ \
 	Address, \
 	\
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_COUNT */ \
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COUNT */ \
 	Count, \
 	\
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT */ \
-	GCREG_COMMAND_LOAD_STATE_COMMAND_FLOAT_NORMAL, \
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_FLOAT */ \
+	GCREG_COMMAND_LOAD_STATE_FLOAT_NORMAL, \
 	\
-	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE */ \
-	GCREG_COMMAND_LOAD_STATE_COMMAND_OPCODE_LOAD_STATE \
+	/* gcregCommandLoadState:GCREG_COMMAND_LOAD_STATE_OPCODE */ \
+	GCREG_COMMAND_OPCODE_LOAD_STATE \
 }
 
 /*******************************************************************************
@@ -1566,37 +1943,38 @@ struct gccmdldstate {
 */
 
 /* Send event when END is completed. */
-#define GCREG_COMMAND_END_COMMAND_EVENT_ENABLE                             8 : 8
-#define GCREG_COMMAND_END_COMMAND_EVENT_ENABLE_End                             8
-#define GCREG_COMMAND_END_COMMAND_EVENT_ENABLE_Start                           8
-#define GCREG_COMMAND_END_COMMAND_EVENT_ENABLE_Type                          U01
+#define GCREG_COMMAND_END_EVENT                                            8 : 8
+#define GCREG_COMMAND_END_EVENT_End                                            8
+#define GCREG_COMMAND_END_EVENT_Start                                          8
+#define GCREG_COMMAND_END_EVENT_Type                                         U01
+#define   GCREG_COMMAND_END_EVENT_DISABLE                                    0x0
+#define   GCREG_COMMAND_END_EVENT_ENABLE                                     0x1
 
 /* Event ID to be send. */
-#define GCREG_COMMAND_END_COMMAND_EVENT_ID                                 4 : 0
-#define GCREG_COMMAND_END_COMMAND_EVENT_ID_End                                 4
-#define GCREG_COMMAND_END_COMMAND_EVENT_ID_Start                               0
-#define GCREG_COMMAND_END_COMMAND_EVENT_ID_Type                              U05
+#define GCREG_COMMAND_END_EVENT_ID                                         4 : 0
+#define GCREG_COMMAND_END_EVENT_ID_End                                         4
+#define GCREG_COMMAND_END_EVENT_ID_Start                                       0
+#define GCREG_COMMAND_END_EVENT_ID_Type                                      U05
 
-#define GCREG_COMMAND_END_COMMAND_OPCODE                                 31 : 27
-#define GCREG_COMMAND_END_COMMAND_OPCODE_End                                  31
-#define GCREG_COMMAND_END_COMMAND_OPCODE_Start                                27
-#define GCREG_COMMAND_END_COMMAND_OPCODE_Type                                U05
-#define   GCREG_COMMAND_END_COMMAND_OPCODE_END                              0x02
+#define GCREG_COMMAND_END_OPCODE                                         31 : 27
+#define GCREG_COMMAND_END_OPCODE_End                                          31
+#define GCREG_COMMAND_END_OPCODE_Start                                        27
+#define GCREG_COMMAND_END_OPCODE_Type                                        U05
 
 struct gcfldend {
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_EVENT_ID */
+	/* gcregCommandEnd:GCREG_COMMAND_END_EVENT_ID */
 	unsigned int signalid:5;
 
 	/* gcregCommandEnd:reserved */
 	unsigned int _reserved_5_7:3;
 
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_EVENT_ENABLE */
+	/* gcregCommandEnd:GCREG_COMMAND_END_EVENT_ENABLE */
 	unsigned int signal:1;
 
 	/* gcregCommandEnd:reserved */
 	unsigned int _reserved_9_26:18;
 
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_OPCODE */
+	/* gcregCommandEnd:GCREG_COMMAND_END_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1611,38 +1989,46 @@ struct gccmdend {
 	unsigned int _filler;
 };
 
-static const struct gcfldend gcfldend = {
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_EVENT_ID */
-	0,
+static const struct gccmdend gccmdend_const = {
+	/* cmd */
+	{
+		/* fld */
+		{
+			/* gcregCommandEnd:GCREG_COMMAND_END_EVENT_ID */
+			0,
 
-	/* gcregCommandEnd:reserved */
-	0,
+			/* gcregCommandEnd:reserved */
+			0,
 
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_EVENT_ENABLE */
-	0,
+			/* gcregCommandEnd:GCREG_COMMAND_END_EVENT */
+			GCREG_COMMAND_END_EVENT_DISABLE,
 
-	/* gcregCommandEnd:reserved */
-	0,
+			/* gcregCommandEnd:reserved */
+			0,
 
-	/* gcregCommandEnd:GCREG_COMMAND_END_COMMAND_OPCODE */
-	GCREG_COMMAND_END_COMMAND_OPCODE_END
+			/* gcregCommandEnd:GCREG_COMMAND_END_OPCODE */
+			GCREG_COMMAND_OPCODE_END
+		}
+	},
+
+	/* Alignment filler. */
+	0
 };
 
 /*******************************************************************************
 ** Command gcregCommandNop
 */
 
-#define GCREG_COMMAND_NOP_COMMAND_OPCODE                                 31 : 27
-#define GCREG_COMMAND_NOP_COMMAND_OPCODE_End                                  31
-#define GCREG_COMMAND_NOP_COMMAND_OPCODE_Start                                27
-#define GCREG_COMMAND_NOP_COMMAND_OPCODE_Type                                U05
-#define   GCREG_COMMAND_NOP_COMMAND_OPCODE_NOP                              0x03
+#define GCREG_COMMAND_NOP_OPCODE                                         31 : 27
+#define GCREG_COMMAND_NOP_OPCODE_End                                          31
+#define GCREG_COMMAND_NOP_OPCODE_Start                                        27
+#define GCREG_COMMAND_NOP_OPCODE_Type                                        U05
 
 struct gcfldnop {
 	/* gcregCommandNop:reserve */
 	unsigned int _reserved_0_26:27;
 
-	/* gcregCommandNop:GCREG_COMMAND_NOP_COMMAND_OPCODE */
+	/* gcregCommandNop:GCREG_COMMAND_NOP_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1657,12 +2043,21 @@ struct gccmdnop {
 	unsigned int _filler;
 };
 
-static const struct gcfldnop gcfldnop = {
-	/* gcregCommandNop:reserve */
-	0,
+static const struct gccmdnop gccmdnop_const = {
+	/* cmd */
+	{
+		/* fld */
+		{
+			/* gcregCommandNop:reserve */
+			0,
 
-	/* gcregCommandNop:GCREG_COMMAND_NOP_COMMAND_OPCODE */
-	GCREG_COMMAND_NOP_COMMAND_OPCODE_NOP
+			/* gcregCommandNop:GCREG_COMMAND_NOP_OPCODE */
+			GCREG_COMMAND_OPCODE_NOP
+		}
+	},
+
+	/* Alignment filler. */
+	0
 };
 
 /*******************************************************************************
@@ -1675,36 +2070,35 @@ static const struct gcfldnop gcfldnop = {
 /* Number of 32-bit data words to send.
 ** The data follows the rectangles, aligned at 64-bit.
 */
-#define GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT                        26 : 16
-#define GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT_End                         26
-#define GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT_Start                       16
-#define GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT_Type                       U11
+#define GCREG_COMMAND_STARTDE_DATA_COUNT                                 26 : 16
+#define GCREG_COMMAND_STARTDE_DATA_COUNT_End                                  26
+#define GCREG_COMMAND_STARTDE_DATA_COUNT_Start                                16
+#define GCREG_COMMAND_STARTDE_DATA_COUNT_Type                                U11
 
 /* Number of rectangles to send.
 ** The rectangles follow the command, aligned at 64-bit.
 */
-#define GCREG_COMMAND_START_DE_COMMAND_COUNT                              15 : 8
-#define GCREG_COMMAND_START_DE_COMMAND_COUNT_End                              15
-#define GCREG_COMMAND_START_DE_COMMAND_COUNT_Start                             8
-#define GCREG_COMMAND_START_DE_COMMAND_COUNT_Type                            U08
+#define GCREG_COMMAND_STARTDE_COUNT                                       15 : 8
+#define GCREG_COMMAND_STARTDE_COUNT_End                                       15
+#define GCREG_COMMAND_STARTDE_COUNT_Start                                      8
+#define GCREG_COMMAND_STARTDE_COUNT_Type                                     U08
 
-#define GCREG_COMMAND_START_DE_COMMAND_OPCODE                            31 : 27
-#define GCREG_COMMAND_START_DE_COMMAND_OPCODE_End                             31
-#define GCREG_COMMAND_START_DE_COMMAND_OPCODE_Start                           27
-#define GCREG_COMMAND_START_DE_COMMAND_OPCODE_Type                           U05
-#define   GCREG_COMMAND_START_DE_COMMAND_OPCODE_START_DE                    0x04
+#define GCREG_COMMAND_STARTDE_OPCODE                                     31 : 27
+#define GCREG_COMMAND_STARTDE_OPCODE_End                                      31
+#define GCREG_COMMAND_STARTDE_OPCODE_Start                                    27
+#define GCREG_COMMAND_STARTDE_OPCODE_Type                                    U05
 
 struct gcfldstartde {
 	/* gcregCommandStartDE:reserved */
 	unsigned int _reserved_0_7:8;
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_COUNT */
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_COUNT */
 	unsigned int rectcount:8;
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT */
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_DATA_COUNT */
 	unsigned int datacount:11;
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_OPCODE */
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1722,14 +2116,14 @@ static const struct gcfldstartde gcfldstartde = {
 	/* gcregCommandStartDE:reserved */
 	0,
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_COUNT */
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_COUNT */
 	1,
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_DATA_COUNT */
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_DATA_COUNT */
 	0,
 
-	/* gcregCommandStartDE:GCREG_COMMAND_START_DE_COMMAND_OPCODE */
-	GCREG_COMMAND_START_DE_COMMAND_OPCODE_START_DE
+	/* gcregCommandStartDE:GCREG_COMMAND_STARTDE_OPCODE */
+	GCREG_COMMAND_OPCODE_STARTDE
 };
 
 /* Offset TopLeft
@@ -1777,25 +2171,24 @@ struct gccmdstartderect {
 */
 
 /* Number of cycles to wait until the next command gets fetched. */
-#define GCREG_COMMAND_WAIT_COMMAND_DELAY                                  15 : 0
-#define GCREG_COMMAND_WAIT_COMMAND_DELAY_End                                  15
-#define GCREG_COMMAND_WAIT_COMMAND_DELAY_Start                                 0
-#define GCREG_COMMAND_WAIT_COMMAND_DELAY_Type                                U16
+#define GCREG_COMMAND_WAIT_DELAY                                          15 : 0
+#define GCREG_COMMAND_WAIT_DELAY_End                                          15
+#define GCREG_COMMAND_WAIT_DELAY_Start                                         0
+#define GCREG_COMMAND_WAIT_DELAY_Type                                        U16
 
-#define GCREG_COMMAND_WAIT_COMMAND_OPCODE                                31 : 27
-#define GCREG_COMMAND_WAIT_COMMAND_OPCODE_End                                 31
-#define GCREG_COMMAND_WAIT_COMMAND_OPCODE_Start                               27
-#define GCREG_COMMAND_WAIT_COMMAND_OPCODE_Type                               U05
-#define   GCREG_COMMAND_WAIT_COMMAND_OPCODE_WAIT                            0x07
+#define GCREG_COMMAND_WAIT_OPCODE                                        31 : 27
+#define GCREG_COMMAND_WAIT_OPCODE_End                                         31
+#define GCREG_COMMAND_WAIT_OPCODE_Start                                       27
+#define GCREG_COMMAND_WAIT_OPCODE_Type                                       U05
 
 struct gcfldwait {
-	/* gcregCommandWait:GCREG_COMMAND_WAIT_COMMAND_DELAY */
+	/* gcregCommandWait:GCREG_COMMAND_WAIT_DELAY */
 	unsigned int delay:16;
 
 	/* gcregCommandWait:reserved */
 	unsigned int _reserved_16_26:11;
 
-	/* gcregCommandWait:GCREG_COMMAND_WAIT_COMMAND_OPCODE */
+	/* gcregCommandWait:GCREG_COMMAND_WAIT_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1810,14 +2203,14 @@ struct gccmdwait {
 };
 
 static const struct gcfldwait gcfldwait200 = {
-	/* gcregCommandWait:GCREG_COMMAND_WAIT_COMMAND_DELAY */
+	/* gcregCommandWait:GCREG_COMMAND_WAIT_DELAY */
 	200,
 
 	/* gcregCommandWait:reserved */
 	0,
 
-	/* gcregCommandWait:GCREG_COMMAND_WAIT_COMMAND_OPCODE */
-	GCREG_COMMAND_WAIT_COMMAND_OPCODE_WAIT
+	/* gcregCommandWait:GCREG_COMMAND_WAIT_OPCODE */
+	GCREG_COMMAND_OPCODE_WAIT
 };
 
 /*******************************************************************************
@@ -1828,16 +2221,15 @@ static const struct gcfldwait gcfldwait200 = {
 ** nothing else will be fetched.  So, make sure that the last command in the
 ** new command buffer is either an END, a LINK, a CALL, or a RETURN.
 */
-#define GCREG_COMMAND_LINK_COMMAND_PREFETCH                               15 : 0
-#define GCREG_COMMAND_LINK_COMMAND_PREFETCH_End                               15
-#define GCREG_COMMAND_LINK_COMMAND_PREFETCH_Start                              0
-#define GCREG_COMMAND_LINK_COMMAND_PREFETCH_Type                             U16
+#define GCREG_COMMAND_LINK_PREFETCH                                       15 : 0
+#define GCREG_COMMAND_LINK_PREFETCH_End                                       15
+#define GCREG_COMMAND_LINK_PREFETCH_Start                                      0
+#define GCREG_COMMAND_LINK_PREFETCH_Type                                     U16
 
-#define GCREG_COMMAND_LINK_COMMAND_OPCODE                                31 : 27
-#define GCREG_COMMAND_LINK_COMMAND_OPCODE_End                                 31
-#define GCREG_COMMAND_LINK_COMMAND_OPCODE_Start                               27
-#define GCREG_COMMAND_LINK_COMMAND_OPCODE_Type                               U05
-#define   GCREG_COMMAND_LINK_COMMAND_OPCODE_LINK                            0x08
+#define GCREG_COMMAND_LINK_OPCODE                                        31 : 27
+#define GCREG_COMMAND_LINK_OPCODE_End                                         31
+#define GCREG_COMMAND_LINK_OPCODE_Start                                       27
+#define GCREG_COMMAND_LINK_OPCODE_Type                                       U05
 
 /* Offset Address
 ** ~~~~~~~~~~~~~~ */
@@ -1850,13 +2242,13 @@ static const struct gcfldwait gcfldwait200 = {
 #define GCREG_COMMAND_LINK_ADDRESS_ADDRESS_Type                              U31
 
 struct gcfldlink {
-	/* gcregCommandLink:GCREG_COMMAND_LINK_COMMAND_PREFETCH */
+	/* gcregCommandLink:GCREG_COMMAND_LINK_PREFETCH */
 	unsigned int count:16;
 
 	/* gcregCommandLink:reserved */
 	unsigned int _reserved_16_26:11;
 
-	/* gcregCommandLink:GCREG_COMMAND_LINK_COMMAND_OPCODE */
+	/* gcregCommandLink:GCREG_COMMAND_LINK_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1870,15 +2262,26 @@ struct gccmdlink {
 	unsigned int address;
 };
 
+static const struct gcfldlink gcfldlink2 = {
+	/* gcregCommandLink:GCREG_COMMAND_LINK_PREFETCH */
+	2,
+
+	/* gcregCommandLink:reserved */
+	0,
+
+	/* gcregCommandLink:GCREG_COMMAND_LINK_OPCODE */
+	GCREG_COMMAND_OPCODE_LINK
+};
+
 static const struct gcfldlink gcfldlink4 = {
-	/* gcregCommandLink:GCREG_COMMAND_LINK_COMMAND_PREFETCH */
+	/* gcregCommandLink:GCREG_COMMAND_LINK_PREFETCH */
 	4,
 
 	/* gcregCommandLink:reserved */
 	0,
 
-	/* gcregCommandLink:GCREG_COMMAND_LINK_COMMAND_OPCODE */
-	GCREG_COMMAND_LINK_COMMAND_OPCODE_LINK
+	/* gcregCommandLink:GCREG_COMMAND_LINK_OPCODE */
+	GCREG_COMMAND_OPCODE_LINK
 };
 
 /*******************************************************************************
@@ -1887,11 +2290,10 @@ static const struct gcfldlink gcfldlink4 = {
 
 /* Offset Command
 ** ~~~~~~~~~~~~~~ */
-#define GCREG_COMMAND_STALL_COMMAND_OPCODE                               31 : 27
-#define GCREG_COMMAND_STALL_COMMAND_OPCODE_End                                31
-#define GCREG_COMMAND_STALL_COMMAND_OPCODE_Start                              27
-#define GCREG_COMMAND_STALL_COMMAND_OPCODE_Type                              U05
-#define   GCREG_COMMAND_STALL_COMMAND_OPCODE_STALL                          0x09
+#define GCREG_COMMAND_STALL_OPCODE                                       31 : 27
+#define GCREG_COMMAND_STALL_OPCODE_End                                        31
+#define GCREG_COMMAND_STALL_OPCODE_Start                                      27
+#define GCREG_COMMAND_STALL_OPCODE_Type                                      U05
 
 /* Offset Stall
 ** ~~~~~~~~~~~~ */
@@ -1915,7 +2317,7 @@ struct gcfldstall {
 	/* gcregCommandStall:reserved */
 	unsigned int _reserved_0_26:27;
 
-	/* gcregCommandStall:GCREG_COMMAND_STALL_COMMAND_OPCODE */
+	/* gcregCommandStall:GCREG_COMMAND_STALL_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -1949,8 +2351,8 @@ static const struct gcfldstall gcfldstall = {
 	/* gcregCommandStall:reserved */
 	0,
 
-	/* gcregCommandStall:GCREG_COMMAND_STALL_COMMAND_OPCODE */
-	GCREG_COMMAND_STALL_COMMAND_OPCODE_STALL
+	/* gcregCommandStall:GCREG_COMMAND_STALL_OPCODE */
+	GCREG_COMMAND_OPCODE_STALL
 };
 
 static const struct gcfldstallarg gcfldstall_fe_pe = {
@@ -1978,16 +2380,15 @@ static const struct gcfldstallarg gcfldstall_fe_pe = {
 ** nothing else will be fetched.  So, make sure that the last command in the
 ** new command buffer is either an END, a LINK, a CALL, or a RETURN.
 */
-#define GCREG_COMMAND_CALL_COMMAND_PREFETCH                               15 : 0
-#define GCREG_COMMAND_CALL_COMMAND_PREFETCH_End                               15
-#define GCREG_COMMAND_CALL_COMMAND_PREFETCH_Start                              0
-#define GCREG_COMMAND_CALL_COMMAND_PREFETCH_Type                             U16
+#define GCREG_COMMAND_CALL_PREFETCH                                       15 : 0
+#define GCREG_COMMAND_CALL_PREFETCH_End                                       15
+#define GCREG_COMMAND_CALL_PREFETCH_Start                                      0
+#define GCREG_COMMAND_CALL_PREFETCH_Type                                     U16
 
-#define GCREG_COMMAND_CALL_COMMAND_OPCODE                                31 : 27
-#define GCREG_COMMAND_CALL_COMMAND_OPCODE_End                                 31
-#define GCREG_COMMAND_CALL_COMMAND_OPCODE_Start                               27
-#define GCREG_COMMAND_CALL_COMMAND_OPCODE_Type                               U05
-#define   GCREG_COMMAND_CALL_COMMAND_OPCODE_CALL                            0x0A
+#define GCREG_COMMAND_CALL_OPCODE                                        31 : 27
+#define GCREG_COMMAND_CALL_OPCODE_End                                         31
+#define GCREG_COMMAND_CALL_OPCODE_Start                                       27
+#define GCREG_COMMAND_CALL_OPCODE_Type                                       U05
 
 /* Offset Address
 ** ~~~~~~~~~~~~~~ */
@@ -2018,13 +2419,13 @@ static const struct gcfldstallarg gcfldstall_fe_pe = {
 #define GCREG_COMMAND_CALL_RETURN_ADDRESS_ADDRESS_Type                       U31
 
 struct gccmdcall {
-	/* gcregCommandCall:GCREG_COMMAND_CALL_COMMAND_PREFETCH */
+	/* gcregCommandCall:GCREG_COMMAND_CALL_PREFETCH */
 	unsigned int count:16;
 
 	/* gcregCommandCall:reserved */
 	unsigned int _reserved_16_26:11;
 
-	/* gcregCommandCall:GCREG_COMMAND_CALL_COMMAND_OPCODE */
+	/* gcregCommandCall:GCREG_COMMAND_CALL_OPCODE */
 	unsigned int opcode:5;
 
 	/* gcregCommandCall:GCREG_COMMAND_CALL_ADDRESS_ADDRESS */
@@ -2041,17 +2442,16 @@ struct gccmdcall {
 ** Command gccmdCommandReturn
 */
 
-#define GCREG_COMMAND_RETURN_COMMAND_OPCODE                              31 : 27
-#define GCREG_COMMAND_RETURN_COMMAND_OPCODE_End                               31
-#define GCREG_COMMAND_RETURN_COMMAND_OPCODE_Start                             27
-#define GCREG_COMMAND_RETURN_COMMAND_OPCODE_Type                             U05
-#define   GCREG_COMMAND_RETURN_COMMAND_OPCODE_RETURN                        0x0B
+#define GCREG_COMMAND_RETURN_OPCODE                                      31 : 27
+#define GCREG_COMMAND_RETURN_OPCODE_End                                       31
+#define GCREG_COMMAND_RETURN_OPCODE_Start                                     27
+#define GCREG_COMMAND_RETURN_OPCODE_Type                                     U05
 
 struct gcfldret {
 	/* gccmdCommandReturn:reserve */
 	unsigned int _reserved_0_26:27;
 
-	/* gccmdCommandReturn:GCREG_COMMAND_RETURN_COMMAND_OPCODE */
+	/* gccmdCommandReturn:GCREG_COMMAND_RETURN_OPCODE */
 	unsigned int opcode:5;
 };
 
@@ -2070,8 +2470,8 @@ static const struct gcfldret gcfldret = {
 	/* gccmdCommandReturn:reserve */
 	0,
 
-	/* gccmdCommandReturn:GCREG_COMMAND_RETURN_COMMAND_OPCODE */
-	GCREG_COMMAND_RETURN_COMMAND_OPCODE_RETURN
+	/* gccmdCommandReturn:GCREG_COMMAND_RETURN_OPCODE */
+	GCREG_COMMAND_OPCODE_RETURN
 };
 
 /*******************************************************************************
@@ -2144,6 +2544,14 @@ struct gcregpipeselect {
 static const struct gcregpipeselect gcregpipeselect_2D = {
 	/* gcregPipeSelectRegAddrs:GCREG_PIPE_SELECT_PIPE */
 	GCREG_PIPE_SELECT_PIPE_PIPE2D,
+
+	/* gcregPipeSelectRegAddrs:reserved */
+	0
+};
+
+static const struct gcregpipeselect gcregpipeselect_3D = {
+	/* gcregPipeSelectRegAddrs:GCREG_PIPE_SELECT_PIPE */
+	GCREG_PIPE_SELECT_PIPE_PIPE3D,
 
 	/* gcregPipeSelectRegAddrs:reserved */
 	0
@@ -7883,6 +8291,28 @@ struct gcmosema {
 ** Modular operations: mmuinit
 */
 
+struct gcmoterminator {
+	union {
+		struct gcmosignal done;
+		struct gccmdnop nop;
+	} u1;
+
+	union {
+		struct gccmdwait wait;
+		struct gccmdlink linknext;
+		struct gccmdend end;
+	} u2;
+
+	union {
+		struct gccmdlink linkwait;
+		struct gccmdnop nop;
+	} u3;
+};
+
+/*******************************************************************************
+** Modular operations: mmuinit
+*/
+
 static const struct gccmdldstate gcmommuinit_safe_ldst =
 	GCLDSTATE(gcregMMUSafeAddressRegAddrs, 2);
 
@@ -7982,7 +8412,7 @@ struct gcmoclip {
 */
 
 static const struct gccmdldstate gcmodst_address_ldst =
-	GCLDSTATE(gcregDestAddressRegAddrs, 4);
+	GCLDSTATE(gcregDestAddressRegAddrs, 3);
 
 static const struct gccmdldstate gcmodst_rotationheight_ldst =
 	GCLDSTATE(gcregDstRotationHeightRegAddrs, 1);
@@ -8003,15 +8433,6 @@ struct gcmodst {
 			unsigned int raw;
 		} rotation;
 
-		/* gcregDestConfigRegAddrs */
-		union {
-			struct gcregdstconfig reg;
-			unsigned int raw;
-		} config;
-
-		/* Alignment filler. */
-		unsigned int _filler;
-
 	/* gcregDstRotationHeightRegAddrs */
 	struct gccmdldstate rotationheight_ldst;
 
@@ -8020,8 +8441,6 @@ struct gcmodst {
 			struct gcregdstrotationheight reg;
 			unsigned int raw;
 		} rotationheight;
-
-	struct gcmoclip clip;
 };
 
 /*******************************************************************************
@@ -8040,6 +8459,34 @@ static const struct gccmdldstate gcmosrc_stride_ldst[4] = {
 	GCLDSTATE(gcregBlock4SrcStrideRegAddrs + 1, 1),
 	GCLDSTATE(gcregBlock4SrcStrideRegAddrs + 2, 1),
 	GCLDSTATE(gcregBlock4SrcStrideRegAddrs + 3, 1),
+};
+
+static const struct gccmdldstate gcmosrc_uplaneaddress_ldst[4] = {
+	GCLDSTATE(gcregUPlaneAddressRegAddrs + 0, 1),
+	GCLDSTATE(gcregUPlaneAddressRegAddrs + 1, 1),
+	GCLDSTATE(gcregUPlaneAddressRegAddrs + 2, 1),
+	GCLDSTATE(gcregUPlaneAddressRegAddrs + 3, 1),
+};
+
+static const struct gccmdldstate gcmosrc_uplanestride_ldst[4] = {
+	GCLDSTATE(gcregUPlaneStrideRegAddrs + 0, 1),
+	GCLDSTATE(gcregUPlaneStrideRegAddrs + 1, 1),
+	GCLDSTATE(gcregUPlaneStrideRegAddrs + 2, 1),
+	GCLDSTATE(gcregUPlaneStrideRegAddrs + 3, 1),
+};
+
+static const struct gccmdldstate gcmosrc_vplaneaddress_ldst[4] = {
+	GCLDSTATE(gcregVPlaneAddressRegAddrs + 0, 1),
+	GCLDSTATE(gcregVPlaneAddressRegAddrs + 1, 1),
+	GCLDSTATE(gcregVPlaneAddressRegAddrs + 2, 1),
+	GCLDSTATE(gcregVPlaneAddressRegAddrs + 3, 1),
+};
+
+static const struct gccmdldstate gcmosrc_vplanestride_ldst[4] = {
+	GCLDSTATE(gcregVPlaneStrideRegAddrs + 0, 1),
+	GCLDSTATE(gcregVPlaneStrideRegAddrs + 1, 1),
+	GCLDSTATE(gcregVPlaneStrideRegAddrs + 2, 1),
+	GCLDSTATE(gcregVPlaneStrideRegAddrs + 3, 1),
 };
 
 static const struct gccmdldstate gcmosrc_rotation_ldst[4] = {
@@ -8098,21 +8545,21 @@ static const struct gccmdldstate gcmosrc_alphacontrol_ldst[4] = {
 	GCLDSTATE(gcregBlock4AlphaControlRegAddrs + 3, 1),
 };
 
-static const struct gccmdldstate gcmosrc_alphamodes_ldst[4] = {
+static const struct gccmdldstate gcmosrcalpha_alphamodes_ldst[4] = {
 	GCLDSTATE(gcregBlock4AlphaModesRegAddrs + 0, 1),
 	GCLDSTATE(gcregBlock4AlphaModesRegAddrs + 1, 1),
 	GCLDSTATE(gcregBlock4AlphaModesRegAddrs + 2, 1),
 	GCLDSTATE(gcregBlock4AlphaModesRegAddrs + 3, 1),
 };
 
-static const struct gccmdldstate gcmosrc_srcglobal_ldst[4] = {
+static const struct gccmdldstate gcmosrcalpha_srcglobal_ldst[4] = {
 	GCLDSTATE(gcregBlock4GlobalSrcColorRegAddrs + 0, 1),
 	GCLDSTATE(gcregBlock4GlobalSrcColorRegAddrs + 1, 1),
 	GCLDSTATE(gcregBlock4GlobalSrcColorRegAddrs + 2, 1),
 	GCLDSTATE(gcregBlock4GlobalSrcColorRegAddrs + 3, 1),
 };
 
-static const struct gccmdldstate gcmosrc_dstglobal_ldst[4] = {
+static const struct gccmdldstate gcmosrcalpha_dstglobal_ldst[4] = {
 	GCLDSTATE(gcregBlock4GlobalDestColorRegAddrs + 0, 1),
 	GCLDSTATE(gcregBlock4GlobalDestColorRegAddrs + 1, 1),
 	GCLDSTATE(gcregBlock4GlobalDestColorRegAddrs + 2, 1),
@@ -8203,7 +8650,27 @@ struct gcmosrc {
 			struct gcregalphacontrol reg;
 			unsigned int raw;
 		} alphacontrol;
+};
 
+struct gcmosrcplanaryuv {
+	/* gcregUPlaneAddressRegAddrs */
+	struct gccmdldstate uplaneaddress_ldst;
+		unsigned int uplaneaddress;
+
+	/* gcregUPlaneStrideRegAddrs */
+	struct gccmdldstate uplanestride_ldst;
+		unsigned int uplanestride;
+
+	/* gcregVPlaneAddressRegAddrs */
+	struct gccmdldstate vplaneaddress_ldst;
+		unsigned int vplaneaddress;
+
+	/* gcregVPlaneStrideRegAddrs */
+	struct gccmdldstate vplanestride_ldst;
+		unsigned int vplanestride;
+};
+
+struct gcmosrcalpha {
 	/* gcregBlock4AlphaModesRegAddrs */
 	struct gccmdldstate alphamodes_ldst;
 
@@ -8254,13 +8721,34 @@ struct gcmomultisrc {
 ** Modular operations: startde
 */
 
+static const struct gccmdldstate gcmostart_config_ldst =
+	GCLDSTATE(gcregDestConfigRegAddrs, 1);
+
+static const struct gccmdldstate gcmostart_rop_ldst =
+	GCLDSTATE(gcregRopRegAddrs, 1);
+
 struct gcmostart {
+	/* gcregDestConfigRegAddrs */
+	struct gccmdldstate config_ldst;
+
+		/* gcregDestConfigRegAddrs */
+		union {
+			struct gcregdstconfig reg;
+			unsigned int raw;
+		} config;
+
+	/* gcregRopRegAddrs */
+	struct gccmdldstate rop_ldst;
+
+		/* gcregRopRegAddrs */
+		union {
+			struct gcregrop reg;
+			unsigned int raw;
+		} rop;
+
 	/* Start DE command. */
 	struct gccmdstartde startde;
 	struct gccmdstartderect rect;
-
-	/* PE cache flush. */
-	struct gcmoflush flush;
 };
 
 /*******************************************************************************
@@ -8273,8 +8761,8 @@ static const struct gccmdldstate gcmofillsrc_rotation_ldst =
 static const struct gccmdldstate gcmofillsrc_rotationheight_ldst =
 	GCLDSTATE(gcregSrcRotationHeightRegAddrs, 1);
 
-static const struct gccmdldstate gcmofillsrc_rop_ldst =
-	GCLDSTATE(gcregRopRegAddrs, 1);
+static const struct gccmdldstate gcmofillsrc_alphacontrol_ldst =
+	GCLDSTATE(gcregAlphaControlRegAddrs, 1);
 
 struct gcmofillsrc {
 	/* gcregSrcRotationConfigRegAddrs */
@@ -8304,14 +8792,14 @@ struct gcmofillsrc {
 			unsigned int raw;
 		} rotationheight;
 
-	/* gcregRopRegAddrs */
-	struct gccmdldstate rop_ldst;
+	/* gcregAlphaControlRegAddrs */
+	struct gccmdldstate alphacontrol_ldst;
 
-		/* gcregRopRegAddrs */
+		/* gcregAlphaControlRegAddrs */
 		union {
-			struct gcregrop reg;
+			struct gcregalphacontrol reg;
 			unsigned int raw;
-		} rop;
+		} alphacontrol;
 };
 
 /*******************************************************************************
@@ -8322,7 +8810,6 @@ static const struct gccmdldstate gcmofill_clearcolor_ldst =
 	GCLDSTATE(gcregClearPixelValue32RegAddrs, 1);
 
 struct gcmofill {
-	struct gcmodst dst;
 	struct gcmofillsrc src;
 
 	/* gcregClearPixelValue32RegAddrs */

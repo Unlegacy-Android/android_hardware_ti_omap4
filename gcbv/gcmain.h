@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2011, Texas Instruments, Inc.
+ * Copyright (c) 2012,
+ * Texas Instruments, Inc. and Vivante Corporation
+ * 
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,17 +31,27 @@
 #define GCMAIN_H
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include "gcioctl.h"
+#include <gcx.h>
+#include <gcioctl.h>
+#include <bltsville.h>
+#include <bvinternal.h>
+#include <bverror.h>
 
-#define DEV_NAME	"gc2dusr"
+#define GC_DEV_NAME	"gc2duser"
+
 
 /*******************************************************************************
  * Miscellaneous macros.
  */
+
+/* Not present in userspace bltsville headers */
+#define BVAT_PHYSDESC     0xDEADBEEF
 
 #define gcalloc(type, size) \
 	(type *) malloc(size)
@@ -47,9 +59,26 @@
 #define gcfree(ptr) \
 	free(ptr)
 
-#define gcdump fprintf
+#define max(x, y) (x > y ? x : y)
+#define min(x, y) (x < y ? x : y)
 
 #define EXPORT_SYMBOL(sym)
+
+#define gc_debug_blt(...)
+
+
+/*******************************************************************************
+ * Not defined in bltsville userspace headers.
+ */
+
+struct bvphysdesc {
+	unsigned int structsize;	/* used to identify struct version */
+	unsigned long pagesize;		/* page size in bytes */
+	unsigned long *pagearray;	/* array of physical pages */
+	unsigned int pagecount;		/* number of pages in the pagearray */
+	unsigned long pageoffset;	/* page offset in bytes */
+};
+
 
 /*******************************************************************************
  * IOCTL wrappers.
@@ -59,17 +88,32 @@ void gc_map_wrapper(struct gcmap *gcmap);
 void gc_unmap_wrapper(struct gcmap *gcmap);
 void gc_commit_wrapper(struct gccommit *gccommit);
 
+
 /*******************************************************************************
  * Floating point conversions.
  */
 
 unsigned char gcfp2norm8(float value);
 
+
 /*******************************************************************************
- * BLTsville initialization/cleanup.
+ * Cache operation wrapper.
+ */
+
+enum bverror gcbvcacheop(int count, struct c2dmrgn rgn[],
+			 enum bvcacheop cacheop);
+
+
+/*******************************************************************************
+ * BLTsville API.
  */
 
 void bv_init(void);
 void bv_exit(void);
+
+enum bverror bv_map(struct bvbuffdesc *buffdesc);
+enum bverror bv_unmap(struct bvbuffdesc *buffdesc);
+enum bverror bv_blt(struct bvbltparams *bltparams);
+enum bverror bv_cache(struct bvcopparams *copparams);
 
 #endif

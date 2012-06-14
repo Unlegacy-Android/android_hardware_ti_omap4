@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2011, Texas Instruments, Inc.
+ * Copyright (c) 2012,
+ * Texas Instruments, Inc. and Vivante Corporation
+ * 
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,14 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GCX_H
-#define GCX_H
-
-#include "gcerror.h"
-#include "gcreg.h"
-
-/* Debug print prefixes. */
-#define GC_INFO_MSG	stdout, DEV_NAME ": %s(%d)"
-#define GC_ERR_MSG	stderr, DEV_NAME ": %s(%d)"
-
-#endif
+#define VER_FILEVERSION             2,1,0,0
+#define VER_FILEVERSION_STR         "2.1.0.0\0"
+#define VER_PRODUCTVERSION          2,1,0,0
+#define VER_PRODUCTVERSION_STR      "2.1\0"

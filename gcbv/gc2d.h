@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2011, Texas Instruments, Inc.
+ * Copyright (c) 2012,
+ * Texas Instruments, Inc. and Vivante Corporation
+ * 
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +34,9 @@
 #include <bvinternal.h>
 #include <ocd.h>
 
-enum bverror bv_map(struct bvbuffdesc *buffdesc);
-enum bverror bv_unmap(struct bvbuffdesc *buffdesc);
-enum bverror bv_blt(struct bvbltparams *bltparams);
+enum bverror gcbv_map(struct bvbuffdesc *buffdesc);
+enum bverror gcbv_unmap(struct bvbuffdesc *buffdesc);
+enum bverror gcbv_blt(struct bvbltparams *bltparams);
+enum bverror gcbv_cache(struct bvcopparams *copparams);
 
 #endif
