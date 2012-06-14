@@ -82,6 +82,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mPending3Asettings = 0;//E3AsettingsAll;
     mPendingCaptureSettings = 0;
     mPendingPreviewSettings = 0;
+    mPendingReprocessSettings = 0;
 
     ret = mMemMgr.initialize();
     if ( ret != OK ) {
@@ -2498,6 +2499,7 @@ status_t OMXCameraAdapter::stopPreview() {
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
+    mPendingReprocessSettings = 0;
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;

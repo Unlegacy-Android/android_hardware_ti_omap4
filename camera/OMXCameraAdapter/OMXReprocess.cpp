@@ -82,12 +82,7 @@ status_t OMXCameraAdapter::setParametersReprocess(const android::CameraParameter
 
         portData->mColorFormat = pixFormat;
 
-        ret = setFormat(OMX_CAMERA_PORT_VIDEO_IN_VIDEO, *portData);
-        if ( ret != NO_ERROR ) {
-            CAMHAL_LOGEB("setFormat() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            return ret;
-        }
+        mPendingReprocessSettings |= SetFormat;
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -220,6 +215,8 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
         return BAD_VALUE;
     }
 
+    CAMHAL_ASSERT(num > 0);
+
     if (mAdapterState == REPROCESS_STATE) {
         stopReprocess();
     } else if (mAdapterState == CAPTURE_STATE) {
@@ -228,14 +225,29 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
         disableImagePort();
     }
 
-    if (mReprocConfigured) {
-        return NO_ERROR;
-    }
-
     portData->mNumBufs = num;
 
     // Configure
     ret = setParametersReprocess(mParams, bufArr, mAdapterState);
+
+    if (mReprocConfigured) {
+        if (mPendingReprocessSettings & ECaptureParamSettings) {
+            stopReprocess();
+        } else {
+            // Tap in port has been already configured.
+            return NO_ERROR;
+        }
+    }
+
+    if (mPendingReprocessSettings & SetFormat) {
+        mPendingReprocessSettings &= ~SetFormat;
+        ret = setFormat(OMX_CAMERA_PORT_VIDEO_IN_VIDEO, *portData);
+        if ( ret != NO_ERROR ) {
+            CAMHAL_LOGEB("setFormat() failed %d", ret);
+            LOG_FUNCTION_NAME_EXIT;
+            return ret;
+        }
+    }
 
     // Configure DOMX to use either gralloc handles or vptrs
     OMX_TI_PARAMUSENATIVEBUFFER domxUseGrallocHandles;

@@ -1100,6 +1100,7 @@ private:
     bool mCaptureConfigured;
     unsigned int mPendingCaptureSettings;
     unsigned int mPendingPreviewSettings;
+    unsigned int mPendingReprocessSettings;
     OMX_TI_ANCILLARYDATATYPE* mCaptureAncillaryData;
     OMX_TI_WHITEBALANCERESULTTYPE* mWhiteBalanceData;
     bool mReprocConfigured;
