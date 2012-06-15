@@ -2584,5 +2584,25 @@ typedef struct OMX_TI_VIDEO_VC1VDEC_MbInfo {
 
 }OMX_TI_VIDEO_VC1VDEC_MbInfo;
 
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_PARAM_DEBLOCKINGQP : Structure to configure QP value for enhanced deblocking fliter
+           of MPEG4 video decoder.
+ *
+ * STRUCT MEMBERS:
+ *  nSize             : Size of the structure in bytes
+ *  nVersion          : OMX specification version information
+ *  nPortIndex        : Port that this structure applies to
+ *  nDeblockingQP     : QP value for enhanced deblocking filter
+ *
+ */
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_PARAM_DEBLOCKINGQP {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nDeblockingQP;
+} OMX_TI_VIDEO_PARAM_DEBLOCKINGQP;
+
 #endif /* OMX_TI_VIDEO_H */
 
