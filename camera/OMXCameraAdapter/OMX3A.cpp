@@ -1609,18 +1609,11 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
   CameraBuffer *bufferlist;
   OMX_ALGOAREASTYPE *meteringAreas;
   OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
-  MemoryManager memMgr;
   int areasSize = 0;
 
   LOG_FUNCTION_NAME
 
-    ret = memMgr.initialize();
-    if ( ret != OK ) {
-        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
-        return ret;
-    }
-
-    android::AutoMutex lock(mMeteringAreasLock);
+  android::AutoMutex lock(mMeteringAreasLock);
 
   if ( OMX_StateInvalid == mComponentState )
     {
@@ -1629,7 +1622,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
     }
 
   areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-  bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+  bufferlist = mMemMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
   meteringAreas = (OMX_ALGOAREASTYPE *)bufferlist[0].opaque;
 
   OMXCameraPortParameters * mPreviewData = NULL;
@@ -1714,7 +1707,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
  EXIT:
   if (NULL != bufferlist)
       {
-      memMgr.freeBufferList(bufferlist);
+      mMemMgr.freeBufferList(bufferlist);
       }
 
   return ret;

@@ -82,6 +82,12 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mPendingCaptureSettings = 0;
     mPendingPreviewSettings = 0;
 
+    ret = mMemMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
     if ( 0 != mInitSem.Count() )
         {
         CAMHAL_LOGEB("Error mInitSem semaphore count %d", mInitSem.Count());
