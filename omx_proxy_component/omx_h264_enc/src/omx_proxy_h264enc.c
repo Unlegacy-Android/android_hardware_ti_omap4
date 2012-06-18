@@ -709,6 +709,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	OMX_PTR pAuxBuf0 = NULL, pAuxBuf1 = NULL;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	OMX_ERRORTYPE eCompReturn = OMX_ErrorNone;
+        IMG_native_handle_t* pGrallocHandle=NULL;
 #endif
 
 	PROXY_require(pBufferHdr != NULL, OMX_ErrorBadParameter, NULL);
@@ -757,7 +758,6 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		if(nMetadataBufferType == kMetadataBufferTypeCameraSource)
 		{
 #ifdef ENABLE_GRALLOC_BUFFER
-			IMG_native_handle_t* pGrallocHandle;
 			video_metadata_t* pVideoMetadataBuffer;
 			DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeCameraSource");
 
@@ -786,7 +786,6 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		else if(nMetadataBufferType == kMetadataBufferTypeGrallocSource)
 		{
 #ifdef ENABLE_GRALLOC_BUFFER
-			IMG_native_handle_t* pGrallocHandle;
 			buffer_handle_t  tBufHandle;
 			DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeGrallocSource");
 
@@ -863,7 +862,11 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 
 	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
-	if (pProxy->bAndroidOpaqueFormat)
+	if (pProxy->bAndroidOpaqueFormat
+#ifdef ENABLE_GRALLOC_BUFFER
+&& pGrallocHandle != NULL && pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 
+#endif
+)
 	{
 		/*Write buffer to end of pipe for re-circulation for future ETB()*/
 		eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &nBufIndex,
