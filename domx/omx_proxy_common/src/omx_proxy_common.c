@@ -70,6 +70,7 @@
 #include "omx_rpc_stub.h"
 #include "omx_rpc_utils.h"
 #include "OMX_TI_IVCommon.h"
+#include "profile.h"
 
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
 
@@ -379,6 +380,8 @@ static OMX_ERRORTYPE PROXY_EmptyBufferDone(OMX_HANDLETYPE hComponent,
 	    OMX_ErrorBadParameter,
 	    "Received invalid-buffer header from OMX component");
 
+	KPI_OmxCompBufferEvent(KPI_BUFFER_EBD, hComponent, &(pCompPrv->tBufList[count]));
+
       EXIT:
 	if (eError == OMX_ErrorNone)
 	{
@@ -453,6 +456,8 @@ OMX_ERRORTYPE PROXY_FillBufferDone(OMX_HANDLETYPE hComponent,
 	PROXY_assert((count != pCompPrv->nTotalBuffers),
 	    OMX_ErrorBadParameter,
 	    "Received invalid-buffer header from OMX component");
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_FBD, hComponent, &(pCompPrv->tBufList[count]));
 
       EXIT:
 	if (eError == OMX_ErrorNone)
@@ -557,6 +562,9 @@ OMX_ERRORTYPE PROXY_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	bMapBuffer =
 		pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType ==
 			EncoderMetadataPointers;
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_ETB, hComponent, &(pCompPrv->tBufList[count]));
+
 	eRPCError =
 	    RPC_EmptyThisBuffer(pCompPrv->hRemoteComp, pBufferHdr,
 	    pCompPrv->tBufList[count].pBufHeaderRemote, &eCompReturn,bMapBuffer);
@@ -627,6 +635,8 @@ OMX_ERRORTYPE PROXY_FillThisBuffer(OMX_HANDLETYPE hComponent,
 	PROXY_assert((count != pCompPrv->nTotalBuffers),
 	    OMX_ErrorBadParameter,
 	    "Could not find the remote header in buffer list");
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_FTB, hComponent, &(pCompPrv->tBufList[count]));
 
 	eRPCError = RPC_FillThisBuffer(pCompPrv->hRemoteComp, pBufferHdr,
 	    pCompPrv->tBufList[count].pBufHeaderRemote, &eCompReturn);
@@ -2163,6 +2173,8 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 		}
 	}
 
+	KPI_OmxCompDeinit(hComponent);
+
 	eRPCError = RPC_FreeHandle(pCompPrv->hRemoteComp, &eCompReturn);
 	if (eRPCError != RPC_OMX_ErrorNone)
 		eTmpRPCError = eRPCError;
@@ -2274,6 +2286,8 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
 		return OMX_ErrorInsufficientResources;
 	}
 #endif
+
+	KPI_OmxCompInit(hComponent);
 
       EXIT:
 	if (eError != OMX_ErrorNone)
