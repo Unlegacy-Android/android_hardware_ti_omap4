@@ -845,7 +845,9 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		}
 		else
 		{
-			return OMX_ErrorBadParameter;
+			DOMX_ERROR("MetadataBufferType is unknow. Returning 'OMX_ErrorBadParameter'");
+			eError = OMX_ErrorBadParameter;
+			goto EXIT; //need to restore lenght fields in pBufferHdr
 		}
 #ifdef ENABLE_GRALLOC_BUFFER
 		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
@@ -870,6 +872,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	}
 #endif
 
+EXIT:
 	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
 	{
 		pBufferHdr->pBuffer = pBufferOrig;
@@ -880,8 +883,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
 #endif
 	}
-	EXIT:
-		return eError;
+	return eError;
 }
 
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
