@@ -263,6 +263,7 @@ int getSupportedParametersNames(int width, int height, param_Array array[], int 
 int checkSupportedParamScript(char **array, int size, char *param);
 int checkSupportedParamScriptLayout(char **array, int size, char *param,int *index);
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num);
+int checkSupportedParamScriptResol(param_Array **array, int size, int w, int h, int *num);
 int getSupportedParametersfps(char* parameters, int *optionsCount);
 int checkSupportedParamScriptfpsConst(int *array, int size, char *param, int *num);
 int checkSupportedParamScriptfpsRange(char **array, int size, char *param, int *num);

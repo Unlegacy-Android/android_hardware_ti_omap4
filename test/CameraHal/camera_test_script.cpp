@@ -424,6 +424,9 @@ int execute_functional_script(char *script) {
                         resC = strtok(NULL, "x");
                         heightC = atoi(resC);
                         params.setPictureSize(widthC,heightC);
+                    a = checkSupportedParamScriptResol(capture_Array, numcaptureSize,
+                                                       widthC, heightC, &resol_index);
+                    if (a > -1) captureSizeIDX = resol_index;
                     }
 
                     if ( hardwareActive ) {
@@ -1484,6 +1487,17 @@ int checkSupportedParamScriptLayout(char **array, int size, char *param, int *in
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num) {
     for (int i=0; i<size; i++) {
         if (strcmp((param + 1), array[i]->name) == 0) {
+            *num = i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int checkSupportedParamScriptResol(param_Array **array, int size,
+                                   int width, int height, int *num) {
+    for (int i=0; i<size; i++) {
+        if ((width == array[i]->width) && (height == array[i]->height)) {
             *num = i;
             return 0;
         }
