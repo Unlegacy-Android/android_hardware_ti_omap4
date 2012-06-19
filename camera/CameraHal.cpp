@@ -409,16 +409,6 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 updateRequired = true;
             }
 
-            if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {
-                if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES))) {
-                    CAMHAL_LOGDB("IPP mode set %s", valstr);
-                    mParameters.set(TICameraParameters::KEY_IPP, valstr);
-                } else {
-                    CAMHAL_LOGEB("ERROR: Invalid IPP mode: %s", valstr);
-                    return BAD_VALUE;
-                }
-            }
-
 #ifdef OMAP_ENHANCEMENT_VTC
             if ((valstr = params.get(TICameraParameters::KEY_VTC_HINT)) != NULL ) {
                 mParameters.set(TICameraParameters::KEY_VTC_HINT, valstr);
@@ -440,7 +430,20 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 }
             }
 #endif
+        }
+
+        if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {
+            if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES))) {
+                if (strcmp(valstr, mParameters.get(TICameraParameters::KEY_IPP))) {
+                    CAMHAL_LOGDB("IPP mode set %s", params.get(TICameraParameters::KEY_IPP));
+                    mParameters.set(TICameraParameters::KEY_IPP, valstr);
+                    restartPreviewRequired = true;
+                }
+            } else {
+                CAMHAL_LOGEB("ERROR: Invalid IPP mode: %s", valstr);
+                return BAD_VALUE;
             }
+        }
 
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)) != NULL )
             {
