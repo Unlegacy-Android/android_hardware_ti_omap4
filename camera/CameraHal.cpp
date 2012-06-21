@@ -3288,21 +3288,6 @@ status_t CameraHal::__takePicture(const char *params)
         // when we remove legacy TI parameters implementation
     }
 
-    // if we are already in the middle of a capture...then we just need
-    // setParameters and start image capture to queue more shots
-    if (((mCameraAdapter->getState() & CameraAdapter::CAPTURE_STATE) ==
-              CameraAdapter::CAPTURE_STATE) &&
-         (mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE)) {
-#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
-        //pass capture timestamp along with the camera adapter command
-        ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE,
-                                          (int) &mStartCapture);
-#else
-        ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE);
-#endif
-        return ret;
-    }
-
     if ( !mBracketingRunning )
     {
          // if application didn't set burst through android::ShotParameters
