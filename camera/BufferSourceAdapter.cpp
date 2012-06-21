@@ -195,12 +195,33 @@ int BufferSourceAdapter::setPreviewWindow(preview_stream_ops_t *source)
         return BAD_VALUE;
     }
 
-    if ( source == mBufferSource ) {
-        return ALREADY_EXISTS;
-    }
+    if (mBufferSource) {
+        char id1[OP_STR_SIZE], id2[OP_STR_SIZE];
+        status_t ret;
 
-    // Destroy the existing source, if it exists
-    destroy();
+        ret = extendedOps()->get_id(mBufferSource, id1, sizeof(id1));
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::getId returned error %d", ret);
+            return ret;
+        }
+
+        ret = extendedOps()->get_id(source, id2, sizeof(id2));
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::getId returned error %d", ret);
+            return ret;
+        }
+        if ((0 >= strlen(id1)) || (0 >= strlen(id2))) {
+            CAMHAL_LOGE("Cannot set ST without name: id1:\"%s\" id2:\"%s\"",
+                        id1, id2);
+            return NOT_ENOUGH_DATA;
+        }
+        if (0 == strcmp(id1, id2)) {
+            return ALREADY_EXISTS;
+        }
+
+        // client has to unset mBufferSource before being able to set a new one
+        return BAD_VALUE;
+    }
 
     // Move to new source obj
     mBufferSource = source;
@@ -354,7 +375,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int dummyHeight
         return NULL;
     }
 
-    CAMHAL_LOGDB("Number of buffers set to ANativeWindow %d", numBufs);
+    CAMHAL_LOGDB("Number of buffers set to BufferSourceAdapter %d", numBufs);
     // Set the number of buffers needed for this buffer source
     err = mBufferSource->set_buffer_count(mBufferSource, numBufs);
     if (err != 0) {

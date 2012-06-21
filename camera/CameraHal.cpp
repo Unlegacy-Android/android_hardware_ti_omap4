@@ -83,6 +83,10 @@ static int dummy_get_buffer_format(preview_stream_ops_t*, int*) {
 static int dummy_set_metadata(preview_stream_ops_t*, const camera_memory_t*) {
     return INVALID_OPERATION;
 }
+
+static int dummy_get_id(preview_stream_ops_t*, char *data, unsigned int dataSize) {
+    return INVALID_OPERATION;
+}
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -92,6 +96,7 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
     dummy_get_buffer_dimension,
     dummy_get_buffer_format,
     dummy_set_metadata,
+    dummy_get_id,
 #endif
 };
 #endif
@@ -2113,117 +2118,103 @@ void CameraHal::setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops)
 status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout)
 {
     status_t ret = NO_ERROR;
+    int index = -1;
 
     LOG_FUNCTION_NAME;
 
-   // If either a tapin or tapout was previously set
-   // we need to clean up and clear capturing
-   if ((!tapout && mBufferSourceAdapter_Out.get()) ||
-       (!tapin && mBufferSourceAdapter_In.get())) {
-       signalEndImageCapture();
-   }
+    // Set tapout point
+    // destroy current buffer tapout if NULL tapout is passed
+    // 1. Check name of tap-out
+    // 2. If not already set, then create a new one
+    // 3. Allocate buffers. If user is re-setting the surface, free buffers first and re-allocate
+    //    in case dimensions have changed
 
-   // Set tapout point
-   // destroy current buffer tapout if NULL tapout is passed
-    if (!tapout) {
-        if (mBufferSourceAdapter_Out.get() != NULL) {
-            CAMHAL_LOGD("NULL tapout passed, destroying buffer tapout adapter");
-            mBufferSourceAdapter_Out.clear();
-            mBufferSourceAdapter_Out = 0;
-        }
-        ret = NO_ERROR;
-    } else if (mBufferSourceAdapter_Out.get() == NULL) {
-        mBufferSourceAdapter_Out = new BufferSourceAdapter();
-        mBufferSourceAdapter_Out->setExtendedOps(mExtendedPreviewStreamOps);
-        if(!mBufferSourceAdapter_Out.get()) {
-            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
-            ret = NO_MEMORY;
-            goto exit;
-        }
+    android::AutoMutex lock(mLock);
 
-        ret = mBufferSourceAdapter_Out->initialize();
-        if (ret != NO_ERROR)
-        {
-            mBufferSourceAdapter_Out.clear();
-            mBufferSourceAdapter_Out = 0;
+    for (unsigned int i = 0; i < mOutAdapters.size(); i++) {
+        android::sp<DisplayAdapter> out;
+        out = mOutAdapters.itemAt(i);
+        ret = out->setPreviewWindow(tapout);
+        if (ret == ALREADY_EXISTS) {
+            index = i;
+            ret = NO_ERROR;
+        }
+    }
+
+    if (index < 0 && tapout) {
+        android::sp<DisplayAdapter> out  = new BufferSourceAdapter();
+
+        ret = out->initialize();
+        if (ret != NO_ERROR) {
+            out.clear();
             CAMHAL_LOGEA("DisplayAdapter initialize failed");
             goto exit;
         }
+
+        // BufferSourceAdapter will be handler of the extended OPS
+        out->setExtendedOps(mExtendedPreviewStreamOps);
 
         // CameraAdapter will be the frame provider for BufferSourceAdapter
-        mBufferSourceAdapter_Out->setFrameProvider(mCameraAdapter);
+        out->setFrameProvider(mCameraAdapter);
 
         // BufferSourceAdapter will use ErrorHandler to send errors back to
         // the application
-        mBufferSourceAdapter_Out->setErrorHandler(mAppCallbackNotifier.get());
+        out->setErrorHandler(mAppCallbackNotifier.get());
 
         // Update the display adapter with the new window that is passed from CameraService
-        ret  = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
+        ret  = out->setPreviewWindow(tapout);
         if(ret != NO_ERROR) {
             CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
             goto exit;
         }
-    } else {
-        // Update the display adapter with the new window that is passed from CameraService
-        freeImageBufs();
-        ret = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
+
+        mOutAdapters.add(out);
+    }
+
+    // 1. Set tapin point
+    // 1. Check name of tap-out
+    // 2. If not already set, then create a new one
+    // 3. Allocate buffers. If user is re-setting the surface, free buffers first and re-allocate
+    //    in case dimensions have changed
+    index = -1;
+    if (!tapin) goto exit;
+    for (unsigned int i = 0; i < mInAdapters.size(); i++) {
+        android::sp<DisplayAdapter> in;
+        in = mInAdapters.itemAt(i);
+        ret = in->setPreviewWindow(tapin);
         if (ret == ALREADY_EXISTS) {
-            // ALREADY_EXISTS should be treated as a noop in this case
+            index = i;
             ret = NO_ERROR;
         }
     }
+    if (index < 0 && tapin) {
+        android::sp<DisplayAdapter> in  = new BufferSourceAdapter();
 
-    if (ret != NO_ERROR) {
-       CAMHAL_LOGE("Error while trying to set tapout point");
-       goto exit;
-    }
-
-   // 1. Set tapin point
-    if (!tapin) {
-        if (mBufferSourceAdapter_In.get() != NULL) {
-            CAMHAL_LOGD("NULL tapin passed, destroying buffer tapin adapter");
-            mBufferSourceAdapter_In.clear();
-            mBufferSourceAdapter_In = 0;
-        }
-        ret = NO_ERROR;
-    } else if (mBufferSourceAdapter_In.get() == NULL) {
-        mBufferSourceAdapter_In = new BufferSourceAdapter();
-        mBufferSourceAdapter_In->setExtendedOps(mExtendedPreviewStreamOps);
-        if(!mBufferSourceAdapter_In.get()) {
-            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
-            ret = NO_MEMORY;
-            goto exit;
-        }
-
-        ret = mBufferSourceAdapter_In->initialize();
-        if (ret != NO_ERROR)
-        {
-            mBufferSourceAdapter_In.clear();
-            mBufferSourceAdapter_In = 0;
+        ret = in->initialize();
+        if (ret != NO_ERROR) {
+            in.clear();
             CAMHAL_LOGEA("DisplayAdapter initialize failed");
             goto exit;
         }
 
-        // We need to set a frame provider so camera adapter can return the frame back to us
-        mBufferSourceAdapter_In->setFrameProvider(mCameraAdapter);
+        // BufferSourceAdapter will be handler of the extended OPS
+        in->setExtendedOps(mExtendedPreviewStreamOps);
+
+        // CameraAdapter will be the frame provider for BufferSourceAdapter
+        in->setFrameProvider(mCameraAdapter);
 
         // BufferSourceAdapter will use ErrorHandler to send errors back to
         // the application
-        mBufferSourceAdapter_In->setErrorHandler(mAppCallbackNotifier.get());
+        in->setErrorHandler(mAppCallbackNotifier.get());
 
         // Update the display adapter with the new window that is passed from CameraService
-        ret  = mBufferSourceAdapter_In->setPreviewWindow(tapin);
+        ret  = in->setPreviewWindow(tapin);
         if(ret != NO_ERROR) {
             CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
             goto exit;
         }
-    } else {
-        // Update the display adapter with the new window that is passed from CameraService
-        ret = mBufferSourceAdapter_In->setPreviewWindow(tapin);
-        if (ret == ALREADY_EXISTS) {
-            // ALREADY_EXISTS should be treated as a noop in this case
-            ret = NO_ERROR;
-        }
+
+        mInAdapters.add(in);
     }
 
  exit:
@@ -3027,10 +3018,21 @@ status_t CameraHal::__takePicture(const char *params)
 
         valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_OUT);
         if (valStr != NULL) {
-            if(!mBufferSourceAdapter_Out->match(valStr)) {
+            int index = -1;
+            for (unsigned int i = 0; i < mOutAdapters.size(); i++) {
+                if(mOutAdapters.itemAt(i)->match(valStr)) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) {
                 CAMHAL_LOGE("Invalid tap out surface passed to camerahal");
                 return BAD_VALUE;
             }
+            CAMHAL_LOGD("Found matching out adapter at %d", index);
+            mBufferSourceAdapter_Out = mOutAdapters.itemAt(index);
+        } else {
+            mBufferSourceAdapter_Out.clear();
         }
 
         mCameraAdapter->setParameters(mParameters);
@@ -3322,10 +3324,19 @@ status_t CameraHal::reprocess(const char *params)
 
     valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_IN);
     if (valStr != NULL) {
-        if(!mBufferSourceAdapter_In->match(valStr)) {
+        int index = -1;
+        for (unsigned int i = 0; i < mInAdapters.size(); i++) {
+            if(mInAdapters.itemAt(i)->match(valStr)) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
             CAMHAL_LOGE("Invalid tap in surface passed to camerahal");
             return BAD_VALUE;
         }
+        CAMHAL_LOGD("Found matching in adapter at %d", index);
+        mBufferSourceAdapter_In = mInAdapters.itemAt(index);
     } else {
         CAMHAL_LOGE("No tap in surface sent with shot config!");
         return BAD_VALUE;
@@ -4286,6 +4297,8 @@ void CameraHal::deinitialize()
 
     mBufferSourceAdapter_Out.clear();
     mBufferSourceAdapter_In.clear();
+    mOutAdapters.clear();
+    mInAdapters.clear();
 
     LOG_FUNCTION_NAME_EXIT;
 

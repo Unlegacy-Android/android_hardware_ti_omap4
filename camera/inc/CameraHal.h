@@ -1375,8 +1375,12 @@ public:
     android::sp<AppCallbackNotifier> mAppCallbackNotifier;
     android::sp<DisplayAdapter> mDisplayAdapter;
     android::sp<MemoryManager> mMemoryManager;
-    // TODO(XXX): May need to keep this as a vector in the future
-    // when we can have multiple tap-in/tap-out points
+
+    android::Vector< android::sp<DisplayAdapter> > mOutAdapters;
+    android::Vector< android::sp<DisplayAdapter> > mInAdapters;
+
+    // TODO(XXX): Even though we support user setting multiple BufferSourceAdapters now
+    // only one tap in surface and one tap out surface is supported at a time.
     android::sp<DisplayAdapter> mBufferSourceAdapter_In;
     android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
 
