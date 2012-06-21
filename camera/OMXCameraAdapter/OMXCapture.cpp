@@ -1877,6 +1877,17 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         // CPCam mode only supports vector shot
         // Regular capture is not supported
         if (mCapMode == CP_CAM) initVectorShot();
+
+        mCaptureBuffersAvailable.clear();
+        for (unsigned int i = 0; i < imgCaptureData->mMaxQueueable; i++ ) {
+            mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
+        }
+
+        // initial ref count for undeqeueued buffers is 1 since buffer provider
+        // is still holding on to it
+        for (unsigned int i = imgCaptureData->mMaxQueueable; i < imgCaptureData->mNumBufs; i++ ) {
+            mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
+        }
     }
 
     if ( NO_ERROR == ret )

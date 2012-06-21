@@ -506,6 +506,17 @@ status_t V4LCameraAdapter::UseBuffersCapture(CameraBuffer *bufArr, int num) {
         CAMHAL_LOGDB("capture- buff [%d] = 0x%x ",i, mCaptureBufs.keyAt(i));
     }
 
+    mCaptureBuffersAvailable.clear();
+    for (int i = 0; i < mCaptureBufferCountQueueable; i++ ) {
+        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
+    }
+
+    // initial ref count for undeqeueued buffers is 1 since buffer provider
+    // is still holding on to it
+    for (int i = mCaptureBufferCountQueueable; i < num; i++ ) {
+        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
+    }
+
     // Update the preview buffer count
     mCaptureBufferCount = num;
 EXIT:

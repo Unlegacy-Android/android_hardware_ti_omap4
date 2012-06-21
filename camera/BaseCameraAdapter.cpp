@@ -541,17 +541,6 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                     android::AutoMutex lock(mCaptureBufferLock);
                     mCaptureBuffers = desc->mBuffers;
                     mCaptureBuffersLength = desc->mLength;
-                    mCaptureBuffersAvailable.clear();
-                    for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
-                        {
-                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
-                        }
-                    // initial ref count for undeqeueued buffers is 1 since buffer provider
-                    // is still holding on to it
-                    for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ )
-                        {
-                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
-                        }
                     }
 
                 if ( NULL != desc )
