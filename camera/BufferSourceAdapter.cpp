@@ -141,6 +141,8 @@ BufferSourceAdapter::~BufferSourceAdapter()
 {
     LOG_FUNCTION_NAME;
 
+    freeBufferList(mBuffers);
+
     android::AutoMutex lock(mLock);
 
     destroy();
@@ -160,12 +162,6 @@ BufferSourceAdapter::~BufferSourceAdapter()
     if (mReturnFrame.get()) {
         mReturnFrame->requestExit();
         mReturnFrame.clear();
-    }
-
-    if( mBuffers != NULL)
-    {
-        delete [] mBuffers;
-        mBuffers = NULL;
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -618,7 +614,8 @@ int BufferSourceAdapter::getBufferCount() {
     int count = -1;
 
     android::Mutex::Autolock lock(mLock);
-    return NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+    if (mBufferSource) extendedOps()->get_buffer_count(mBufferSource, &count);
+    return count;
 }
 
 CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {

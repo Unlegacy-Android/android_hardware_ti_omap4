@@ -87,6 +87,10 @@ static int dummy_set_metadata(preview_stream_ops_t*, const camera_memory_t*) {
 static int dummy_get_id(preview_stream_ops_t*, char *data, unsigned int dataSize) {
     return INVALID_OPERATION;
 }
+
+static int dummy_get_buffer_count(preview_stream_ops_t*, int *count) {
+    return INVALID_OPERATION;
+}
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -97,6 +101,7 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
     dummy_get_buffer_format,
     dummy_set_metadata,
     dummy_get_id,
+    dummy_get_buffer_count,
 #endif
 };
 #endif
@@ -1432,42 +1437,28 @@ status_t CameraHal::freePreviewDataBufs()
 }
 
 status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size_t size,
-                                   const char* previewFormat, unsigned int bufferCount,
-                                   unsigned int *max_queueable)
+                                   const char* previewFormat, unsigned int bufferCount)
 {
     status_t ret = NO_ERROR;
-    int bytes;
+    int bytes = size;
 
     LOG_FUNCTION_NAME;
 
-    bytes = size;
-
     // allocate image buffers only if not already allocated
     if(NULL != mImageBuffers) {
-        if (mBufferSourceAdapter_Out.get()) {
-            mBufferSourceAdapter_Out->maxQueueableBuffers(*max_queueable);
-        } else {
-            *max_queueable = bufferCount;
-        }
         return NO_ERROR;
     }
 
-    if (mBufferSourceAdapter_Out.get()) {
-        mImageBuffers = mBufferSourceAdapter_Out->allocateBufferList(width, height, previewFormat,
-                                                                     bytes, bufferCount);
-        mBufferSourceAdapter_Out->maxQueueableBuffers(*max_queueable);
-    } else {
-        bytes = ((bytes + 4095) / 4096) * 4096;
+    if ( NO_ERROR == ret ) {
+        bytes = ((bytes+4095)/4096)*4096;
         mImageBuffers = mMemoryManager->allocateBufferList(0, 0, previewFormat, bytes, bufferCount);
-        *max_queueable = bufferCount;
-    }
-
-    CAMHAL_LOGDB("Size of Image cap buffer = %d", bytes);
-    if ( NULL == mImageBuffers ) {
-        CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
-        ret = -NO_MEMORY;
-    } else {
-        bytes = size;
+        CAMHAL_LOGDB("Size of Image cap buffer = %d", bytes);
+        if( NULL == mImageBuffers ) {
+            CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
+            ret = -NO_MEMORY;
+        } else {
+            bytes = size;
+        }
     }
 
     if ( NO_ERROR == ret ) {
@@ -1640,12 +1631,9 @@ status_t CameraHal::freeImageBufs()
     }
 
     if (mBufferSourceAdapter_Out.get()) {
-        ret = mBufferSourceAdapter_Out->freeBufferList(mImageBuffers);
+        mBufferSourceAdapter_Out = 0;
     } else {
         ret = mMemoryManager->freeBufferList(mImageBuffers);
-    }
-
-    if (ret == NO_ERROR) {
         mImageBuffers = NULL;
     }
 
@@ -2170,6 +2158,37 @@ status_t CameraHal::setTapoutLocked(struct preview_stream_ops *tapout)
             goto exit;
         }
 
+        if (NULL != mCameraAdapter) {
+            unsigned int bufferCount, max_queueable;
+            CameraFrame frame;
+
+            bufferCount = out->getBufferCount();
+            if (bufferCount < 1) bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+
+            ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE,
+                                                  ( int ) &frame,
+                                                  bufferCount);
+            if (NO_ERROR != ret) {
+                CAMHAL_LOGEB("CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE returned error 0x%x", ret);
+            }
+            if (NO_ERROR == ret) {
+                CameraBuffer *bufs = NULL;
+                unsigned int stride;
+                unsigned int height = frame.mHeight;
+                int size = frame.mLength;
+
+                stride = frame.mAlignment / getBPP(mParameters.getPictureFormat());
+                bufs = out->allocateBufferList(stride,
+                                               height,
+                                               mParameters.getPictureFormat(),
+                                               size,
+                                               bufferCount);
+                if (bufs == NULL){
+                    CAMHAL_LOGEB("error allocating buffer list");
+                    goto exit;
+                }
+            }
+        }
         mOutAdapters.add(out);
     }
 
@@ -2219,7 +2238,6 @@ status_t CameraHal::releaseTapoutLocked(struct preview_stream_ops *tapout)
         out = mOutAdapters.itemAt(i);
         if (out->match(id)) {
             CAMHAL_LOGD("REMOVE tap out %p \"%s\" at position %d", tapout, id, i);
-            out->freeBufferList(out->getBuffers());
             mOutAdapters.removeAt(i);
             break;
         }
@@ -2347,7 +2365,6 @@ status_t CameraHal::releaseTapinLocked(struct preview_stream_ops *tapin)
         in = mInAdapters.itemAt(i);
         if (in->match(id)) {
             CAMHAL_LOGD("REMOVE tap in %p \"%s\" at position %d", tapin, id, i);
-            in->freeBufferList(in->getBuffers());
             mInAdapters.removeAt(i);
             break;
         }
@@ -3050,7 +3067,6 @@ status_t CameraHal::startImageBracketing()
 
         if ( NO_ERROR == ret )
             {
-            unsigned int bufferCount = mBracketRangeNegative + 1;
             mParameters.getPictureSize(( int * ) &frame.mWidth,
                                        ( int * ) &frame.mHeight);
 
@@ -3058,9 +3074,7 @@ status_t CameraHal::startImageBracketing()
                                  frame.mHeight,
                                  frame.mLength,
                                  mParameters.getPictureFormat(),
-                                 bufferCount,
-                                 &max_queueable);
-            mBracketRangeNegative = bufferCount - 1;
+                                 ( mBracketRangeNegative + 1 ));
             if ( NO_ERROR != ret )
               {
                 CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
@@ -3075,7 +3089,7 @@ status_t CameraHal::startImageBracketing()
             desc.mFd = mImageFd;
             desc.mLength = mImageLength;
             desc.mCount = ( size_t ) ( mBracketRangeNegative + 1 );
-            desc.mMaxQueueable = ( size_t) max_queueable;
+            desc.mMaxQueueable = ( size_t ) ( mBracketRangeNegative + 1 );
 
             ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_IMAGE_CAPTURE,
                                               ( int ) &desc);
@@ -3255,7 +3269,17 @@ status_t CameraHal::__takePicture(const char *params)
                 return BAD_VALUE;
             }
             CAMHAL_LOGD("Found matching out adapter at %d", index);
+            bool reset = (mOutAdapters.itemAt(index).get() != mBufferSourceAdapter_Out.get());
             mBufferSourceAdapter_Out = mOutAdapters.itemAt(index);
+            ret = mBufferSourceAdapter_Out->maxQueueableBuffers(max_queueable);
+            if (NO_ERROR != ret) {
+                CAMHAL_LOGE("Couldn't get max queuable");
+                return ret;
+            }
+            mImageBuffers = mBufferSourceAdapter_Out->getBuffers(reset);
+            mImageOffsets = mBufferSourceAdapter_Out->getOffsets();
+            mImageFd = mBufferSourceAdapter_Out->getFd();
+            mImageLength = mBufferSourceAdapter_Out->getSize();
         } else {
             mBufferSourceAdapter_Out.clear();
         }
@@ -3298,9 +3322,7 @@ status_t CameraHal::__takePicture(const char *params)
                                CameraHal::NO_BUFFERS_IMAGE_CAPTURE : burst;
 
              if (mBufferSourceAdapter_Out.get()) {
-                 // TODO(XXX): Temporarily increase number of buffers we can allocate from ANW
-                 // until faux-NPA mode is implemented
-                 bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+                bufferCount = mBufferSourceAdapter_Out->getBufferCount();
              }
 
              if ( NULL != mAppCallbackNotifier.get() ) {
@@ -3357,19 +3379,18 @@ status_t CameraHal::__takePicture(const char *params)
                 }
             }
 
-        if ( NO_ERROR == ret )
-            {
+        // allocImageBufs will only allocate new buffers if mImageBuffers is NULL
+        if ( NO_ERROR == ret ) {
+            max_queueable = bufferCount;
             ret = allocImageBufs(frame.mAlignment / getBPP(mParameters.getPictureFormat()),
                                  frame.mHeight,
                                  frame.mLength,
                                  mParameters.getPictureFormat(),
-                                 bufferCount,
-                                 &max_queueable);
-            if ( NO_ERROR != ret )
-                {
+                                 bufferCount);
+            if ( NO_ERROR != ret ) {
                 CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
-                }
             }
+        }
 
         if (  (NO_ERROR == ret) && ( NULL != mCameraAdapter ) )
             {

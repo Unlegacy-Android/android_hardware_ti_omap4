@@ -1313,8 +1313,7 @@ private:
 
     /** Allocate image capture buffers */
     status_t allocImageBufs(unsigned int width, unsigned int height, size_t length,
-                            const char* previewFormat, unsigned int bufferCount,
-                            unsigned int *max_queueable);
+                            const char* previewFormat, unsigned int bufferCount);
 
     /** Allocate Raw buffers */
     status_t allocRawBufs(int width, int height, const char* previewFormat, int bufferCount);
