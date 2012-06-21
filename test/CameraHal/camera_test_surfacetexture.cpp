@@ -306,6 +306,17 @@ void SurfaceTextureBase::deinit() {
     mST.clear();
 }
 
+void SurfaceTextureBase::getId(const char **name) {
+    sp<ANativeWindow> windowTapOut = mSTC;
+
+    *name = NULL;
+    if (windowTapOut.get()) {
+        windowTapOut->perform(windowTapOut.get(), NATIVE_WINDOW_GET_ID, name);
+    }
+
+    windowTapOut.clear();
+}
+
 // SurfaceTexture with GL specific
 
 void SurfaceTextureGL::initialize(int display, int tex_id) {
@@ -454,7 +465,7 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     }
 }
 
-void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
+void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, ShotParameters &params) {
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
@@ -533,6 +544,23 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     }
 
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
+
+    {
+        sp<ANativeWindow> windowTapIn = mWindowTapIn;
+        const char* id = NULL;
+
+        if (windowTapIn.get()) {
+            windowTapIn->perform(windowTapIn.get(), NATIVE_WINDOW_GET_ID, &id);
+        }
+
+        if (id) {
+            params.set(KEY_TAP_IN_SURFACE, id);
+        } else {
+            params.remove(KEY_TAP_IN_SURFACE);
+        }
+
+        windowTapIn.clear();
+    }
 }
 
 void BufferSourceThread::showMetadata(sp<IMemory> data) {

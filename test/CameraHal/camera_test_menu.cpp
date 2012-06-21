@@ -1334,6 +1334,19 @@ int startPreview() {
     previewRunning = true;
     reSizePreview = false;
 
+    const char *format = params.getPictureFormat();
+    if((NULL != format) && isRawPixelFormat(format)) {
+        createBufferOutputSource();
+        if (!bufferSourceInput.get()) {
+#ifdef ANDROID_API_JB_OR_LATER
+            bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+            bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
+            bufferSourceInput->init();
+        }
+    }
+
     return 0;
 }
 
@@ -3457,7 +3470,7 @@ int functional_menu() {
             if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
                 createBufferOutputSource();
                 if (bufferSourceOutputThread.get()) {
-                    bufferSourceOutputThread->setBuffer();
+                    bufferSourceOutputThread->setBuffer(shotParams);
                 }
             } else {
                 msgType = CAMERA_MSG_COMPRESSED_IMAGE |
@@ -3498,6 +3511,7 @@ int functional_menu() {
         case 'P':
         {
             int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+            ShotParameters reprocParams;
 
             gettimeofday(&picture_start, 0);
             if (!bufferSourceInput.get()) {
@@ -3516,8 +3530,8 @@ int functional_menu() {
 
                 if (bufferSourceInput.get()) {
                     buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat]);
-                    if (hardwareActive) camera->reprocess(msgType, String8());
+                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat], reprocParams);
+                    if (hardwareActive) camera->reprocess(msgType, reprocParams.flatten());
                 }
             }
             break;

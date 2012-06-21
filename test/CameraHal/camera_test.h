@@ -75,6 +75,9 @@
 #define KEY_ALGO_THREELINCOLORMAP       "ti-algo-threelinecolormap"
 #define KEY_ALGO_GIC                    "ti-algo-gic"
 
+#define KEY_TAP_OUT_SURFACES            "tap-out"
+#define KEY_TAP_IN_SURFACE              "tap-in"
+
 #define BRACKETING_IDX_DEFAULT          0
 #define BRACKETING_IDX_STREAM           1
 #define BRACKETING_STREAM_BUFFERS       9
@@ -396,7 +399,7 @@ public:
 
     virtual bool threadLoop() { return false;}
     virtual void requestExit() {};
-    virtual void setBuffer() {};
+    virtual void setBuffer(android::ShotParameters &params) {};
     virtual void onHandled(sp<GraphicBuffer> &g, unsigned int slot) {};
 
     bool toggleStreamCapture(int expBracketIdx) {
@@ -465,7 +468,7 @@ public:
 
     virtual void init() = 0;
 
-    virtual void setInput(buffer_info_t, const char *format);
+    virtual void setInput(buffer_info_t, const char *format, ShotParameters &params);
 
 protected:
     sp<BufferSourceThread> mTapOut;

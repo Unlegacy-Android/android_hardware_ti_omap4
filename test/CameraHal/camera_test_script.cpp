@@ -1190,7 +1190,7 @@ int execute_functional_script(char *script) {
                 if((NULL != format) && isRawPixelFormat(format)) {
                     createBufferOutputSource();
                     if (bufferSourceOutputThread.get()) {
-                        bufferSourceOutputThread->setBuffer();
+                        bufferSourceOutputThread->setBuffer(shotParams);
                     }
                 } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
                     msgType = CAMERA_MSG_COMPRESSED_IMAGE |
@@ -1249,6 +1249,8 @@ int execute_functional_script(char *script) {
             case 'P':
             {
                 int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+                ShotParameters reprocParams;
+
                 gettimeofday(&picture_start, 0);
                 if (!bufferSourceInput.get()) {
 #ifdef ANDROID_API_JB_OR_LATER
@@ -1266,7 +1268,7 @@ int execute_functional_script(char *script) {
 
                     if (bufferSourceInput.get()) {
                         buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                        bufferSourceInput->setInput(info, params.getPictureFormat());
+                        bufferSourceInput->setInput(info, params.getPictureFormat(), reprocParams);
                         if (hardwareActive) camera->reprocess(msgType, String8());
                     }
                 }

@@ -96,8 +96,17 @@ public:
         mFW->onFrameAvailable();
     }
 
-    virtual void setBuffer() {
+    virtual void setBuffer(android::ShotParameters &params) {
         mCamera->setBufferSource(NULL, mBufferQueue);
+        {
+            String8 id = mBufferQueue->getId();
+
+            if (!id.isEmpty()) {
+                params.set(KEY_TAP_OUT_SURFACES, id);
+            } else {
+                params.remove(KEY_TAP_OUT_SURFACES);
+            }
+        }
     }
 
     virtual void onHandled(sp<GraphicBuffer> &gbuf, unsigned int slot) {
@@ -124,10 +133,19 @@ public:
         mWindowTapIn = new SurfaceTextureClient(surfaceTexture);
     }
 
-    virtual void setInput(buffer_info_t bufinfo, const char *format) {
+    virtual void setInput(buffer_info_t bufinfo, const char *format, android::ShotParameters &params) {
         mBufferQueue->setDefaultBufferSize(bufinfo.width, bufinfo.height);
-        BufferSourceInput::setInput(bufinfo, format);
+        BufferSourceInput::setInput(bufinfo, format, params);
         mCamera->setBufferSource(mBufferQueue, NULL);
+        {
+            String8 id = mBufferQueue->getId();
+
+            if (!id.isEmpty()) {
+                params.set(KEY_TAP_IN_SURFACE, id);
+            } else {
+                params.remove(KEY_TAP_IN_SURFACE);
+            }
+        }
     }
 
 private:

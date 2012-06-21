@@ -97,6 +97,7 @@ public:
 
     void initialize(int tex_id, EGLenum tex_target = EGL_NONE);
     void deinit();
+    void getId(const char **name);
 
     virtual sp<SurfaceTexture> getST();
 
@@ -165,10 +166,21 @@ public:
         mFW->onFrameAvailable();
     }
 
-    virtual void setBuffer() {
+    virtual void setBuffer(android::ShotParameters &params) {
 #ifndef ANDROID_API_JB_OR_LATER
         mCamera->setBufferSource(NULL, mSurfaceTexture);
 #endif
+        {
+            const char* id = NULL;
+
+            mSurfaceTextureBase->getId(&id);
+
+            if (id) {
+                params.set(KEY_TAP_OUT_SURFACES, id);
+            } else {
+                params.remove(KEY_TAP_OUT_SURFACES);
+            }
+        }
     }
 
 private:
@@ -197,8 +209,9 @@ public:
     }
 
     virtual void setInput(buffer_info_t bufinfo, const char *format) {
+        android::ShotParameters params;
         mSurfaceTexture->getST()->setDefaultBufferSize(bufinfo.width, bufinfo.height);
-        BufferSourceInput::setInput(bufinfo, format);
+        BufferSourceInput::setInput(bufinfo, format, params);
 #ifndef ANDROID_API_JB_OR_LATER
         mCamera->setBufferSource(mSurfaceTexture->getST(), NULL);
 #else
