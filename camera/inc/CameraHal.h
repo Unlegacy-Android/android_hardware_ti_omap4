@@ -1354,7 +1354,8 @@ private:
     int   __takePicture(const char* params);
     //@}
 
-
+    status_t setTapoutLocked(struct preview_stream_ops *out);
+    status_t setTapinLocked(struct preview_stream_ops *in);
 /*----------Member variables - Public ---------------------*/
 public:
     int32_t mMsgEnabled;
