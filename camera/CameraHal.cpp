@@ -2985,7 +2985,7 @@ status_t CameraHal::__takePicture(const char *params)
     // check if camera application is using shots parameters
     // api. parameters set here override anything set using setParameters
     // TODO(XXX): Just going to use legacy TI parameters for now. Need
-    // add new APIs in CameraHal to utilize ShotParameters later, so
+    // add new APIs in CameraHal to utilize android::ShotParameters later, so
     // we don't have to parse through the whole set of parameters
     // in camera adapter
     if (strlen(params) > 0) {
@@ -3025,6 +3025,14 @@ status_t CameraHal::__takePicture(const char *params)
             }
         }
 
+        valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_OUT);
+        if (valStr != NULL) {
+            if(!mBufferSourceAdapter_Out->match(valStr)) {
+                CAMHAL_LOGE("Invalid tap out surface passed to camerahal");
+                return BAD_VALUE;
+            }
+        }
+
         mCameraAdapter->setParameters(mParameters);
     } else
 #endif
@@ -3050,7 +3058,7 @@ status_t CameraHal::__takePicture(const char *params)
 
     if ( !mBracketingRunning )
     {
-         // if application didn't set burst through ShotParameters
+         // if application didn't set burst through android::ShotParameters
          // then query from TICameraParameters
          if ((burst == -1) && (NO_ERROR == ret)) {
             burst = mParameters.getInt(TICameraParameters::KEY_BURST);
@@ -3300,10 +3308,28 @@ status_t CameraHal::reprocess(const char *params)
     CameraAdapter::BuffersDescriptor desc;
     CameraBuffer *reprocBuffers = NULL;
     android::ShotParameters shotParams;
+    const char *valStr = NULL;
 
     android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME;
+
+    // 0. Get tap in surface
+    if (strlen(params) > 0) {
+        android::String8 shotParams8(params);
+        shotParams.unflatten(shotParams8);
+    }
+
+    valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_IN);
+    if (valStr != NULL) {
+        if(!mBufferSourceAdapter_In->match(valStr)) {
+            CAMHAL_LOGE("Invalid tap in surface passed to camerahal");
+            return BAD_VALUE;
+        }
+    } else {
+        CAMHAL_LOGE("No tap in surface sent with shot config!");
+        return BAD_VALUE;
+    }
 
     // 1. Get buffers
     if (mBufferSourceAdapter_In.get()) {

@@ -94,6 +94,8 @@
 #define LOCK_BUFFER_TRIES 5
 #define HAL_PIXEL_FORMAT_NV12 0x100
 
+#define OP_STR_SIZE 100
+
 #define NONNEG_ASSIGN(x,y) \
     if(x > -1) \
         y = x
@@ -1029,6 +1031,9 @@ public:
 
     // Get min buffers display needs at any given time
     virtual status_t minUndequeueableBuffers(int& unqueueable) = 0;
+
+    // Given a vector of DisplayAdapters find the one corresponding to str
+    virtual bool match(const char * str) { return false; }
 
 private:
 #ifdef OMAP_ENHANCEMENT

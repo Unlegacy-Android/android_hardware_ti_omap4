@@ -210,6 +210,19 @@ int BufferSourceAdapter::setPreviewWindow(preview_stream_ops_t *source)
     return NO_ERROR;
 }
 
+bool BufferSourceAdapter::match(const char * str) {
+    char id1[OP_STR_SIZE];
+    status_t ret;
+
+    ret = extendedOps()->get_id(mBufferSource, id1, sizeof(id1));
+
+    if (ret != 0) {
+        CAMHAL_LOGE("Surface::getId returned error %d", ret);
+    }
+
+    return strcmp(id1, str) == 0;
+}
+
 int BufferSourceAdapter::setFrameProvider(FrameNotifier *frameProvider)
 {
     LOG_FUNCTION_NAME;

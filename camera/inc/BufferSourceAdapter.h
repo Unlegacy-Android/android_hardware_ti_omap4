@@ -163,6 +163,7 @@ public:
     virtual int freeBufferList(CameraBuffer * buflist);
     virtual int maxQueueableBuffers(unsigned int& queueable);
     virtual int minUndequeueableBuffers(int& unqueueable);
+    virtual bool match(const char * str);
 
     static void frameCallback(CameraFrame* caFrame);
     void addFrame(CameraFrame* caFrame);
