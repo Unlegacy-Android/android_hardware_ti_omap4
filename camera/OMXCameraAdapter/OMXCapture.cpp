@@ -1220,9 +1220,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
         apply3Asettings(mParameters3A);
     }
 
-    // check is we are already in capture state...which means we are
-    // accumulating shots
-    if ((ret == NO_ERROR) && (mBurstFramesQueued > 0)) {
+    if (ret == NO_ERROR) {
         int index = 0;
         int queued = 0;
         android::AutoMutex lock(mBurstLock);
@@ -1237,9 +1235,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                     mBurstFramesQueued++;
                 }
             }
-        } else {
-            mCapturedFrames += mBurstFrames;
-            mBurstFramesAccum += mBurstFrames;
         }
 
         while ((mBurstFramesQueued < mBurstFramesAccum) &&
@@ -1258,21 +1253,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                 queued++;
             }
             index++;
-        }
-    } else if ( NO_ERROR == ret ) {
-        ///Queue all the buffers on capture port
-        for ( int index = 0 ; index < capData->mMaxQueueable ; index++ ) {
-            if (mBurstFramesQueued < mBurstFramesAccum) {
-                CAMHAL_LOGDB("Queuing buffer on Capture port - %p",
-                              capData->mBufferHeader[index]->pBuffer);
-                capData->mStatus[index] = OMXCameraPortParameters::FILL;
-                eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
-                        (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
-                mBurstFramesQueued++;
-            } else {
-                capData->mStatus[index] = OMXCameraPortParameters::IDLE;
-            }
-            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
@@ -1847,6 +1827,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             pBufferHdr->nVersion.s.nRevision = 0;
             pBufferHdr->nVersion.s.nStep =  0;
             imgCaptureData->mBufferHeader[index] = pBufferHdr;
+            imgCaptureData->mStatus[index] = OMXCameraPortParameters::IDLE;
         }
 
         // Wait for the image port enable event
@@ -1922,9 +1903,11 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
     }
 
-    mCapturedFrames = mBurstFrames;
-    mBurstFramesAccum = mBurstFrames;
-    mBurstFramesQueued = 0;
+    {
+        android::AutoMutex lock(mBurstLock);
+        mCapturedFrames += mBurstFrames;
+        mBurstFramesAccum += mBurstFrames;
+    }
 
     mCaptureConfigured = true;
 
