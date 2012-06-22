@@ -2170,7 +2170,7 @@ void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) 
     if (PARAM_EXP_BRACKET_VALUE_REL == expBracketing[idx].value_type) {
         val.appendFormat("%+d", exp);
     } else {
-        val.appendFormat("%u", (unsigned int) abs);
+        val.appendFormat("%u", (unsigned int) exp);
     }
 
     if (PARAM_EXP_BRACKET_PARAM_PAIR == expBracketing[idx].param_type) {
