@@ -1634,8 +1634,9 @@ status_t CameraHal::freeImageBufs()
         mBufferSourceAdapter_Out = 0;
     } else {
         ret = mMemoryManager->freeBufferList(mImageBuffers);
-        mImageBuffers = NULL;
     }
+
+    mImageBuffers = NULL;
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -3172,6 +3173,7 @@ status_t CameraHal::__takePicture(const char *params)
     unsigned int max_queueable = 0;
     unsigned int rawBufferCount = 1;
     bool isCPCamMode = false;
+    android::sp<DisplayAdapter> outAdapter = 0;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -3269,19 +3271,7 @@ status_t CameraHal::__takePicture(const char *params)
                 return BAD_VALUE;
             }
             CAMHAL_LOGD("Found matching out adapter at %d", index);
-            bool reset = (mOutAdapters.itemAt(index).get() != mBufferSourceAdapter_Out.get());
-            mBufferSourceAdapter_Out = mOutAdapters.itemAt(index);
-            ret = mBufferSourceAdapter_Out->maxQueueableBuffers(max_queueable);
-            if (NO_ERROR != ret) {
-                CAMHAL_LOGE("Couldn't get max queuable");
-                return ret;
-            }
-            mImageBuffers = mBufferSourceAdapter_Out->getBuffers(reset);
-            mImageOffsets = mBufferSourceAdapter_Out->getOffsets();
-            mImageFd = mBufferSourceAdapter_Out->getFd();
-            mImageLength = mBufferSourceAdapter_Out->getSize();
-        } else {
-            mBufferSourceAdapter_Out.clear();
+            outAdapter = mOutAdapters.itemAt(index);
         }
 
         mCameraAdapter->setParameters(mParameters);
@@ -3321,8 +3311,11 @@ status_t CameraHal::__takePicture(const char *params)
              bufferCount = isCPCamMode || (burst > CameraHal::NO_BUFFERS_IMAGE_CAPTURE) ?
                                CameraHal::NO_BUFFERS_IMAGE_CAPTURE : burst;
 
-             if (mBufferSourceAdapter_Out.get()) {
-                bufferCount = mBufferSourceAdapter_Out->getBufferCount();
+             if (outAdapter.get()) {
+                bufferCount = outAdapter->getBufferCount();
+                if (bufferCount < 1) {
+                    bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+                }
              }
 
              if ( NULL != mAppCallbackNotifier.get() ) {
@@ -3379,16 +3372,34 @@ status_t CameraHal::__takePicture(const char *params)
                 }
             }
 
-        // allocImageBufs will only allocate new buffers if mImageBuffers is NULL
-        if ( NO_ERROR == ret ) {
-            max_queueable = bufferCount;
-            ret = allocImageBufs(frame.mAlignment / getBPP(mParameters.getPictureFormat()),
-                                 frame.mHeight,
-                                 frame.mLength,
-                                 mParameters.getPictureFormat(),
-                                 bufferCount);
-            if ( NO_ERROR != ret ) {
-                CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
+        if (outAdapter.get()) {
+            bool reset;
+            // Need to reset buffers if we are switching adapters since we don't know
+            // the state of the new buffer list
+            reset = (outAdapter.get() != mBufferSourceAdapter_Out.get());
+            ret = outAdapter->maxQueueableBuffers(max_queueable);
+            if (NO_ERROR != ret) {
+                CAMHAL_LOGE("Couldn't get max queuable");
+                return ret;
+            }
+            mImageBuffers = outAdapter->getBuffers(reset);
+            mImageOffsets = outAdapter->getOffsets();
+            mImageFd = outAdapter->getFd();
+            mImageLength = outAdapter->getSize();
+            mBufferSourceAdapter_Out = outAdapter;
+        } else {
+            mBufferSourceAdapter_Out.clear();
+            // allocImageBufs will only allocate new buffers if mImageBuffers is NULL
+            if ( NO_ERROR == ret ) {
+                max_queueable = bufferCount;
+                ret = allocImageBufs(frame.mAlignment / getBPP(mParameters.getPictureFormat()),
+                                     frame.mHeight,
+                                     frame.mLength,
+                                     mParameters.getPictureFormat(),
+                                     bufferCount);
+                if ( NO_ERROR != ret ) {
+                    CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
+                }
             }
         }
 
