@@ -1236,7 +1236,13 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                 }
             }
         }
-
+        CAMHAL_LOGD("mBurstFramesQueued = %d mBurstFramesAccum = %d index = %d "
+                    "capData->mNumBufs = %d queued = %d capData->mMaxQueueable = %d",
+                    mBurstFramesQueued,mBurstFramesAccum,index,
+                    capData->mNumBufs,queued,capData->mMaxQueueable);
+        CAMHAL_LOGD("%d", (mBurstFramesQueued < mBurstFramesAccum)
+                          && (index < capData->mNumBufs)
+                          && (queued < capData->mMaxQueueable));
         while ((mBurstFramesQueued < mBurstFramesAccum) &&
                (index < capData->mNumBufs) &&
                (queued < capData->mMaxQueueable)) {
@@ -1250,6 +1256,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                 mBurstFramesQueued++;
                 queued++;
             } else if (OMXCameraPortParameters::FILL == capData->mStatus[index]) {
+               CAMHAL_LOGE("Not queueing index = %d", index);
                 queued++;
             }
             index++;
