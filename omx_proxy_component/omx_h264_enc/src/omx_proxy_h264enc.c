@@ -873,7 +873,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 #endif
 
 EXIT:
-	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
+	if( pBufferHdr!=NULL && pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
 	{
 		pBufferHdr->pBuffer = pBufferOrig;
 		pBufferHdr->nFilledLen = nFilledLen;
