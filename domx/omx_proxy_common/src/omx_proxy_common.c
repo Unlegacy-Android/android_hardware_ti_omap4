@@ -232,11 +232,10 @@ static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pC
        }
 
 	if (ret)
-			return OMX_ErrorInsufficientResources;
+		return OMX_ErrorInsufficientResources;
 	*handle = temp;
 	return OMX_ErrorNone;
 }
-
 #endif
 
 /* ===========================================================================*/
@@ -746,6 +745,13 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 				eError = OMX_ErrorInsufficientResources;
 				goto EXIT;
 			}
+		} else {
+			if (ion_share(pCompPrv->ion_fd, handle, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0) {
+				DOMX_ERROR("ion_share failed !!! \n");
+				goto EXIT;
+			} else {
+				DOMX_DEBUG("ion_share success pMemptr: 0x%x \n", pCompPrv->tBufList[currentBuffer].mmap_fd);
+			}
 		}
 		pMemptr = pCompPrv->tBufList[currentBuffer].mmap_fd;
 		DOMX_DEBUG ("Ion handle recieved = %x",handle);
@@ -756,7 +762,6 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 
 	/*No need to increment Allocated buffers here.
 	It will be done in the subsequent use buffer call below*/
-
 	eError = PROXY_UseBuffer(hComponent, ppBufferHdr, nPortIndex, pAppPrivate, nSize, pMemptr);
 
 	if(eError != OMX_ErrorNone) {
@@ -779,6 +784,8 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	{
 		DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
 		(*ppBufferHdr)->pBuffer = pIonMappedBuffer;
+	} else {
+		(*ppBufferHdr)->pBuffer = (OMX_U8 *)handle;
 	}
 #endif
 
