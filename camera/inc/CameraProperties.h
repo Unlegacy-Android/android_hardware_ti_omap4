@@ -49,6 +49,7 @@ enum OperatingMode {
     MODE_VIDEO,
     MODE_STEREO,
     MODE_CPCAM,
+    MODE_VIDEO_HIGH_QUALITY,
     MODE_MAX
 };
 

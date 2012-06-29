@@ -200,7 +200,7 @@ status_t OMXCameraAdapter::doAutoFocus()
             }
 
             // configure focus timeout based on capture mode
-            timeout = (mCapMode == VIDEO_MODE) ?
+            timeout = (mCapMode == VIDEO_MODE) || (mCapMode == VIDEO_MODE_HQ) ?
                             ( ( nsecs_t ) AF_VIDEO_CALLBACK_TIMEOUT * 1000 ) :
                             ( ( nsecs_t ) AF_IMAGE_CALLBACK_TIMEOUT * 1000 );
 

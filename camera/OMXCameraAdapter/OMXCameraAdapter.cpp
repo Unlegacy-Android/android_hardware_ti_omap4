@@ -814,7 +814,8 @@ void OMXCameraAdapter::getParameters(android::CameraParameters& params)
            params.set(android::CameraParameters::KEY_FLASH_MODE, valstr);
 
        if ((mParameters3A.Focus == OMX_IMAGE_FocusControlAuto) &&
-           (mCapMode != OMXCameraAdapter::VIDEO_MODE)) {
+           ( (mCapMode != OMXCameraAdapter::VIDEO_MODE) &&
+             (mCapMode != OMXCameraAdapter::VIDEO_MODE_HQ) ) ) {
            valstr = android::CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE;
        } else {
            valstr = getLUTvalue_OMXtoHAL(mParameters3A.Focus, FocusLUT);
@@ -1931,7 +1932,8 @@ status_t OMXCameraAdapter::UseBuffersPreview(CameraBuffer * bufArr, int num)
             }
         }
 
-        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+        if( (mCapMode == OMXCameraAdapter::VIDEO_MODE) ||
+            (mCapMode == OMXCameraAdapter::VIDEO_MODE_HQ) ) {
 
             if (mPendingPreviewSettings & SetVNF) {
                 mPendingPreviewSettings &= ~SetVNF;
@@ -2822,7 +2824,8 @@ status_t OMXCameraAdapter::getFrameSize(size_t &width, size_t &height)
             }
         }
 
-        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+        if((mCapMode == OMXCameraAdapter::VIDEO_MODE) ||
+           (mCapMode == OMXCameraAdapter::VIDEO_MODE_HQ) ) {
 
             if (mPendingPreviewSettings & SetVNF) {
                 mPendingPreviewSettings &= ~SetVNF;
@@ -3479,7 +3482,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         //            if we are waiting for a snapshot and in video mode...go ahead and send
         //            this frame as a snapshot
         if( mWaitingForSnapshot &&  (mCapturedFrames > 0) &&
-            (snapshotFrame || (mCapMode == VIDEO_MODE)))
+            (snapshotFrame || (mCapMode == VIDEO_MODE) || (mCapMode == VIDEO_MODE_HQ ) ))
             {
             typeOfFrame = CameraFrame::SNAPSHOT_FRAME;
             mask = (unsigned int)CameraFrame::SNAPSHOT_FRAME;
@@ -3509,13 +3512,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         //CAMHAL_LOGV("FBD pBuffer = 0x%x", pBuffHeader->pBuffer);
 
         if( mWaitingForSnapshot )
-          {
-            if (!mBracketingEnabled &&
-                 ((HIGH_SPEED == mCapMode) || (VIDEO_MODE == mCapMode)) )
-              {
-                notifyShutterSubscribers();
-              }
-          }
+            {
+            if ( !mBracketingEnabled &&
+                 ((HIGH_SPEED == mCapMode) ||
+                  (VIDEO_MODE == mCapMode) ||
+                  (VIDEO_MODE_HQ == mCapMode)) )
+                {
+                    notifyShutterSubscribers();
+                }
+            }
 
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
         mFramesWithDisplay++;
@@ -4490,6 +4495,19 @@ public:
             if ( NO_ERROR != err ) {
                 return err;
             }
+
+#ifdef CAMERAHAL_OMAP5_CAPTURE_MODES
+
+            CAMHAL_LOGD("Camera mode: VIDEO HQ ");
+            properties->setMode(MODE_VIDEO_HIGH_QUALITY);
+            err = fetchCapabiltiesForMode(OMX_CaptureHighQualityVideo,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
+#endif
 
         }
 

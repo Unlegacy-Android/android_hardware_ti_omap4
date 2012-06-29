@@ -2398,12 +2398,12 @@ bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
     // Set CAPTURE_MODE to VIDEO_MODE, if not set already and Restart Preview
     valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
     if ( (valstr == NULL) ||
-        ( (valstr != NULL) && (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) != 0) ) )
-        {
+        ( (valstr != NULL) && ( (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) != 0) &&
+                                (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE_HQ ) != 0) ) ) ) {
         CAMHAL_LOGDA("Set CAPTURE_MODE to VIDEO_MODE");
         mParameters.set(TICameraParameters::KEY_CAP_MODE, (const char *) TICameraParameters::VIDEO_MODE);
         restartPreviewRequired = true;
-        }
+    }
 
     // set VSTAB. restart is required if vstab value has changed
     if ( (valstrRemote = params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) != NULL ) {
@@ -2955,7 +2955,8 @@ status_t CameraHal::__takePicture(const char *params)
 
     // we only support video snapshot if we are in video mode (recording hint is set)
     if ( (mCameraAdapter->getState() == CameraAdapter::VIDEO_STATE) &&
-         (valstr && strcmp(valstr, TICameraParameters::VIDEO_MODE)) ) {
+         (valstr && ( strcmp(valstr, TICameraParameters::VIDEO_MODE) &&
+                      strcmp(valstr, TICameraParameters::VIDEO_MODE_HQ ) ) ) ) {
         CAMHAL_LOGEA("Trying to capture while recording without recording hint set...");
         return INVALID_OPERATION;
     }

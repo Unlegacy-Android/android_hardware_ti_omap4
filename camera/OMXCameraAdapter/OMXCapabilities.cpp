@@ -1711,6 +1711,10 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
         strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::CP_CAM_MODE, REMAINING_BYTES(supported));
 #endif
+#ifdef  CAMERAHAL_OMAP5_CAPTURE_MODES
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::VIDEO_MODE_HQ, REMAINING_BYTES(supported));
+#endif
         strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::ZOOM_BRACKETING, REMAINING_BYTES(supported));
     }

@@ -31,6 +31,7 @@ const char TICameraParameters::HIGH_QUALITY_MODE[] = "high-quality";
 const char TICameraParameters::HIGH_QUALITY_ZSL_MODE[] = "high-quality-zsl";
 const char TICameraParameters::CP_CAM_MODE[] = "cp-cam";
 const char TICameraParameters::VIDEO_MODE[] = "video-mode";
+const char TICameraParameters::VIDEO_MODE_HQ[] = "video-mode-hq";
 const char TICameraParameters::EXPOSURE_BRACKETING[] = "exposure-bracketing";
 const char TICameraParameters::ZOOM_BRACKETING[] = "zoom-bracketing";
 const char TICameraParameters::TEMP_BRACKETING[] = "temporal-bracketing";

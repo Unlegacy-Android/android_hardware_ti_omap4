@@ -134,7 +134,8 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
     // Set capture format to yuv422i...jpeg encode will
     // be done on A9
     valstr = params.get(TICameraParameters::KEY_CAP_MODE);
-    if ( (valstr && !strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE)) &&
+    if ( (valstr && ( strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) == 0 ||
+                      strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE_HQ) == 0 ) ) &&
             (pixFormat == OMX_COLOR_FormatUnused) ) {
         CAMHAL_LOGDA("Capturing in video mode...selecting yuv422i");
         pixFormat = OMX_COLOR_FormatCbYCrY;
@@ -1281,7 +1282,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
         // Capturing command is not needed when capturing in video mode
         // Only need to queue buffers on image ports
-        if (mCapMode != VIDEO_MODE) {
+        if ( ( mCapMode != VIDEO_MODE ) && ( mCapMode != VIDEO_MODE_HQ ) ) {
             OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
             bOMX.bEnabled = OMX_TRUE;
 
@@ -1406,7 +1407,7 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     // Disable image capture
     // Capturing command is not needed when capturing in video mode
-    if (mCapMode != VIDEO_MODE) {
+    if ( ( mCapMode != VIDEO_MODE ) && ( mCapMode != VIDEO_MODE_HQ ) ) {
         OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
         bOMX.bEnabled = OMX_FALSE;
         imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];

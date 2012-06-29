@@ -213,10 +213,11 @@ public:
         {
         INITIAL_MODE = -1,
         HIGH_SPEED = 1,
-        HIGH_QUALITY = 2,
-        VIDEO_MODE = 3,
-        HIGH_QUALITY_ZSL = 4,
-        CP_CAM = 5,
+        HIGH_QUALITY,
+        VIDEO_MODE,
+        HIGH_QUALITY_ZSL,
+        CP_CAM,
+        VIDEO_MODE_HQ,
         };
 
     enum IPPMode
