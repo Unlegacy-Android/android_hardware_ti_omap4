@@ -1026,6 +1026,23 @@ typedef enum OMX_TI_CAMERAVIEWTYPE {
     OMX_TI_CAMERAVIEWTYPE_32BIT_PATCH = 0x7FFFFFFF
 } OMX_TI_CAMERAVIEWTYPE;
 
+/**
+ *  nSize is the size of the structure including the length of data field containing
+ *  the Histogram Matched for Stereo Gamma data.
+ *  nItems is the number of items in the Gamma table.
+ *  data[1] first byte of the Gamma data
+ */
+typedef struct OMX_HMSGAMMATYPE {
+    OMX_U32 nSize;                          /**< The size of the structure
+                                                 including the length of data field containing the gamma data */
+    OMX_VERSIONTYPE       nVersion;
+    OMX_U32               nPortIndex;
+    OMX_TI_CAMERAVIEWTYPE eCameraView;
+    OMX_U32               nItems;            /**< The number of items in Gamma */
+    OMX_U8                data[1];
+} OMX_HMSGAMMATYPE;
+
+
 #define OMX_OTHER_EXTRADATATYPE_SIZE ((OMX_U32)(((OMX_OTHER_EXTRADATATYPE *)0x0)->data))  /**< Size of OMX_OTHER_EXTRADATATYPE
                                                                                 without Data[1] and without padding */
 
@@ -1658,6 +1675,7 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_VUIInfoFrame1,           /**< 0x7F000027 Used for VUI message to be provided by video decoders */
     OMX_TI_VUIInfoFrame2,           /**< 0x7F000028 Used for VUI message to be provided by video decoders */
     OMX_TI_FaceDetectionRaw,        /**< 0x7F000029 Face detect data without face tracking calculations */
+    OMX_TI_HMSGamma,                /**< 0x7F00002A Histogram Matched for Stereo Gamma table */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
