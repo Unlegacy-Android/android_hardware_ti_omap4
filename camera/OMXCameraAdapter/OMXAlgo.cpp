@@ -325,7 +325,7 @@ status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const char *p
 
     ACParams.nSize = (OMX_U32)sizeof(OMX_TI_CONFIG_CONVERGENCETYPE);
     ACParams.nVersion = mLocalVersionParam;
-    ACParams.nPortIndex = OMX_ALL;
+    ACParams.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
 
     OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
                   (OMX_INDEXTYPE)OMX_TI_IndexConfigAutoConvergence,
