@@ -528,6 +528,7 @@ typedef enum OMX_CAMOPERATINGMODETYPE {
         OMX_TI_StereoGestureRecognition,
         OMX_TI_CPCam,
         OMX_TI_StereoVideo,
+        OMX_CaptureHighQualityVideo,
         // Put new entries here so OMX_CamOperatingModeMax always points to
         // the last one
         OMX_TI_CamOperatingModeCount,

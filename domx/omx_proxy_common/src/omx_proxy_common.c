@@ -70,6 +70,7 @@
 #include "omx_rpc_stub.h"
 #include "omx_rpc_utils.h"
 #include "OMX_TI_IVCommon.h"
+#include "profile.h"
 
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
 
@@ -231,11 +232,10 @@ static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pC
        }
 
 	if (ret)
-			return OMX_ErrorInsufficientResources;
+		return OMX_ErrorInsufficientResources;
 	*handle = temp;
 	return OMX_ErrorNone;
 }
-
 #endif
 
 /* ===========================================================================*/
@@ -379,6 +379,8 @@ static OMX_ERRORTYPE PROXY_EmptyBufferDone(OMX_HANDLETYPE hComponent,
 	    OMX_ErrorBadParameter,
 	    "Received invalid-buffer header from OMX component");
 
+	KPI_OmxCompBufferEvent(KPI_BUFFER_EBD, hComponent, &(pCompPrv->tBufList[count]));
+
       EXIT:
 	if (eError == OMX_ErrorNone)
 	{
@@ -453,6 +455,8 @@ OMX_ERRORTYPE PROXY_FillBufferDone(OMX_HANDLETYPE hComponent,
 	PROXY_assert((count != pCompPrv->nTotalBuffers),
 	    OMX_ErrorBadParameter,
 	    "Received invalid-buffer header from OMX component");
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_FBD, hComponent, &(pCompPrv->tBufList[count]));
 
       EXIT:
 	if (eError == OMX_ErrorNone)
@@ -557,6 +561,9 @@ OMX_ERRORTYPE PROXY_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	bMapBuffer =
 		pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType ==
 			EncoderMetadataPointers;
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_ETB, hComponent, &(pCompPrv->tBufList[count]));
+
 	eRPCError =
 	    RPC_EmptyThisBuffer(pCompPrv->hRemoteComp, pBufferHdr,
 	    pCompPrv->tBufList[count].pBufHeaderRemote, &eCompReturn,bMapBuffer);
@@ -627,6 +634,8 @@ OMX_ERRORTYPE PROXY_FillThisBuffer(OMX_HANDLETYPE hComponent,
 	PROXY_assert((count != pCompPrv->nTotalBuffers),
 	    OMX_ErrorBadParameter,
 	    "Could not find the remote header in buffer list");
+
+	KPI_OmxCompBufferEvent(KPI_BUFFER_FTB, hComponent, &(pCompPrv->tBufList[count]));
 
 	eRPCError = RPC_FillThisBuffer(pCompPrv->hRemoteComp, pBufferHdr,
 	    pCompPrv->tBufList[count].pBufHeaderRemote, &eCompReturn);
@@ -736,6 +745,13 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 				eError = OMX_ErrorInsufficientResources;
 				goto EXIT;
 			}
+		} else {
+			if (ion_share(pCompPrv->ion_fd, handle, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0) {
+				DOMX_ERROR("ion_share failed !!! \n");
+				goto EXIT;
+			} else {
+				DOMX_DEBUG("ion_share success pMemptr: 0x%x \n", pCompPrv->tBufList[currentBuffer].mmap_fd);
+			}
 		}
 		pMemptr = pCompPrv->tBufList[currentBuffer].mmap_fd;
 		DOMX_DEBUG ("Ion handle recieved = %x",handle);
@@ -746,7 +762,6 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 
 	/*No need to increment Allocated buffers here.
 	It will be done in the subsequent use buffer call below*/
-
 	eError = PROXY_UseBuffer(hComponent, ppBufferHdr, nPortIndex, pAppPrivate, nSize, pMemptr);
 
 	if(eError != OMX_ErrorNone) {
@@ -769,6 +784,8 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	{
 		DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
 		(*ppBufferHdr)->pBuffer = pIonMappedBuffer;
+	} else {
+		(*ppBufferHdr)->pBuffer = (OMX_U8 *)handle;
 	}
 #endif
 
@@ -2163,6 +2180,8 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 		}
 	}
 
+	KPI_OmxCompDeinit(hComponent);
+
 	eRPCError = RPC_FreeHandle(pCompPrv->hRemoteComp, &eCompReturn);
 	if (eRPCError != RPC_OMX_ErrorNone)
 		eTmpRPCError = eRPCError;
@@ -2210,6 +2229,8 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
         OMX_U32 i = 0;
 
 	DOMX_ENTER("hComponent = %p", hComponent);
+
+	TIMM_OSAL_UpdateTraceLevel();
 
 	PROXY_require((hComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
@@ -2272,6 +2293,8 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
 		return OMX_ErrorInsufficientResources;
 	}
 #endif
+
+	KPI_OmxCompInit(hComponent);
 
       EXIT:
 	if (eError != OMX_ErrorNone)
