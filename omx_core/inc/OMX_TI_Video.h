@@ -1238,6 +1238,38 @@ typedef struct OMX_TI_VIDEO_PARAM_AUTO_FRAMERATE_UPDATE {
 
 /* ============================================================================= */
 /*
+@brief OMX_TI_NUM_TEMPORAL_LAYERS :   Enum to describe number of temporal layers
+@param  OMX_Video_Temporal_Layers_1 to set Base layer
+@param  OMX_Video_Temporal_Layers_2 to set Base layer + 1 Temporal Enhancement Layer
+@param  OMX_Video_Temporal_Layers_3 to set Base layer + 2 Temporal Enhancement Layers
+@param  OMX_Video_Temporal_Layers_4 to set Base layer + 3 Temporal Enhancement Layers
+*/
+/* ============================================================================= */
+typedef enum OMX_TI_NUM_TEMPORAL_LAYERS {
+    OMX_Video_Temporal_Layers_1               = 0x01,
+    OMX_Video_Temporal_Layers_2,
+    OMX_Video_Temporal_Layers_3,
+    OMX_Video_Temporal_Layers_4,
+    OMX_Video_Temporal_Layers_Max             = 0X7FFFFFFF
+} OMX_TI_NUM_TEMPORAL_LAYERS;
+
+/* ============================================================================= */
+/*
+@brief OMX_TI_VIDEO_PARAM_TEMPORAL_SCALABILITY : Structure to enable temporal scalability
+@param  nPortIndex           to specify the index of the port
+@param  nTemporalLayers   to specify the number of Enhancement layers
+                                              @sa OMX_TI_NUM_TEMPORAL_LAYERS
+*/
+/* ============================================================================= */
+typedef struct OMX_TI_VIDEO_PARAM_TEMPORAL_SCALABILITY {
+    OMX_U32                    nSize;
+    OMX_VERSIONTYPE            nVersion;
+    OMX_U32                    nPortIndex;
+    OMX_TI_NUM_TEMPORAL_LAYERS nTemporalLayers;
+} OMX_TI_VIDEO_PARAM_TEMPORAL_SCALABILITY;
+
+/* ============================================================================= */
+/*
 @brief OMX_TI_PARAM_SKIP_GREY_OUTPUT_FRAMES : Structure to enable feature to skip grey output
            frames which doesn't have proper reference.
 */
