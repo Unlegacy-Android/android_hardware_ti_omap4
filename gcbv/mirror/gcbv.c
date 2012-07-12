@@ -1242,6 +1242,16 @@ static struct bvformatxlate g_format_nv12 = {
 	.bitspp = 8,
 	.format = GCREG_DE_FORMAT_NV12,
 };
+static struct bvformatxlate g_format_uyvy = {
+	.type = BVFMT_YUV,
+	.bitspp = 16,
+	.format = GCREG_DE_FORMAT_UYVY
+};
+static struct bvformatxlate g_format_yuy2 = {
+	.type = BVFMT_YUV,
+	.bitspp = 16,
+	.format = GCREG_DE_FORMAT_YUY2
+};
 
 static struct bvformatxlate formatxlate[] = {
 	/*  #0: OCDFMT_xRGB12
@@ -1429,6 +1439,16 @@ static int parse_format(enum ocdformat ocdformat, struct bvformatxlate **format)
 	case OCDFMT_NV12:
 		GCDBG(GCZONE_FORMAT, "OCDFMT_NV12\n");
 		*format = &g_format_nv12;
+		return 1;
+
+	case OCDFMT_UYVY:
+		GCDBG(GCZONE_FORMAT, "OCDFMT_UYVY\n");
+		*format = &g_format_uyvy;
+		return 1;
+
+	case OCDFMT_YUY2:
+		GCDBG(GCZONE_FORMAT, "OCDFMT_YUY2\n");
+		*format = &g_format_yuy2;
 		return 1;
 
 	default:
@@ -2632,10 +2652,22 @@ static enum bverror parse_destination(struct bvbltparams *bltparams,
 	if ((batch->batchflags & BVBATCH_DST) != 0) {
 		struct bvbuffdesc *dstdesc;
 		struct bvsurfgeom *dstgeom;
+		unsigned int stridealign;
 
 		/* Make shortcuts to the destination objects. */
 		dstdesc = bltparams->dstdesc;
 		dstgeom = bltparams->dstgeom;
+
+		/* Check for unsupported dest formats. */
+		switch (dstgeom->format) {
+		case OCDFMT_NV12:
+			BVSETBLTERROR(BVERR_DSTGEOM_FORMAT,
+				      "destination format unsupported");
+			goto exit;
+
+		default:
+			break;
+		}
 
 		/* Parse the destination format. */
 		GCDBG(GCZONE_FORMAT, "parsing destination format.\n");
@@ -2650,6 +2682,15 @@ static enum bverror parse_destination(struct bvbltparams *bltparams,
 		if (!valid_geom(dstdesc, dstgeom, batch->dstformat)) {
 			BVSETBLTERROR(BVERR_DSTGEOM,
 				      "destination geom exceeds surface size");
+			goto exit;
+		}
+
+		/* Destination stride must be 8 pixel aligned. */
+		stridealign = batch->dstformat->bitspp - 1;
+		if ((dstgeom->virtstride & stridealign) != 0) {
+			BVSETBLTERROR(BVERR_DSTGEOM_STRIDE,
+				      "destination stride must be 8 pixel "
+				      "aligned.");
 			goto exit;
 		}
 
@@ -2765,6 +2806,7 @@ static enum bverror parse_source(struct bvbltparams *bltparams,
 	struct bvbuffdesc *srcdesc;
 	struct bvsurfgeom *srcgeom;
 	struct bvrect *srcrect;
+	unsigned int stridealign;
 
 	/* Make shortcuts to the source objects. */
 	srcdesc = srcinfo->buf.desc;
@@ -2778,7 +2820,7 @@ static enum bverror parse_source(struct bvbltparams *bltparams,
 		BVSETBLTERROR((srcinfo->index == 0)
 					? BVERR_SRC1GEOM_FORMAT
 					: BVERR_SRC2GEOM_FORMAT,
-			      "invalid source #%d format (%d)",
+			      "invalid source #%d format (%d).",
 			      srcinfo->index + 1,
 			      srcgeom->format);
 		goto exit;
@@ -2789,8 +2831,18 @@ static enum bverror parse_source(struct bvbltparams *bltparams,
 		BVSETBLTERROR((srcinfo->index == 0)
 					? BVERR_SRC1GEOM
 					: BVERR_SRC2GEOM,
-			      "source%d geom exceeds surface size",
+			      "source%d geom exceeds surface size.",
 			      srcinfo->index + 1);
+		goto exit;
+	}
+
+	/* Source must be 8 pixel aligned. */
+	stridealign = srcinfo->format->bitspp - 1;
+	if ((srcgeom->virtstride & stridealign) != 0) {
+		BVSETBLTERROR((srcinfo->index == 0)
+					? BVERR_SRC1GEOM_STRIDE
+					: BVERR_SRC2GEOM_STRIDE,
+			      "source stride must be 8 pixel aligned.");
 		goto exit;
 	}
 
@@ -3283,7 +3335,8 @@ static enum bverror do_blit(struct bvbltparams *bltparams,
 	GCDBG(GCZONE_SURF, "  realignment = %d\n",
 	      dstalign);
 
-	if ((srcformat->type == BVFMT_YUV) || (dstalign != 0) ||
+	if ((srcformat->format == GCREG_DE_FORMAT_NV12) ||
+	    (dstalign != 0) ||
 	    ((srcalign != 0) && (srcinfo->angle == batch->dstangle))) {
 		/* Compute the source offset in pixels needed to compensate
 		 * for the surface base address misalignment if any. */
@@ -3581,11 +3634,12 @@ static enum bverror do_blit(struct bvbltparams *bltparams,
 		= GCREG_COLOR_MULTIPLY_MODES_DST_DEMULTIPLY_DISABLE;
 	}
 
-	if (srcformat->type == BVFMT_YUV) {
+	if (srcformat->format == GCREG_DE_FORMAT_NV12) {
 		struct gcmosrcplanaryuv *yuv;
-		int uvshift;
+		int uvshift = srcbyteshift;
 
 #if 0
+		/* TODO: needs rework */
 		if (multisrc && (srcsurftop % 2)) {
 			/* We can't shift the uv plane by an odd number
 			 * of rows. */
@@ -3610,8 +3664,9 @@ static enum bverror do_blit(struct bvbltparams *bltparams,
 			gcmosrc_vplaneaddress_ldst[index];
 		yuv->vplanestride_ldst =
 			gcmosrc_vplanestride_ldst[index];
-#if 0
 
+#if 0
+		/* TODO: needs rework */
 		if (multisrc) {
 			/* UV plane is half height. */
 			uvshift = (srcsurftop / 2)
@@ -3622,9 +3677,6 @@ static enum bverror do_blit(struct bvbltparams *bltparams,
 			/* No shift needed for single source walker. */
 			uvshift = 0;
 		}
-#else
-		/* No shift needed for single source walker. */
-		uvshift = 0;
 #endif
 
 		GCDBG(GCZONE_SURF, "  uvshift = 0x%08X (%d)\n",
