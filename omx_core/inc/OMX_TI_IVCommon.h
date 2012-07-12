@@ -3234,12 +3234,14 @@ typedef struct OMX_TI_CPCAMDATA {
 * STRUCT MEMBERS:
 * nSize: Size of the structure in bytes
 * nVersion: OMX specification version information
-* nDelay: Capture frame delay in ms
+* nPortIndex: Index of the port on which Mechanical Misalignment to be enabled/disabled
+* bMM: Mechanical Misalignment enable/disable flag
 */
     typedef struct OMX_TI_CONFIG_MM {
         OMX_U32         nSize;
         OMX_VERSIONTYPE nVersion;
-       OMX_BOOL        bMM;
+        OMX_U32         nPortIndex;
+        OMX_BOOL        bMM;
     } OMX_TI_CONFIG_MM;
 
 /**
