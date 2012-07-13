@@ -752,7 +752,8 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
 
         if (frame->mBuffer->format &&
                 (strcmp(frame->mBuffer->format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) &&
-                (frame->mAlignment != frame->mWidth)) {
+                (frame->mAlignment != frame->mWidth) &&
+                ( msgType == CAMERA_MSG_RAW_IMAGE )) {
             size_t size;
 
             size = CameraHal::calculateBufferSize(frame->mBuffer->format, frame->mWidth, frame->mHeight);
