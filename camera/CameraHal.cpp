@@ -4240,6 +4240,9 @@ void CameraHal::deinitialize()
         mSensorListener = NULL;
     }
 
+    mBufferSourceAdapter_Out.clear();
+    mBufferSourceAdapter_In.clear();
+
     LOG_FUNCTION_NAME_EXIT;
 
 }
