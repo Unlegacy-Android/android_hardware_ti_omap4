@@ -2153,7 +2153,11 @@ void initDefaults() {
 }
 
 void setDefaultExpGainPreset(ShotParameters &params, int idx) {
-    setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    if ( ((int)ARRAY_SIZE(expBracketing) > idx) && (0 <= idx) ) {
+        setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    } else {
+        printf("setDefaultExpGainPreset: Index (%d) is out of range 0 ~ %u\n", idx, ARRAY_SIZE(expBracketing) - 1);
+    }
 }
 
 void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) {
