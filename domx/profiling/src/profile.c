@@ -108,7 +108,7 @@ OMX_U64 KPI_GetTime(void)
 	struct timespec tp;
 
 	clock_gettime(CLOCK_MONOTONIC, &tp);
-	return (tp.tv_sec * 1000000 + tp.tv_nsec / 1000);
+	return ((long long)tp.tv_sec * 1000000 + tp.tv_nsec / 1000);
 }
 
 /* ===========================================================================*/
@@ -204,6 +204,8 @@ void KPI_OmxCompInit(OMX_HANDLETYPE hComponent)
 	p = compName + strlen( compName ) - 1;
 	while( (*p != '.' ) && (p != compName) ) p--;
 	strncpy(kpi_omx_monitor[omx_cnt].name, p + 1, 6);
+	*(kpi_omx_monitor[omx_cnt].name + 6) = '\0';                  // complete the chain of char
+	sprintf(kpi_omx_monitor[omx_cnt].name, "%s%u", kpi_omx_monitor[omx_cnt].name, (unsigned int)omx_cnt); // Add index to the name
 
 	/* trace component init */
 	DOMX_PROF("<KPI> OMX %-6s Init %-8lld", kpi_omx_monitor[omx_cnt].name, KPI_GetTime());
