@@ -3376,8 +3376,7 @@ status_t OMXCameraAdapter::storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader)
     if ( UNLIKELY( mDebugProfile ) ) {
 
         platformPrivate =  static_cast<OMX_TI_PLATFORMPRIVATE *> (pBuffHeader->pPlatformPrivate);
-        extraData = getExtradata(static_cast<OMX_OTHER_EXTRADATATYPE *> (platformPrivate->pMetaDataBuffer),
-                platformPrivate->nMetaDataSize,
+        extraData = getExtradata(platformPrivate->pMetaDataBuffer,
                 static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData));
 
         if ( NULL != extraData ) {
