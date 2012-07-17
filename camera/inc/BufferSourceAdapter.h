@@ -41,28 +41,31 @@ private:
     class ReturnFrame : public android::Thread {
     public:
         ReturnFrame(BufferSourceAdapter* __this) : mBufferSourceAdapter(__this) {
-            mWaitForSignal.Create(0);
+            android::AutoMutex lock(mReturnFrameMutex);
             mDestroying = false;
         }
 
         ~ReturnFrame() {
+            android::AutoMutex lock(mReturnFrameMutex);
             mDestroying = true;
-            mWaitForSignal.Release();
+            mReturnFrameCondition.signal();
          }
 
         void signal() {
-            mWaitForSignal.Signal();
+            mReturnFrameCondition.signal();
         }
 
         virtual bool threadLoop() {
-            mWaitForSignal.Wait();
+            android::AutoMutex lock(mReturnFrameMutex);
+            mReturnFrameCondition.wait(mReturnFrameMutex);
             if (!mDestroying) mBufferSourceAdapter->handleFrameReturn();
             return true;
         }
 
     private:
         BufferSourceAdapter* mBufferSourceAdapter;
-        Utils::Semaphore mWaitForSignal;
+        android::Condition mReturnFrameCondition;
+        android::Mutex mReturnFrameMutex;
         bool mDestroying;
     };
 
