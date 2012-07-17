@@ -2,8 +2,7 @@ Texas Instruments Incorporated
 Technology and Software Publicly Available
 Software License Agreement
  
-Copyright (c) 2011 Texas Instruments Incorporated
-Copyright Imagination Technology, Ltd.
+Copyright (c) 2012 Texas Instruments Incorporated
  
 Important:  Please read the following license agreement carefully.  This
 is a legally binding agreement.  Do not use or redistribute the Licensed

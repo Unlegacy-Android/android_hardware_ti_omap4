@@ -51,11 +51,11 @@ Welcome to BLTsville </title>
 <body>
 <span class="Title">BLTsville for Android</span>
 <p class="Subtitle">
-	CPU Implementation - Version 2.0.0.10
+	CPU Implementation - Version 2.1.0.0
 </p>
 <hr/>
 <p>
-	Copyright © 2011 Texas Instruments, Inc.
+	Copyright © 2012 Texas Instruments, Inc.
 </p>
 <p>
 	By using this software you agree that you have read, understood, and agree to be bound by the terms in the accompanying <a href="../license">
@@ -100,6 +100,20 @@ Welcome to BLTsville </title>
 <table>
 <tr>
 	<td>
+		<p>
+			2.1.0.0</p>
+		<ul>
+			<li>Updated headers to 2.1.0.0 (forwards and backwards compatible with clients).</li>
+			<li>Changed test for surface equality to use <span class="Code">bvbuffdesc</span> and <span class="Code">
+			bvsurfgeom</span> pointers (as per spec) instead of members.</li>
+			<li>Corrected inconsistent initial scaling phase when clipping.</li>
+			<li>Added error returns for rectangles in subsampled surfaces that split subsamples.</li>
+			<li>Corrected incorrect validation during scaling which could return error for properly clipped rectangles.</li>
+			<li>Loosened validation of <span class="Code">bvbuffmap</span> structures in <span class="Code">
+			bvbuffdesc.map</span> to avoid other implementation errors causing problems.</li>
+			<li>Improved <span class="Code">errdesc</span> messages to help with debugging.</li>
+			<li>Corrected color component error when using an RGBx24 solid color with a blend.</li>
+		</ul>
 		<p>
 			2.0.0.10</p>
 		<ul>
