@@ -118,6 +118,10 @@ status_t OMXCameraAdapter::startReprocess()
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+            CameraHal::PPM("startReprocess buffers queued on video port: ", &mStartCapture);
+#endif
+
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
@@ -225,6 +229,12 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
         disableImagePort();
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Reprocess stopping image capture and disabling image port: ", &bufArr->ppmStamp);
+
+#endif
+
     portData->mNumBufs = num;
 
     // Configure
@@ -271,6 +281,12 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
         CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
     }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Reprocess configuration done: ", &bufArr->ppmStamp);
+
+#endif
 
     // Enable Port
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -334,6 +350,12 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
     }
 
     mReprocConfigured = true;
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Reprocess video port enabled and buffers registered: ", &bufArr->ppmStamp);
+
+#endif
 
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 

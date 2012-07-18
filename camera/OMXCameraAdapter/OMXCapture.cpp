@@ -1196,6 +1196,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+            CameraHal::PPM("startImageCapture bracketing configs done: ", &mStartCapture);
+#endif
+
     capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
 
     //OMX shutter callback events are only available in hq mode
@@ -1301,6 +1305,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+            CameraHal::PPM("startImageCapture image buffers queued and capture enabled: ", &mStartCapture);
+#endif
+
     //OMX shutter callback events are only available in hq mode
 
     if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode))
@@ -1334,6 +1342,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
             }
 
         }
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+            CameraHal::PPM("startImageCapture shutter event received: ", &mStartCapture);
+#endif
 
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
@@ -1797,6 +1809,12 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture image port configuration: ", &bufArr->ppmStamp);
+
+#endif
+
         // Register for Image port ENABLE event
         ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                                OMX_EventCmdComplete,
@@ -1861,6 +1879,12 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
         CAMHAL_LOGDA("Port enabled");
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture image port enabled and buffers registered: ", &bufArr->ppmStamp);
+
+#endif
+
         // Enable WB and vector shot extra data for metadata
         ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
         ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
@@ -1912,6 +1936,12 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             CAMHAL_LOGDA("single preview mode configured successfully");
         }
     }
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture extra configs on image port done: ", &bufArr->ppmStamp);
+
+#endif
 
     mCaptureConfigured = true;
 

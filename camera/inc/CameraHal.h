@@ -348,6 +348,13 @@ typedef struct _CameraBuffer {
     int stride;
     int height;
     const char *format;
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    struct timeval ppmStamp;
+
+#endif
+
 } CameraBuffer;
 
 void * camera_buffer_get_omx_ptr (CameraBuffer *buffer);
@@ -1358,7 +1365,7 @@ private:
     void resetPreviewRes(android::CameraParameters *params);
 
     // Internal __takePicture function - used in public takePicture() and reprocess()
-    int   __takePicture(const char* params);
+    int   __takePicture(const char* params, struct timeval *captureStart = NULL);
     //@}
 
     status_t setTapoutLocked(struct preview_stream_ops *out);
