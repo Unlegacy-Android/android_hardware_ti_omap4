@@ -226,7 +226,6 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
     } else if (mAdapterState == CAPTURE_STATE) {
         stopImageCapture();
         stopReprocess();
-        disableImagePort();
     }
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS

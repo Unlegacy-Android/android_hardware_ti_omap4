@@ -1450,13 +1450,6 @@ status_t OMXCameraAdapter::stopImageCapture()
         }
     }
 
-    // Disable WB and vector shot extra data for metadata
-    setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-    // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
-    // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
-    // setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
-    setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
-
     CAMHAL_LOGDB("Capture set - 0x%x", eError);
 
     mCaptureSignalled = true; //set this to true if we exited because of timeout
@@ -1885,13 +1878,17 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
 #endif
 
-        // Enable WB and vector shot extra data for metadata
-        ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-        ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
+        if (mNextState != LOADED_REPROCESS_CAPTURE_STATE) {
+            // Enable WB and vector shot extra data for metadata
+            setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
+            setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
+        }
 
         // CPCam mode only supports vector shot
         // Regular capture is not supported
-        if (mCapMode == CP_CAM) initVectorShot();
+        if ( (mCapMode == CP_CAM) && (mNextState != LOADED_REPROCESS_CAPTURE_STATE) ) {
+            initVectorShot();
+        }
 
         mCaptureBuffersAvailable.clear();
         for (unsigned int i = 0; i < imgCaptureData->mMaxQueueable; i++ ) {
