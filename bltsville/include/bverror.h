@@ -293,7 +293,7 @@ enum bverror {
 	BVERR_MEMORY_ERROR =	/* async operation triggered memory error */
 		BVERRDEF_VENDOR_ALL + 51000,
 
-	BVERR_FORMAT =		/* unsupported bvcopparams.bvsurfgeom.format */
+	BVERR_FORMAT =		/* unsupported format */
 		BVERRDEF_VENDOR_ALL + 52000,
 
 	BVERR_CACHEOP =		/* unsupported cache operation */

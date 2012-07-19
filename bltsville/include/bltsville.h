@@ -88,7 +88,11 @@ struct bvrect {
 
 #define BVFLAG_SCALE_RETURN	0x00100000 /* return scale type used */
 #define BVFLAG_DITHER_RETURN	0x00200000 /* return dither type used */
-/**** Bits 31-22 reserved ****/
+
+
+#define BVFLAG_SRC2_AUXDSTRECT	0x00400000 /* src2auxdstrect used */
+#define BVFLAG_MASK_AUXDSTRECT	0x00800000 /* maskauxdstrect used */
+/**** Bits 31-24 reserved ****/
 
 /*
  * BVIMPL_* - BLTsville implementations may be combined under managers to
@@ -501,7 +505,7 @@ struct bvcallbackerror {
 struct bvbatch;
 
 /*
- * bvinbuff - provides the buffer in bvbltparams 
+ * bvinbuff - provides the buffer in bvbltparams
  */
 union bvinbuff {
 	struct bvbuffdesc *desc;	 /* buffer description when
@@ -588,6 +592,9 @@ struct bvbltparams {
 							 error; handle contains
 							 callbackdata below */
 	unsigned long callbackdata;	/* (i) callback data */
+
+	struct bvrect src2auxdstrect;
+	struct bvrect maskauxdstrect;
 };
 
 #endif /* BLTSVILLE_H */
