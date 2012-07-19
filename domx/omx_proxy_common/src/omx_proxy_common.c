@@ -1236,10 +1236,14 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		{
         		if (pCompPrv->bUseIon == OMX_TRUE)
 			{
-				if(pCompPrv->bMapIonBuffers == OMX_TRUE && pBufferHdr->pBuffer)
+				if(pBufferHdr->pBuffer)
 				{
-	                                munmap(pBufferHdr->pBuffer, pBufferHdr->nAllocLen);
-        				close(pCompPrv->tBufList[count].mmap_fd);
+					if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+					{
+						munmap(pBufferHdr->pBuffer, pBufferHdr->nAllocLen);
+					}
+					//Perform close for ion map as well as ion share buffers
+					close(pCompPrv->tBufList[count].mmap_fd);
 				}
 				ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[count].pYBuffer);
 				pCompPrv->tBufList[count].pYBuffer = NULL;
