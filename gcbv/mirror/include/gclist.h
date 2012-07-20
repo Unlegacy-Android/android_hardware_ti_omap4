@@ -67,8 +67,8 @@ static void INIT_LIST_HEAD(struct list_head *list)
  * This is only for internal list manipulation where we know
  * the prev/next entries already! */
 static void __list_add(struct list_head *entry,
-			      struct list_head *prev,
-			      struct list_head *next)
+		       struct list_head *prev,
+		       struct list_head *next)
 {
 	next->prev = entry;
 	entry->next = next;
@@ -85,7 +85,7 @@ static void __list_add(struct list_head *entry,
  * This is good for implementing stacks.
  */
 static void list_add(struct list_head *newentry,
-			    struct list_head *head)
+		     struct list_head *head)
 {
 	__list_add(newentry, head, head->next);
 }
@@ -100,7 +100,7 @@ static void list_add(struct list_head *newentry,
  * This is useful for implementing queues.
  */
 static void list_add_tail(struct list_head *newentry,
-				 struct list_head *head)
+			  struct list_head *head)
 {
 	__list_add(newentry, head->prev, head);
 }
@@ -109,7 +109,7 @@ static void list_add_tail(struct list_head *newentry,
  * This is only for internal list manipulation where we know
  * the prev/next entries already! */
 static void __list_del(struct list_head *prev,
-			      struct list_head *next)
+		       struct list_head *next)
 {
 	next->prev = prev;
 	prev->next = next;
@@ -141,7 +141,7 @@ static void list_del(struct list_head *entry)
  * If @old was empty, it will be overwritten.
  */
 static void list_replace(struct list_head *oldentry,
-				struct list_head *newentry)
+			 struct list_head *newentry)
 {
 	newentry->next = oldentry->next;
 	newentry->next->prev = newentry;
@@ -150,7 +150,7 @@ static void list_replace(struct list_head *oldentry,
 }
 
 static void list_replace_init(struct list_head *oldentry,
-				     struct list_head *newentry)
+			      struct list_head *newentry)
 {
 	list_replace(oldentry, newentry);
 	INIT_LIST_HEAD(oldentry);
@@ -172,7 +172,7 @@ static void list_del_init(struct list_head *entry)
  * @head: the head that will precede our entry
  */
 static void list_move(struct list_head *list,
-			     struct list_head *head)
+		      struct list_head *head)
 {
 	__list_del_entry(list);
 	list_add(list, head);
@@ -184,7 +184,7 @@ static void list_move(struct list_head *list,
  * @head: the head that will follow our entry
  */
 static void list_move_tail(struct list_head *list,
-				  struct list_head *head)
+			   struct list_head *head)
 {
 	__list_del_entry(list);
 	list_add_tail(list, head);
@@ -196,7 +196,7 @@ static void list_move_tail(struct list_head *list,
  * @head: the head of the list
  */
 static int list_is_last(const struct list_head *list,
-			       const struct list_head *head)
+			const struct list_head *head)
 {
 	return list->next == head;
 }
@@ -253,8 +253,8 @@ static int list_is_singular(const struct list_head *head)
 }
 
 static void __list_cut_position(struct list_head *list,
-				       struct list_head *head,
-				       struct list_head *entry)
+				struct list_head *head,
+				struct list_head *entry)
 {
 	struct list_head *new_first = entry->next;
 	list->next = head->next;
@@ -279,8 +279,8 @@ static void __list_cut_position(struct list_head *list,
  * losing its data.
  */
 static void list_cut_position(struct list_head *list,
-				     struct list_head *head,
-				     struct list_head *entry)
+			      struct list_head *head,
+			      struct list_head *entry)
 {
 	if (list_empty(head))
 		return;
@@ -294,8 +294,8 @@ static void list_cut_position(struct list_head *list,
 }
 
 static void __list_splice(const struct list_head *list,
-				 struct list_head *prev,
-				 struct list_head *next)
+			  struct list_head *prev,
+			  struct list_head *next)
 {
 	struct list_head *first = list->next;
 	struct list_head *last = list->prev;
@@ -313,7 +313,7 @@ static void __list_splice(const struct list_head *list,
  * @head: the place to add it in the first list.
  */
 static void list_splice(const struct list_head *list,
-			       struct list_head *head)
+			struct list_head *head)
 {
 	if (!list_empty(list))
 		__list_splice(list, head, head->next);
@@ -325,7 +325,7 @@ static void list_splice(const struct list_head *list,
  * @head: the place to add it in the first list.
  */
 static void list_splice_tail(struct list_head *list,
-				    struct list_head *head)
+			     struct list_head *head)
 {
 	if (!list_empty(list))
 		__list_splice(list, head->prev, head);
@@ -339,7 +339,7 @@ static void list_splice_tail(struct list_head *list,
  * The list at @list is reinitialised
  */
 static void list_splice_init(struct list_head *list,
-				    struct list_head *head)
+			     struct list_head *head)
 {
 	if (!list_empty(list)) {
 		__list_splice(list, head, head->next);
@@ -356,7 +356,7 @@ static void list_splice_init(struct list_head *list,
  * The list at @list is reinitialised
  */
 static void list_splice_tail_init(struct list_head *list,
-					 struct list_head *head)
+				  struct list_head *head)
 {
 	if (!list_empty(list)) {
 		__list_splice(list, head->prev, head);

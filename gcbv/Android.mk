@@ -32,6 +32,12 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	gcmain.c \
 	mirror/gcbv.c \
+	mirror/gcparser.c \
+	mirror/gcmap.c \
+	mirror/gcbuffer.c \
+	mirror/gcfill.c \
+	mirror/gcblit.c \
+	mirror/gcfilter.c \
 	mirror/gcdbglog.c
 
 LOCAL_CFLAGS :=
