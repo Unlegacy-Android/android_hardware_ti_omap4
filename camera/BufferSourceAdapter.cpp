@@ -799,15 +799,13 @@ int BufferSourceAdapter::freeBufferList(CameraBuffer * buflist)
 
     status_t ret = NO_ERROR;
 
+    if ( mBuffers != buflist ) {
+        return BAD_VALUE;
+    }
+
     android::AutoMutex lock(mLock);
 
     if (mBufferSourceDirection == BUFFER_SOURCE_TAP_OUT) returnBuffersToWindow();
-
-    if ( NULL != buflist )
-    {
-        delete [] buflist;
-        mBuffers = NULL;
-    }
 
     if( mBuffers != NULL)
     {
@@ -878,6 +876,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     ret = mBufferSource->set_crop(mBufferSource, x, y, x + frame->mWidth, y + frame->mHeight);
     if (NO_ERROR != ret) {
         CAMHAL_LOGE("mBufferSource->set_crop returned error %d", ret);
+        goto fail;
     }
 
     if ( NULL != frame->mMetaData.get() ) {
@@ -888,6 +887,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
             ret = extendedOps()->set_metadata(mBufferSource, extMeta);
             if (ret != 0) {
                 CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+                goto fail;
             }
         }
     }
@@ -898,9 +898,18 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     ret = mBufferSource->enqueue_buffer(mBufferSource, handle);
     if (ret != 0) {
         CAMHAL_LOGE("Surface::queueBuffer returned error %d", ret);
+        goto fail;
     }
 
     mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) frame->mBuffer->opaque);
+
+    return;
+
+fail:
+    mFramesWithCameraAdapterMap.clear();
+    mBufferSource = NULL;
+    mReturnFrame->requestExit();
+    mQueueFrame->requestExit();
 }
 
 
