@@ -1091,13 +1091,27 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     }
 
     for ( i = 0; i < mBufferCount; i++ )
-        {
+    {
         if ( dispFrame.mBuffer == &mBuffers[i] )
-            {
+        {
             break;
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    if ( mMeasureStandby ) {
+        CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
+        mMeasureStandby = false;
+    } else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) {
+        CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
+        mShotToShot = true;
+    } else if ( mShotToShot ) {
+        CameraHal::PPM("Shot to shot: ", &mStartCapture);
+        mShotToShot = false;
+    }
+
+#endif
 
     mFramesType.add( (int)mBuffers[i].opaque ,dispFrame.mType );
 
@@ -1161,26 +1175,6 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
         // the buffer immediately
         Utils::Message msg;
         mDisplayQ.put(&msg);
-
-
-#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
-
-        if ( mMeasureStandby )
-            {
-            CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
-            mMeasureStandby = false;
-            }
-        else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType)
-            {
-            CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
-            mShotToShot = true;
-            }
-        else if ( mShotToShot )
-            {
-            CameraHal::PPM("Shot to shot: ", &mStartCapture);
-            mShotToShot = false;
-        }
-#endif
 
     }
     else
@@ -1324,6 +1318,7 @@ void ANativeWindowDisplayAdapter::frameCallbackRelay(CameraFrame* caFrame)
 void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
 {
     ///Call queueBuffer of overlay in the context of the callback thread
+
     DisplayFrame df;
     df.mBuffer = caFrame->mBuffer;
     df.mType = (CameraFrame::FrameType) caFrame->mFrameType;
