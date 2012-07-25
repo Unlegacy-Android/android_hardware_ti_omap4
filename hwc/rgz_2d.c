@@ -104,6 +104,7 @@ static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, bl
 static int hal_to_ocd(int color);
 static int rgz_get_orientation(unsigned int transform);
 static int rgz_get_flip_flags(unsigned int transform, int use_src2_flags);
+static int rgz_hwc_scaled(hwc_layer_t *layer);
 
 int debug = 0;
 struct rgz_blts blts;
@@ -304,6 +305,14 @@ static int rgz_is_blending_disabled(rgz_out_params_t *params)
     return params->data.bvc.noblend;
 }
 
+static void rgz_get_displayframe_rect(hwc_layer_t *layer, blit_rect_t *res_rect)
+{
+    res_rect->left = layer->displayFrame.left;
+    res_rect->top = layer->displayFrame.top;
+    res_rect->bottom = layer->displayFrame.bottom;
+    res_rect->right = layer->displayFrame.right;
+}
+
 static void rgz_set_dst_data(rgz_out_params_t *params, blit_rect_t *subregion_rect,
     struct rgz_blt_entry* e)
 {
@@ -389,6 +398,19 @@ static void rgz_set_src2_is_dst(rgz_out_params_t *params, struct rgz_blt_entry* 
 }
 
 /*
+ * Configure the scaling mode according to the layer format
+ */
+static void rgz_cfg_scale_mode(struct rgz_blt_entry* e, hwc_layer_t *layer)
+{
+    /*
+     * TODO: Revisit scaling mode assignment later, output between GPU and GC320
+     * seem different
+     */
+    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+    e->bp.scalemode = is_NV12(handle->iFormat) ? BVSCALE_9x9_TAP : BVSCALE_BILINEAR;
+}
+
+/*
  * Copies src1 into the framebuffer
  */
 static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
@@ -402,8 +424,15 @@ static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
     e->bp.flags |= rgz_get_flip_flags(hwc_src1->transform, 0);
     rgz_set_async(e, 1);
 
-    rgz_set_src_data(params, rgz_src1, subregion_rect, e, 0);
-    rgz_set_dst_data(params, subregion_rect, e);
+    blit_rect_t tmp_rect;
+    if (rgz_hwc_scaled(hwc_src1)) {
+        rgz_get_displayframe_rect(hwc_src1, &tmp_rect);
+        rgz_cfg_scale_mode(e, hwc_src1);
+    } else
+        tmp_rect = *subregion_rect;
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
+    rgz_set_dst_data(params, &tmp_rect, e);
     rgz_set_clip_rect(params, subregion_rect, e);
 
     if((e->src1geom.format == OCDFMT_BGR124) ||
@@ -430,12 +459,25 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
     e->bp.flags |= rgz_get_flip_flags(hwc_src1->transform, 0);
     rgz_set_async(e, 1);
 
-    rgz_set_src_data(params, rgz_src1, subregion_rect, e, 0);
-    rgz_set_dst_data(params, subregion_rect, e);
+    blit_rect_t tmp_rect;
+    if (rgz_hwc_scaled(hwc_src1)) {
+        rgz_get_displayframe_rect(hwc_src1, &tmp_rect);
+        rgz_cfg_scale_mode(e, hwc_src1);
+    } else
+        tmp_rect = *subregion_rect;
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
+    rgz_set_dst_data(params, &tmp_rect, e);
     rgz_set_clip_rect(params, subregion_rect, e);
 
     if (rgz_src2) {
+        /*
+         * NOTE: Due to an API limitation it's not possible to blend src1 and
+         * src2 if both have scaling, hence only src1 is used for now
+         */
         hwc_layer_t *hwc_src2 = rgz_src2->hwc_layer;
+        if (rgz_hwc_scaled(hwc_src2))
+            OUTE("src2 layer %p has scaling, this is not supported", hwc_src2);
         e->bp.flags |= rgz_get_flip_flags(hwc_src2->transform, 1);
         rgz_set_src_data(params, rgz_src2, subregion_rect, e, 1);
     } else
@@ -711,11 +753,12 @@ static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
     if ((layer->flags & HWC_SKIP_LAYER) || !handle)
         return 0;
 
-    if (rgz_hwc_scaled(layer))
+    /* FIXME: GC doesn't support layers with scaling and rotation on the same blit yet */
+    if (rgz_hwc_scaled(layer) && layer->transform)
         return 0;
 
     if (is_NV12(handle->iFormat))
-        return (!layer->transform && handle->iFormat == HAL_PIXEL_FORMAT_TI_NV12);
+        return handle->iFormat == HAL_PIXEL_FORMAT_TI_NV12;
 
     /* FIXME: The following must be removed when GC supports vertical/horizontal
      * buffer flips, please note having a FLIP_H and FLIP_V means 180 rotation
@@ -1162,10 +1205,7 @@ static int rgz_hwc_layer_blit(rgz_out_params_t *params, rgz_layer_t *rgz_layer)
 
     hwc_layer_t* layer = rgz_layer->hwc_layer;
     blit_rect_t srcregion;
-    srcregion.left = layer->displayFrame.left;
-    srcregion.top = layer->displayFrame.top;
-    srcregion.bottom = layer->displayFrame.bottom;
-    srcregion.right = layer->displayFrame.right;
+    rgz_get_displayframe_rect(layer, &srcregion);
 
     int noblend = rgz_is_blending_disabled(params);
     if (!noblend && layer->blending == HWC_BLENDING_PREMULT)
@@ -1186,8 +1226,29 @@ static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, bl
     IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
     int res_left = 0;
     int res_top = 0;
-    int delta_left = subregion_rect->left - layer->displayFrame.left;
-    int delta_top = subregion_rect->top - layer->displayFrame.top;
+    int delta_left;
+    int delta_top;
+    int res_width;
+    int res_height;
+
+    /*
+     * If the layer is scaled we use the whole cropping rectangle from the
+     * source and just move the clipping rectangle for the region we want to
+     * blit, this is done to prevent any artifacts when blitting subregions of
+     * a scaled layer
+     */
+    if (rgz_hwc_scaled(layer)) {
+        delta_top = 0;
+        delta_left = 0;
+        res_width = WIDTH(layer->sourceCrop);
+        res_height = HEIGHT(layer->sourceCrop);
+    } else {
+        delta_top = subregion_rect->top - layer->displayFrame.top;
+        delta_left = subregion_rect->left - layer->displayFrame.left;
+        res_width = WIDTH(*subregion_rect);
+        res_height = HEIGHT(*subregion_rect);
+    }
+
     /*
      * Calculate the top, left offset from the source cropping rectangle
      * depending on the rotation
@@ -1216,8 +1277,8 @@ static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, bl
     /* Resulting rectangle has the subregion dimensions */
     res_rect->left = res_left;
     res_rect->top = res_top;
-    res_rect->right = res_left + WIDTH(*subregion_rect);
-    res_rect->bottom = res_top + HEIGHT(*subregion_rect);
+    res_rect->right = res_left + res_width;
+    res_rect->bottom = res_top + res_height;
 }
 
 static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned int set)
@@ -1297,10 +1358,20 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
 
         /*
          * We save a read and a write from the FB if we blend the bottom
-         * two layers
+         * two layers, we can do this only if both layers are not scaled
          */
-        e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix],
-            hregion->rgz_layers[s2lix]);
+        int first_batchflags = 0;
+        if (!rgz_hwc_scaled(hregion->rgz_layers[lix]->hwc_layer) &&
+            !rgz_hwc_scaled(hregion->rgz_layers[s2lix]->hwc_layer)) {
+            e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix],
+                hregion->rgz_layers[s2lix]);
+            first_batchflags |= BVBATCH_SRC2;
+        } else {
+            /* Return index to the first operation and make a copy of the first layer */
+            lix = s2lix;
+            e = rgz_hwc_subregion_copy(params, rect, hregion->rgz_layers[lix]);
+            first_batchflags |= BVBATCH_OP | BVBATCH_SRC2;
+        }
         rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
@@ -1310,9 +1381,15 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
             e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix], NULL);
             if (first) {
                 first = 0;
-                batchflags |= BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN;
+                batchflags |= first_batchflags;
             }
-            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN;
+            /*
+             * TODO: This will work when scaling is introduced, however we need
+             * to think on a better way to optimize this.
+             */
+            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE |
+                BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE | BVBATCH_SRC2RECT_ORIGIN |
+                BVBATCH_SRC2RECT_SIZE | BVBATCH_SCALE;
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
 
