@@ -876,15 +876,18 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 #endif
 
 EXIT:
-	if( pBufferHdr!=NULL && pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
+	if( pBufferHdr!=NULL && pCompPrv!=NULL)
 	{
-		pBufferHdr->pBuffer = pBufferOrig;
-		pBufferHdr->nFilledLen = nFilledLen;
-		pBufferHdr->nAllocLen = nAllocLen;
+		if(pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
+		{
+		   pBufferHdr->pBuffer = pBufferOrig;
+		   pBufferHdr->nFilledLen = nFilledLen;
+		   pBufferHdr->nAllocLen = nAllocLen;
 #ifdef ENABLE_GRALLOC_BUFFER
-		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
-		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+		   RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
+		   RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
 #endif
+	    }
 	}
 	return eError;
 }
