@@ -91,6 +91,16 @@ static int dummy_get_id(preview_stream_ops_t*, char *data, unsigned int dataSize
 static int dummy_get_buffer_count(preview_stream_ops_t*, int *count) {
     return INVALID_OPERATION;
 }
+
+static int dummy_get_crop(preview_stream_ops_t*,
+                          int *, int *, int *, int *) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_get_current_size(preview_stream_ops_t*,
+                                  int *, int *) {
+    return INVALID_OPERATION;
+}
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -102,6 +112,8 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
     dummy_set_metadata,
     dummy_get_id,
     dummy_get_buffer_count,
+    dummy_get_crop,
+    dummy_get_current_size,
 #endif
 };
 #endif

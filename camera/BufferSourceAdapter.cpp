@@ -653,6 +653,10 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     err = extendedOps()->get_buffer_dimension(mBufferSource, &mBuffers[0].width, &mBuffers[0].height);
     err = extendedOps()->get_buffer_format(mBufferSource, &formatSource);
 
+    int t, l, r, b, w, h;
+    err = extendedOps()->get_crop(mBufferSource, &l, &t, &r, &b);
+    err = extendedOps()->get_current_size(mBufferSource, &w, &h);
+
     // lock buffer
     {
         void *y_uv[2];
@@ -666,6 +670,8 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     mPixelFormat = getFormatFromANW(formatSource);
 
     mBuffers[0].format = mPixelFormat;
+    mBuffers[0].actual_size = CameraHal::calculateBufferSize(mPixelFormat, w, h);
+    mBuffers[0].offset = t * w + l * CameraHal::getBPP(mPixelFormat);
     mBufferSourceDirection = BUFFER_SOURCE_TAP_IN;
 
     return mBuffers;

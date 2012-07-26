@@ -109,8 +109,10 @@ status_t OMXCameraAdapter::startReprocess()
         android::AutoMutex lock(mBurstLock);
 
         for ( int index = 0 ; index < portData->mMaxQueueable ; index++ ) {
-            CAMHAL_LOGDB("Queuing buffer on video input port - %p",
-                         portData->mBufferHeader[index]->pBuffer);
+            CAMHAL_LOGDB("Queuing buffer on video input port - %p, offset: %d, length: %d",
+                         portData->mBufferHeader[index]->pBuffer,
+                         portData->mBufferHeader[index]->nOffset,
+                         portData->mBufferHeader[index]->nFilledLen);
             portData->mStatus[index] = OMXCameraPortParameters::FILL;
             eError = OMX_EmptyThisBuffer(mCameraAdapterParameters.mHandleComp,
                     (OMX_BUFFERHEADERTYPE*)portData->mBufferHeader[index]);
@@ -323,6 +325,8 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
         pBufferHdr->nVersion.s.nVersionMinor = 1 ;
         pBufferHdr->nVersion.s.nRevision = 0;
         pBufferHdr->nVersion.s.nStep =  0;
+        pBufferHdr->nOffset = bufArr[index].offset;
+        pBufferHdr->nFilledLen = bufArr[index].actual_size;
         portData->mBufferHeader[index] = pBufferHdr;
     }
 
