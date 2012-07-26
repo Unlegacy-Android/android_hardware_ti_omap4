@@ -232,7 +232,11 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         if (params.getInt(android::CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {
             mPendingCaptureSettings |= SetRotation;
         }
-        mPictureRotation = params.getInt(android::CameraParameters::KEY_ROTATION);
+        if (cap->mFrameLayoutType == OMX_TI_StereoFrameLayout2D) {
+            mPictureRotation = params.getInt(android::CameraParameters::KEY_ROTATION);
+        } else {
+            mPictureRotation = 0;
+        }
         }
     else
         {
