@@ -78,6 +78,7 @@ TI_CAMERAHAL_COMMON_SRC := \
     BaseCameraAdapter.cpp \
     MemoryManager.cpp \
     Encoder_libjpeg.cpp \
+    Decoder_libjpeg.cpp \
     SensorListener.cpp  \
     NV12_resize.cpp \
     CameraParameters.cpp \
