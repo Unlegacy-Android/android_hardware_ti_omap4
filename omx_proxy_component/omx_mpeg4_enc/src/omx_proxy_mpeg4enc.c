@@ -153,10 +153,11 @@ typedef struct _OMX_PROXY_MPEG4E_PRIVATE
 	alloc_device_t* mAllocDev;
 }OMX_PROXY_MPEG4E_PRIVATE;
 
-RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
+extern RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 				     OMX_PTR *handle1, OMX_PTR *handle2,
 				     PROXY_BUFFER_TYPE proxyBufferType);
-RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
+extern RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1,
+										OMX_PTR handle2, PROXY_BUFFER_TYPE proxyBufferType);
 #endif
 
 OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_GetExtensionIndex(OMX_IN OMX_HANDLETYPE hComponent,
@@ -804,7 +805,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			return OMX_ErrorBadParameter;
 		}
 #ifdef ENABLE_GRALLOC_BUFFER
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,-1,
 									   &pAuxBuf0, &pAuxBuf1,
 									   GrallocPointers);
 		PROXY_checkRpcError();
@@ -829,8 +830,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers) {
 		pBufferHdr->pBuffer = pBufferOrig;
 #ifdef ENABLE_GRALLOC_BUFFER
-		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
-		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+		RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0, pAuxBuf1, GrallocPointers);
 #endif
 	}
 	EXIT:

@@ -159,10 +159,12 @@ OMX_ERRORTYPE PROXY_SendCommand(OMX_HANDLETYPE, OMX_COMMANDTYPE,
 OMX_ERRORTYPE CameraMaptoTilerDuc(OMX_TI_CONFIG_SHAREDBUFFER *, OMX_PTR *);
 //COREID TARGET_CORE_ID = CORE_APPM3;
 
-extern RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
+extern RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1,
+									 int fd2,
                                      OMX_PTR *handle1, OMX_PTR *handle2,
                                      PROXY_BUFFER_TYPE proxyBufferType);
-extern RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE, OMX_PTR);
+extern RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE, OMX_PTR, OMX_PTR,
+										PROXY_BUFFER_TYPE proxyBufferType);
 
 /* ===========================================================================*/
 /**
@@ -187,7 +189,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
 
     for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
         if (pCamPrv->gCamIonHdl[i][0] != NULL) {
-            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0]);
+            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0], NULL , IONPointers);
             if (eRPCError != RPC_OMX_ErrorNone) {
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering Y Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
@@ -197,7 +199,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
             pCamPrv->gCamIonHdl[i][0] = NULL;
         }
         if (pCamPrv->gCamIonHdl[i][1] != NULL) {
-            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][1]);
+            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][1], NULL , IONPointers);
             if (eRPCError != RPC_OMX_ErrorNone) {
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering UV Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
@@ -309,7 +311,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                                 goto EXIT;
                             }
 
-                            eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd1,
+                            eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd1, -1,
                                                            &pCamPrv->pRegBuff[i][0], NULL, IONPointers);
                             PROXY_checkRpcError();
                             pVtcConfig->IonBufhdl[0] = (OMX_PTR)pCamPrv->pRegBuff[i][0];
@@ -321,7 +323,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                             if (ret != 0) {
                                 DOMX_ERROR("Tiler 2D buffer allocation (UV) for slice-based processing failed. Hence exiting!!!\n");
                                 if (pCamPrv->pRegBuff[i][0] != NULL) {
-                                    eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0]);
+                                    eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0], NULL , IONPointers);
                                     PROXY_checkRpcError();
                                 }
 
@@ -336,7 +338,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                                 goto EXIT;
                             }
 
-                            eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd2,
+                            eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd2,-1,
                                                            &pCamPrv->pRegBuff[i][1], NULL, IONPointers);
                             PROXY_checkRpcError();
                             pVtcConfig->IonBufhdl[1] = (OMX_PTR)pCamPrv->pRegBuff[i][1];

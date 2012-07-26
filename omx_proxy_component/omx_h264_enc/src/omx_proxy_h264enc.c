@@ -154,10 +154,11 @@ typedef struct _OMX_PROXY_H264E_PRIVATE
 	alloc_device_t* mAllocDev;
 }OMX_PROXY_H264E_PRIVATE;
 
-RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
+extern RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 				     OMX_PTR *handle1, OMX_PTR *handle2,
 				     PROXY_BUFFER_TYPE proxyBufferType);
-RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
+extern RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1,
+										OMX_PTR handle2, PROXY_BUFFER_TYPE proxyBufferType);
 #endif
 
 
@@ -849,7 +850,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			goto EXIT; //need to restore lenght fields in pBufferHdr
 		}
 #ifdef ENABLE_GRALLOC_BUFFER
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,-1,
 									   &pAuxBuf0, &pAuxBuf1,
 									   GrallocPointers);
 		PROXY_checkRpcError();
@@ -884,10 +885,9 @@ EXIT:
 		   pBufferHdr->nFilledLen = nFilledLen;
 		   pBufferHdr->nAllocLen = nAllocLen;
 #ifdef ENABLE_GRALLOC_BUFFER
-		   RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
-		   RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+                   RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0, pAuxBuf1, GrallocPointers);
 #endif
-	    }
+	        }
 	}
 	return eError;
 }
