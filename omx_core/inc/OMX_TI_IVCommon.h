@@ -1043,6 +1043,37 @@ typedef struct OMX_HMSGAMMATYPE {
     OMX_U8                data[1];
 } OMX_HMSGAMMATYPE;
 
+/**
+ *  Structure describes properties of pyramid level
+ *  nOffset : nOffset from start of buffer in bytes
+ *  nWidth  : nWidth  in pixels
+ *  nHeight : nHeight in pixels
+ *  nStride : nStride in bytes
+ */
+typedef struct OMX_TI_IMAGEPYRAMIDDESCTYPE {
+    OMX_U32     nOffset;
+    OMX_U16     nWidth;
+    OMX_U16     nHeight;
+    OMX_U32     nStride;
+} OMX_TI_IMAGEPYRAMIDDESCTYPE;
+
+/**
+ *  The extra data having pyramid data,
+ *  It is described with the following structure.
+ *  nLevelsCount - Number of levels of pyramid
+ *  PyramidData - first element of array with description
+ *  of levels of pyramid. Size of array will describe
+ *  by nLevelsCount.
+ */
+typedef struct OMX_TI_IMAGEPYRAMIDTYPE {
+    OMX_U32                     nSize;
+    OMX_VERSIONTYPE             nVersion;
+    OMX_U32                     nPortIndex;
+    OMX_TI_CAMERAVIEWTYPE       eCameraView;
+    OMX_U32                     nLevelsCount;
+    OMX_TI_IMAGEPYRAMIDDESCTYPE PyramidData[1];
+} OMX_TI_IMAGEPYRAMIDTYPE;
+
 
 #define OMX_OTHER_EXTRADATATYPE_SIZE ((OMX_U32)(((OMX_OTHER_EXTRADATATYPE *)0x0)->data))  /**< Size of OMX_OTHER_EXTRADATATYPE
                                                                                 without Data[1] and without padding */
@@ -1635,51 +1666,52 @@ typedef struct OMX_TI_MTISTYPE {
  * possible extra data payload types.
  */
 typedef enum OMX_EXT_EXTRADATATYPE {
-    OMX_ExifAttributes = 0x7F000001,     /**< 0x7F000001 Reserved region for introducing Vendor Extensions */
-   OMX_AncillaryData,                   /**< 0x7F000002 ancillary data */
-   OMX_WhiteBalance,                    /**< 0x7F000003 white balance resultant data */
-   OMX_UnsaturatedRegions,              /**< 0x7F000004 unsaturated regions data */
-    OMX_FaceDetection,              /**< 0x7F000005 face detect data */
-    OMX_BarcodeDetection,           /**< 0x7F000006 bar-code detct data */
-    OMX_FrontObjectDetection,       /**< 0x7F000007 Front object detection data */
-    OMX_MotionEstimation,           /**< 0x7F000008 motion Estimation data */
-    OMX_MTISType,                   /**< 0x7F000009 MTIS motion Estimation data */
-    OMX_DistanceEstimation,         /**< 0x7F00000A disctancedistance estimation */
-    OMX_Histogram,                  /**< 0x7F00000B histogram */
-    OMX_FocusRegion,                /**< 0x7F00000C focus region data */
-   OMX_ExtraDataPanAndScan,             /**< 0x7F00000D pan and scan data */
-    OMX_RawFormat,                  /**< 0x7F00000E custom RAW data format */
-    OMX_SensorType,                 /**< 0x7F00000F vendor & model of the sensor being used */
-    OMX_SensorCustomDataLength,     /**< 0x7F000010 vendor specific custom data length */
-    OMX_SensorCustomData,           /**< 0x7F000011 vendor specific data */
-   OMX_TI_FrameLayout,                  /**< 0x7F000012 vendor specific data */
-   OMX_TI_SEIinfo2004Frame1,    /**< 0x7F000013 Used for 2004 SEI message to be provided by video decoders */
-   OMX_TI_SEIinfo2004Frame2,    /**< 0x7F000014 Used for 2004 SEI message to be provided by video decoders */
-   OMX_TI_SEIinfo2010Frame1,    /**< 0x7F000015 Used for 2010 SEI message to be provided by video decoders */
-   OMX_TI_SEIinfo2010Frame2,    /**< 0x7F000016 Used for 2010 SEI message to be provided by video decoders */
-   OMX_TI_RangeMappingInfo,     /**< 0x7F000017 Used for Range mapping info provided by Video Decoders */
-   OMX_TI_RescalingInfo,        /**< 0x7F000018 Used for width/height rescaling info provided by Video Decoders */
-   OMX_TI_WhiteBalanceOverWrite,        /**< 0x7F000019 Used for manual AWB settings */
-    OMX_TI_CPCamData,               /**< 0x7F00001A Used for cp cam data */
-    OMX_TI_H264ESliceDataInfo,      /**< 0x7F00001B */
-    OMX_TI_DccData,                 /**< 0x7F00001C Used for dcc data overwrite in the file system */
-    OMX_TI_ProfilerData,            /**< 0x7F00001D Used for profiling data */
-    OMX_TI_VectShotInfo,            /**< 0x7F00001E Used for vector shot feedback notification */
-    OMX_TI_CamReProcMeta,           /**< 0x7F00001F Used for meta data input to camera re-proc function */
-    OMX_TI_LSCTable,                /**< 0x7F000020 Lens shading table for corresponding frame */
-    OMX_TI_CodecExtenderErrorFrame1, /**< 0x7F000021 Used for Codec Extended Error to be provided byvideo decoders */
-    OMX_TI_CodecExtenderErrorFrame2, /**< 0x7F000022 Used for Codec Extended Error to be provided byvideo decoders */
-    OMX_TI_MBInfoFrame1,            /**< 0x7F000023 Used for MBError message to be provided by videodecoders */
-    OMX_TI_MBInfoFrame2,            /**< 0x7F000024 Used for MBError message to be provided by videodecoders */
-    OMX_TI_SEIInfoFrame1,           /**< 0x7F000025 Used for SEI message to be provided by video decoders*/
-    OMX_TI_SEIInfoFrame2,           /**< 0x7F000026 Used for SEI message to be provided by video decoders*/
-    OMX_TI_VUIInfoFrame1,           /**< 0x7F000027 Used for VUI message to be provided by video decoders */
-    OMX_TI_VUIInfoFrame2,           /**< 0x7F000028 Used for VUI message to be provided by video decoders */
-    OMX_TI_FaceDetectionRaw,        /**< 0x7F000029 Face detect data without face tracking calculations */
-    OMX_TI_HMSGamma,                /**< 0x7F00002A Histogram Matched for Stereo Gamma table */
-   OMX_TI_ExtraData_Count,
-   OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
-   OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
+    OMX_ExifAttributes = 0x7F000001,    /**< 0x7F000001 Reserved region for introducing Vendor Extensions */
+    OMX_AncillaryData,                  /**< 0x7F000002 ancillary data */
+    OMX_WhiteBalance,                   /**< 0x7F000003 white balance resultant data */
+    OMX_UnsaturatedRegions,             /**< 0x7F000004 unsaturated regions data */
+    OMX_FaceDetection,                  /**< 0x7F000005 face detect data */
+    OMX_BarcodeDetection,               /**< 0x7F000006 bar-code detct data */
+    OMX_FrontObjectDetection,           /**< 0x7F000007 Front object detection data */
+    OMX_MotionEstimation,               /**< 0x7F000008 motion Estimation data */
+    OMX_MTISType,                       /**< 0x7F000009 MTIS motion Estimation data */
+    OMX_DistanceEstimation,             /**< 0x7F00000A disctancedistance estimation */
+    OMX_Histogram,                      /**< 0x7F00000B histogram */
+    OMX_FocusRegion,                    /**< 0x7F00000C focus region data */
+    OMX_ExtraDataPanAndScan,            /**< 0x7F00000D pan and scan data */
+    OMX_RawFormat,                      /**< 0x7F00000E custom RAW data format */
+    OMX_SensorType,                     /**< 0x7F00000F vendor & model of the sensor being used */
+    OMX_SensorCustomDataLength,         /**< 0x7F000010 vendor specific custom data length */
+    OMX_SensorCustomData,               /**< 0x7F000011 vendor specific data */
+    OMX_TI_FrameLayout,                 /**< 0x7F000012 vendor specific data */
+    OMX_TI_SEIinfo2004Frame1,           /**< 0x7F000013 Used for 2004 SEI message to be provided by video decoders */
+    OMX_TI_SEIinfo2004Frame2,           /**< 0x7F000014 Used for 2004 SEI message to be provided by video decoders */
+    OMX_TI_SEIinfo2010Frame1,           /**< 0x7F000015 Used for 2010 SEI message to be provided by video decoders */
+    OMX_TI_SEIinfo2010Frame2,           /**< 0x7F000016 Used for 2010 SEI message to be provided by video decoders */
+    OMX_TI_RangeMappingInfo,            /**< 0x7F000017 Used for Range mapping info provided by Video Decoders */
+    OMX_TI_RescalingInfo,               /**< 0x7F000018 Used for width/height rescaling info provided by Video Decoders */
+    OMX_TI_WhiteBalanceOverWrite,       /**< 0x7F000019 Used for manual AWB settings */
+    OMX_TI_CPCamData,                   /**< 0x7F00001A Used for cp cam data */
+    OMX_TI_H264ESliceDataInfo,          /**< 0x7F00001B */
+    OMX_TI_DccData,                     /**< 0x7F00001C Used for dcc data overwrite in the file system */
+    OMX_TI_ProfilerData,                /**< 0x7F00001D Used for profiling data */
+    OMX_TI_VectShotInfo,                /**< 0x7F00001E Used for vector shot feedback notification */
+    OMX_TI_CamReProcMeta,               /**< 0x7F00001F Used for meta data input to camera re-proc function */
+    OMX_TI_LSCTable,                    /**< 0x7F000020 Lens shading table for corresponding frame */
+    OMX_TI_CodecExtenderErrorFrame1,    /**< 0x7F000021 Used for Codec Extended Error to be provided byvideo decoders */
+    OMX_TI_CodecExtenderErrorFrame2,    /**< 0x7F000022 Used for Codec Extended Error to be provided byvideo decoders */
+    OMX_TI_MBInfoFrame1,                /**< 0x7F000023 Used for MBError message to be provided by videodecoders */
+    OMX_TI_MBInfoFrame2,                /**< 0x7F000024 Used for MBError message to be provided by videodecoders */
+    OMX_TI_SEIInfoFrame1,               /**< 0x7F000025 Used for SEI message to be provided by video decoders*/
+    OMX_TI_SEIInfoFrame2,               /**< 0x7F000026 Used for SEI message to be provided by video decoders*/
+    OMX_TI_VUIInfoFrame1,               /**< 0x7F000027 Used for VUI message to be provided by video decoders */
+    OMX_TI_VUIInfoFrame2,               /**< 0x7F000028 Used for VUI message to be provided by video decoders */
+    OMX_TI_FaceDetectionRaw,            /**< 0x7F000029 Face detect data without face tracking calculations */
+    OMX_TI_HMSGamma,                    /**< 0x7F00002A Histogram Matched for Stereo Gamma table */
+    OMX_TI_ImagePyramid,                /**< 0x7F00002B Describe image piramid sizes for each level of pyramid */
+    OMX_TI_ExtraData_Count,
+    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
+    OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
 } OMX_EXT_EXTRADATATYPE;
 
 /**
@@ -3630,6 +3662,26 @@ typedef struct OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE {
     OMX_U32                     nPortIndex;
     OMX_TI_VECTSHOTSTOPMETHOD   eStopMethod;
 } OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE;
+
+/**
+ * Define configuration structure to
+ * specify computing of image pyramids
+ *
+ * STRUCT MEMBERS:
+ *  nSize           : Size of the structure in bytes
+ *  nVersion        : OMX specification version information
+ *  nPortIndex      : Port that this structure applies to
+ *  nLevelsCount    : Number of levels of the pyramid
+ *  nScalingFactor  : (Format: Q16) Scaling factor for
+ *                    the levels of the pyramid
+ */
+typedef struct OMX_TI_PARAM_IMAGEPYRAMIDTYPE {
+    OMX_U32                 nSize;
+    OMX_VERSIONTYPE         nVersion;
+    OMX_U32                 nPortIndex;
+    OMX_U32                 nLevelsCount;
+    OMX_U32                 nScalingFactor; // Q16
+} OMX_TI_PARAM_IMAGEPYRAMIDTYPE;
 
 
 

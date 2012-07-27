@@ -262,7 +262,8 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexParamVideoEnableMetadata,               /**< 0x7F0000A7 reference: OMX_TI_PARAM_DECMETADATA */
     OMX_TI_IndexParamVideoDeblockingQP,                 /**< 0x7F0000A8 reference: OMX_TI_VIDEO_PARAM_DEBLOCKINGQP */
     OMX_TI_IndexParamAVCTemporalScalabilitySetting,     /**< 0x7F0000A9 reference: OMX_TI_VIDEO_PARAM_TEMPORAL_SCALABILITY*/
-    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100)  /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
+    OMX_TI_IndexParamImagePyramid,                      /**< 0x7F0000AA reference: OMX_TI_PARAM_IMAGEPYRAMIDTYPE */
+    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
 
 
