@@ -242,7 +242,7 @@ static void convertNV12ToYuv420(DebugFrame_Dump *frameInfo, void *dst)
 	int width = frameInfo->frame_width;
 	int height = frameInfo->frame_height;
 
-	LOGD("Coverting NV-12 to YUV420p Width[%d], Height[%d] and Stride[%d] offset[%d]",
+	DOMX_DEBUG("Coverting NV-12 to YUV420p Width[%d], Height[%d] and Stride[%d] offset[%d]",
 	width, height, stride, ybuf_offset);
 
 	/* copy y-buffer, almost bytewise copy, except for stride jumps.*/
@@ -291,7 +291,7 @@ void DumpVideoFrame(DebugFrame_Dump *frameInfo)
 	int filedes = -1;
 	char framenumber[100];
 	sprintf(framenumber, "/data/frame_%ld.txt", frameInfo->runningFrame);
-	LOGD("file path %s",framenumber);
+	DOMX_DEBUG("file path %s",framenumber);
 	filedes = open(framenumber, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
 	if(filedes < 0)
 	{
