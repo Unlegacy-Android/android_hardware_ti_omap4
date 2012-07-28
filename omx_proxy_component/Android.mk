@@ -1,5 +1,13 @@
 LOCAL_PATH:= $(call my-dir)
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 16 || echo 1),)
+	FRAMEWORKS_MEDIA_BASE := $(TOP)/frameworks/native/include/media/hardware
+else
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 14 || echo 1),)
+	FRAMEWORKS_MEDIA_BASE := $(TOP)/frameworks/base/include/media/stagefright
+endif
+endif
+
 #
 # libOMX.TI.DUCATI1.VIDEO.DECODER
 #
@@ -112,7 +120,7 @@ LOCAL_C_INCLUDES += \
 	system/core/include/cutils \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
-	frameworks/base/include/media/stagefright \
+	$(FRAMEWORKS_MEDIA_BASE)
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -147,7 +155,7 @@ LOCAL_C_INCLUDES += \
 	system/core/include/cutils \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
-	frameworks/base/include/media/stagefright \
+	$(FRAMEWORKS_MEDIA_BASE)
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -182,7 +190,7 @@ LOCAL_C_INCLUDES += \
 	system/core/include/cutils \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
-	frameworks/base/include/media/stagefright \
+	$(FRAMEWORKS_MEDIA_BASE)
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -234,3 +242,5 @@ LOCAL_MODULE_TAGS:= optional
 LOCAL_SRC_FILES:= omx_video_dec/src/omx_proxy_videodec_secure.c
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.DECODER.secure
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
+
+FRAMEWORKS_MEDIA_BASE :=
