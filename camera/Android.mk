@@ -1,4 +1,4 @@
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
 
 LOCAL_PATH:= $(call my-dir)
 
