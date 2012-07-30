@@ -2542,6 +2542,7 @@ int functional_menu() {
     int k = 0;
     const char *valstr = NULL;
     struct CameraInfo cameraInfo;
+    bool queueEmpty = true;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -2926,7 +2927,13 @@ int functional_menu() {
             printf("numpreviewFormat %d\n", numpictureFormat);
             params.setPictureFormat(pictureFormatArray[pictureFormat]);
 
-            if ( hardwareActive )
+            queueEmpty = true;
+            if ( bufferSourceOutputThread.get() ) {
+                if ( 0 < bufferSourceOutputThread->hasBuffer() ) {
+                    queueEmpty = false;
+                }
+            }
+            if ( hardwareActive && queueEmpty )
                 camera->setParameters(params.flatten());
 
             break;
@@ -3550,6 +3557,7 @@ int functional_menu() {
             if (bufferSourceOutputThread.get() &&
                 bufferSourceOutputThread->hasBuffer())
             {
+                bufferSourceOutputThread->setStreamCapture(false, expBracketIdx);
                 if (hardwareActive) camera->setParameters(params.flatten());
 
                 if (bufferSourceInput.get()) {

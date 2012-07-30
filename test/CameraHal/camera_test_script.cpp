@@ -215,6 +215,7 @@ int execute_functional_script(char *script) {
     int frameRConst = 0;
     int frameRRange = 0;
     struct CameraInfo cameraInfo;
+    bool queueEmpty = true;
 
     LOG_FUNCTION_NAME;
 
@@ -549,8 +550,15 @@ int execute_functional_script(char *script) {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
                 }
 
-                if ( hardwareActive )
+                queueEmpty = true;
+                if ( bufferSourceOutputThread.get() ) {
+                    if ( 0 < bufferSourceOutputThread->hasBuffer() ) {
+                        queueEmpty = false;
+                    }
+                }
+                if ( hardwareActive && queueEmpty ) {
                     camera->setParameters(params.flatten());
+                }
 
                 break;
             case '-':
@@ -1268,6 +1276,7 @@ int execute_functional_script(char *script) {
                 if (bufferSourceOutputThread.get() &&
                     bufferSourceOutputThread->hasBuffer())
                 {
+                    bufferSourceOutputThread->setStreamCapture(false, expBracketIdx);
                     if (hardwareActive) camera->setParameters(params.flatten());
 
                     if (bufferSourceInput.get()) {
