@@ -501,10 +501,10 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     // to make sure the stride of the buffer is correct
     if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
         mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
-        mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
+        mapper.lock(anb->handle, GRALLOC_USAGE_SW_WRITE_OFTEN, bounds, &data);
         // copy buffer to input buffer if available
         if (bufinfo.buf.get()) {
-            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
+            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_OFTEN, &input);
         }
         if (input) {
             if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
