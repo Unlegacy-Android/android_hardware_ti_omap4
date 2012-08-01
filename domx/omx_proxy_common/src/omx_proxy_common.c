@@ -1545,16 +1545,14 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	switch(nParamIndex)
 	{
 		case OMX_TI_IndexUseBufferDescriptor:
-		     ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
+			eRPCError = RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
+				pLocBufNeedMap, &eCompReturn);
+			PROXY_checkRpcError();
+			ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
 		     if(pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
 		     {
 			     ptBufDescParam->bEnabled = OMX_TRUE;
 			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeVirtual2D;
-		     }
-		     else
-		     {
-			     ptBufDescParam->bEnabled = OMX_FALSE;
-			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeMax;
 		     }
 		     break;
 
@@ -1574,8 +1572,8 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 #endif
 			eRPCError = RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 				pLocBufNeedMap, &eCompReturn);
-#ifdef USE_ION
 			PROXY_checkRpcError();
+#ifdef USE_ION
 			if (pRegistered != NULL) {
 				eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pRegistered, NULL, IONPointers);
 				PROXY_checkRpcError();
