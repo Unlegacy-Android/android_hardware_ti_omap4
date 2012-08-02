@@ -218,6 +218,7 @@ typedef struct buffer_info {
     int width;
     int height;
     int format;
+    size_t offset;
     Rect crop;
     sp<GraphicBuffer> buf;
 } buffer_info_t;
