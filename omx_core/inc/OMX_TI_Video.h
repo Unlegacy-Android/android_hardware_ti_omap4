@@ -41,13 +41,14 @@
  * -------------------------------------------------------------------------- */
 
 /* =========================================================================
- *!
- *! Revision History
- *! =====================================================================
- *! 24-Dec-2008  Navneet         navneet@ti.com          Initial Version
- *! 14-Jul-2009  Radha Purnima   radhapurnima@ti.com
- *! 25-Aug-2009  Radha Purnima   radhapurnima@ti.com
- *! 16-May-2009  Shivaraj Shetty shettyshivaraj@ti.com
+ * !
+ * ! Revision History
+ * ! =====================================================================
+ * ! 24-Dec-2008  Navneet         navneet@ti.com          Initial Version
+ * ! 14-Jul-2009  Radha Purnima   radhapurnima@ti.com
+ * ! 25-Aug-2009  Radha Purnima   radhapurnima@ti.com
+ * ! 16-May-2009  Shivaraj Shetty shettyshivaraj@ti.com
+ * ! 20-jun-2012  x0078587@ti.com
  * =========================================================================*/
 
 
@@ -58,14 +59,14 @@
 #include <OMX_Core.h>
 
 /**
- *	@brief	mode selection for the data that is given to the Codec
+ *  @brief  mode selection for the data that is given to the Codec
  */
 
 typedef enum OMX_VIDEO_DATASYNCMODETYPE {
-    OMX_Video_FixedLength,	//!<  Interms of multiples of 4K
-    OMX_Video_SliceMode,		//!<  Slice mode
-    OMX_Video_NumMBRows,	//!< Number of rows, each row is 16 lines of video
-    OMX_Video_EntireFrame  	//!< Processing of entire frame data
+    OMX_Video_FixedLength,  //!<  Interms of multiples of 4K
+    OMX_Video_SliceMode,        //!<  Slice mode
+    OMX_Video_NumMBRows,    //!< Number of rows, each row is 16 lines of video
+    OMX_Video_EntireFrame   //!< Processing of entire frame data
 } OMX_VIDEO_DATASYNCMODETYPE;
 
 
@@ -73,42 +74,42 @@ typedef enum OMX_VIDEO_DATASYNCMODETYPE {
 /*!
  @brief OMX_TI_VIDEO_PARAM_DATAMODE  :to configure how the input and output data is fed to the Codec
  @param  nPortIndex  to specify the index of the port
- @param  eDataMode 	to specify the data mode
- 						@sa  OMX_VIDEO_DATASYNCMODETYPE
- @param  nNumDataUnits	 to specify the number of data units (where units are of type defined by eDataMode)
+ @param  eDataMode  to specify the data mode
+                        @sa  OMX_VIDEO_DATASYNCMODETYPE
+ @param  nNumDataUnits   to specify the number of data units (where units are of type defined by eDataMode)
  */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_PARAM_DATASYNCMODETYPE{
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_VIDEO_DATASYNCMODETYPE eDataMode;
-	OMX_U32 nNumDataUnits;
+typedef struct OMX_VIDEO_PARAM_DATASYNCMODETYPE {
+    OMX_U32                    nSize;
+    OMX_VERSIONTYPE            nVersion;
+    OMX_U32                    nPortIndex;
+    OMX_VIDEO_DATASYNCMODETYPE eDataMode;
+    OMX_U32                    nNumDataUnits;
 } OMX_VIDEO_PARAM_DATASYNCMODETYPE;
 
 /**
- *	@brief	Aspect Ratio type selection for the encoded bit stream
+ *  @brief  Aspect Ratio type selection for the encoded bit stream
  */
-typedef enum OMX_VIDEO_ASPECTRATIOTYPE{
-	OMX_Video_AR_Unspecified,  //!< Unspecified aspect ratio
-	OMX_Video_AR_Square ,  //!< 1:1 (square) aspect ratio
-	OMX_Video_AR_12_11  ,  //!<  12:11  aspect ratio
-	OMX_Video_AR_10_11  ,  //!<  10:11  aspect ratio
-	OMX_Video_AR_16_11  ,  //!<  16:11  aspect ratio
-	OMX_Video_AR_40_33  ,  //!<  40:33  aspect ratio
-	OMX_Video_AR_24_11  ,  //!<  24:11  aspect ratio
-	OMX_Video_AR_20_11  ,  //!<  20:11  aspect ratio
-	OMX_Video_AR_32_11  ,  //!<  32:11  aspect ratio
-	OMX_Video_AR_80_33  ,  //!<  80:33  aspect ratio
-	OMX_Video_AR_18_11  ,  //!<  18:11  aspect ratio
-	OMX_Video_AR_15_15  ,  //!<  15:15  aspect ratio
-	OMX_Video_AR_64_33  ,  //!<  64:33  aspect ratio
-	OMX_Video_AR_160_99 ,  //!<  160:99 aspect ratio
-	OMX_Video_AR_4_3    ,  //!<  4:3    aspect ratio
-	OMX_Video_AR_3_2    ,  //!<  3:2    aspect ratio
-	OMX_Video_AR_2_1    ,  //!<  2:1    aspect ratio
-	OMX_Video_AR_Extended = 255,       //!<  Extended aspect ratio
-   	OMX_Video_AR_Extended_MAX =  0X7FFFFFFF
+typedef enum OMX_VIDEO_ASPECTRATIOTYPE {
+    OMX_Video_AR_Unspecified,  //!< Unspecified aspect ratio
+    OMX_Video_AR_Square,   //!< 1:1 (square) aspect ratio
+    OMX_Video_AR_12_11,    //!<  12:11  aspect ratio
+    OMX_Video_AR_10_11,    //!<  10:11  aspect ratio
+    OMX_Video_AR_16_11,    //!<  16:11  aspect ratio
+    OMX_Video_AR_40_33,    //!<  40:33  aspect ratio
+    OMX_Video_AR_24_11,    //!<  24:11  aspect ratio
+    OMX_Video_AR_20_11,    //!<  20:11  aspect ratio
+    OMX_Video_AR_32_11,    //!<  32:11  aspect ratio
+    OMX_Video_AR_80_33,    //!<  80:33  aspect ratio
+    OMX_Video_AR_18_11,    //!<  18:11  aspect ratio
+    OMX_Video_AR_15_15,    //!<  15:15  aspect ratio
+    OMX_Video_AR_64_33,    //!<  64:33  aspect ratio
+    OMX_Video_AR_160_99,   //!<  160:99 aspect ratio
+    OMX_Video_AR_4_3,      //!<  4:3    aspect ratio
+    OMX_Video_AR_3_2,      //!<  3:2    aspect ratio
+    OMX_Video_AR_2_1,      //!<  2:1    aspect ratio
+    OMX_Video_AR_Extended = 255,       //!<  Extended aspect ratio
+    OMX_Video_AR_Extended_MAX =  0X7FFFFFFF
 }OMX_VIDEO_ASPECTRATIOTYPE;
 
 
@@ -121,240 +122,240 @@ typedef enum OMX_VIDEO_ASPECTRATIOTYPE{
 */
 /* ==========================================================================*/
 typedef struct OMX_VIDEO_PARAM_VUIINFOTYPE {
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_BOOL bAspectRatioPresent;
-	OMX_VIDEO_ASPECTRATIOTYPE ePixelAspectRatio;
-	OMX_BOOL bFullRange;
+    OMX_U32                   nSize;
+    OMX_VERSIONTYPE           nVersion;
+    OMX_U32                   nPortIndex;
+    OMX_BOOL                  bAspectRatioPresent;
+    OMX_VIDEO_ASPECTRATIOTYPE ePixelAspectRatio;
+    OMX_BOOL                  bFullRange;
 }OMX_VIDEO_PARAM_VUIINFOTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_CONFIG_PIXELINFOTYPE  :to specify the information related to the input pixel data (aspect ratio & range) to the Codec
- 										so that codec can incorporate this info in the coded bit stream
- @param  nWidth 	 to specify the Aspect ratio: width of the pixel
- @param  nHeight 	 to specify the Aspect ratio: height of the pixel
+                                        so that codec can incorporate this info in the coded bit stream
+ @param  nWidth      to specify the Aspect ratio: width of the pixel
+ @param  nHeight     to specify the Aspect ratio: height of the pixel
  */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_CONFIG_PIXELINFOTYPE  {
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_U32 nWidth;
-	OMX_U32 nHeight;
+typedef struct OMX_VIDEO_CONFIG_PIXELINFOTYPE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nWidth;
+    OMX_U32         nHeight;
 } OMX_VIDEO_CONFIG_PIXELINFOTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_PARAM_AVCNALUCONTROLTYPE : to configure what NALU  need to send along the frames of different types (Intra,IDR...etc)
- @param  nStartofSequence 	to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Start of sequence frame
- @param  nEndofSequence	 	to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the End of sequence frame
- @param  nIDR 				to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the IDR frame
- @param  nIntraPicture	  		to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Intra frame
- @param  nNonIntraPicture	  	to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Non Intra frame
+ @param  nStartofSequence   to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Start of sequence frame
+ @param  nEndofSequence     to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the End of sequence frame
+ @param  nIDR               to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the IDR frame
+ @param  nIntraPicture          to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Intra frame
+ @param  nNonIntraPicture       to to configure the different NALU (specified via enabling/disabling (1/0) the bit positions) that need to send along with the Non Intra frame
 
 Bit Position:   13|       12|      11|           10|      9|    8|    7|   6|      5|         4|              3|              2|              1|          0
 NALU TYPE:  SPS_VUI|FILLER|EOSTREAM|EOSEQ|AUD|PPS|SPS|SEI|IDR_SLICE|SLICE_DP_C|SLICE_DP_B|SLICE_DP_A|SLICE|UNSPECIFIED \n
 */
 /* ==========================================================================*/
 typedef struct OMX_VIDEO_PARAM_AVCNALUCONTROLTYPE {
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 	nPortIndex;
-	OMX_U32 	nStartofSequence;
-	OMX_U32 	nEndofSequence;
-	OMX_U32 	nIDR;
-	OMX_U32 	nIntraPicture;
-	OMX_U32 	nNonIntraPicture;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nStartofSequence;
+    OMX_U32         nEndofSequence;
+    OMX_U32         nIDR;
+    OMX_U32         nIntraPicture;
+    OMX_U32         nNonIntraPicture;
 }OMX_VIDEO_PARAM_AVCNALUCONTROLTYPE;
 
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_CONFIG_MESEARCHRANGETYPE : to configure Motion Estimation Parameters
- @param  eMVAccuracy 		to specify the Motion Vector Accuracy
- 							@sa OMX_VIDEO_MOTIONVECTORTYPE
- @param  sHorSearchRangeP	 	to Specify the Horizontal Search range for P Frame
- @param  sVerSearchRangeP		to Specify the Vertical Search range for P Frame
- @param  sHorSearchRangeB	  	to Specify the Horizontal Search range for B Frame
- @param  sVerSearchRangeB	  	to Specify the Vertical Search range for B Frame
+ @param  eMVAccuracy        to specify the Motion Vector Accuracy
+                            @sa OMX_VIDEO_MOTIONVECTORTYPE
+ @param  sHorSearchRangeP       to Specify the Horizontal Search range for P Frame
+ @param  sVerSearchRangeP       to Specify the Vertical Search range for P Frame
+ @param  sHorSearchRangeB       to Specify the Horizontal Search range for B Frame
+ @param  sVerSearchRangeB       to Specify the Vertical Search range for B Frame
 */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_CONFIG_MESEARCHRANGETYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_VIDEO_MOTIONVECTORTYPE eMVAccuracy;
-	OMX_U32	 nHorSearchRangeP;
-	OMX_U32	 nVerSearchRangeP;
-	OMX_U32	 nHorSearchRangeB;
-	OMX_U32	 nVerSearchRangeB;
+typedef struct OMX_VIDEO_CONFIG_MESEARCHRANGETYPE {
+    OMX_U32                    nSize;
+    OMX_VERSIONTYPE            nVersion;
+    OMX_U32                    nPortIndex;
+    OMX_VIDEO_MOTIONVECTORTYPE eMVAccuracy;
+    OMX_U32                    nHorSearchRangeP;
+    OMX_U32                    nVerSearchRangeP;
+    OMX_U32                    nHorSearchRangeB;
+    OMX_U32                    nVerSearchRangeB;
 }OMX_VIDEO_CONFIG_MESEARCHRANGETYPE;
 
 /**
- *	@brief	Block size specification
+ *  @brief  Block size specification
  */
 typedef enum OMX_VIDEO_BLOCKSIZETYPE {
-	OMX_Video_Block_Size_16x16=0,
-	OMX_Video_Block_Size_8x8,
-	OMX_Video_Block_Size_8x4,
-	OMX_Video_Block_Size_4x8,
-	OMX_Video_Block_Size_4x4,
-   	OMX_Video_Block_Size_MAX =  0X7FFFFFFF
+    OMX_Video_Block_Size_16x16=0,
+    OMX_Video_Block_Size_8x8,
+    OMX_Video_Block_Size_8x4,
+    OMX_Video_Block_Size_4x8,
+    OMX_Video_Block_Size_4x4,
+    OMX_Video_Block_Size_MAX =  0X7FFFFFFF
 }OMX_VIDEO_BLOCKSIZETYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_PARAM_MEBLOCKSIZETYPE : to configure the Min Motion Estimation block size for P and B frames
- @param  eMinBlockSizeP 		to specify the Min Block size used for Motion Estimation incase of P Frames
- 							@sa OMX_VIDEO_BLOCKSIZETYPE
- @param  eMinBlockSizeB	 	to specify the Min Block size used for Motion Estimation incase of B Frames
+ @param  eMinBlockSizeP         to specify the Min Block size used for Motion Estimation incase of P Frames
+                            @sa OMX_VIDEO_BLOCKSIZETYPE
+ @param  eMinBlockSizeB     to specify the Min Block size used for Motion Estimation incase of B Frames
 */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_PARAM_MEBLOCKSIZETYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeP;
-	OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeB;
+typedef struct OMX_VIDEO_PARAM_MEBLOCKSIZETYPE {
+    OMX_U32                 nSize;
+    OMX_VERSIONTYPE         nVersion;
+    OMX_U32                 nPortIndex;
+    OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeP;
+    OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeB;
 }OMX_VIDEO_PARAM_MEBLOCKSIZETYPE;
 
 /**
- *	@brief	to select the chroma component used for Intra Prediction
+ *  @brief  to select the chroma component used for Intra Prediction
  */
 typedef enum OMX_VIDEO_CHROMACOMPONENTTYPE {
-	OMX_Video_Chroma_Component_Cr_Only=0,	//!< consider only Cr chroma component for Intra prediction
-	OMX_Video_Chroma_Component_Cb_Cr_Both,  //!< consider both (Cb & Cr) chroma components for Intra prediction
-     OMX_Video_Chroma_Component_MAX =  0X7FFFFFFF
+    OMX_Video_Chroma_Component_Cr_Only=0,   //!< consider only Cr chroma component for Intra prediction
+    OMX_Video_Chroma_Component_Cb_Cr_Both,  //!< consider both (Cb & Cr) chroma components for Intra prediction
+    OMX_Video_Chroma_Component_MAX =  0X7FFFFFFF
 }OMX_VIDEO_CHROMACOMPONENTTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_PARAM_INTRAPREDTYPE : to configure the Modes for the different block sizes during Intra Prediction
- @param  nLumaIntra4x4Enable 	 	to configure the Modes for 4x4 block size during luma intra prediction: bit position specifies the modes that are enabled/disabled
-								 HOR_UP|VERT_LEFT|HOR_DOWN|VERT_RIGHT|DIAG_DOWN_RIGHT|DIAG_DOWN_LEFT|DC|HOR|VER
- @param  nLumaIntra8x8Enable	 	to configure the Modes for 4x4 block size during luma intra prediction
- 								HOR_UP|VERT_LEFT|HOR_DOWN|VERT_RIGHT|DIAG_DOWN_RIGHT|DIAG_DOWN_LEFT|DC|HOR|VER
- @param  nLumaIntra16x16Enable	 	to configure the Modes for 4x4 block size during luma intra prediction
-								 PLANE|DC|HOR|VER
- @param  nChromaIntra8x8Enable	 	to configure the Modes for 4x4 block size during luma intra prediction
-								 PLANE|DC|HOR|VER
- @param  eChromaComponentEnable	to select the chroma components used for the intra prediction
- 								@sa OMX_VIDEO_CHROMACOMPONENTTYPE
+ @param  nLumaIntra4x4Enable        to configure the Modes for 4x4 block size during luma intra prediction: bit position specifies the modes that are enabled/disabled
+                                 HOR_UP|VERT_LEFT|HOR_DOWN|VERT_RIGHT|DIAG_DOWN_RIGHT|DIAG_DOWN_LEFT|DC|HOR|VER
+ @param  nLumaIntra8x8Enable        to configure the Modes for 4x4 block size during luma intra prediction
+                                HOR_UP|VERT_LEFT|HOR_DOWN|VERT_RIGHT|DIAG_DOWN_RIGHT|DIAG_DOWN_LEFT|DC|HOR|VER
+ @param  nLumaIntra16x16Enable      to configure the Modes for 4x4 block size during luma intra prediction
+                                 PLANE|DC|HOR|VER
+ @param  nChromaIntra8x8Enable      to configure the Modes for 4x4 block size during luma intra prediction
+                                 PLANE|DC|HOR|VER
+ @param  eChromaComponentEnable to select the chroma components used for the intra prediction
+                                @sa OMX_VIDEO_CHROMACOMPONENTTYPE
 */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_PARAM_INTRAPREDTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_U32	 nLumaIntra4x4Enable;
-	OMX_U32 nLumaIntra8x8Enable;
-	OMX_U32 nLumaIntra16x16Enable;
-	OMX_U32 nChromaIntra8x8Enable;
-	OMX_VIDEO_CHROMACOMPONENTTYPE eChromaComponentEnable;
+typedef struct OMX_VIDEO_PARAM_INTRAPREDTYPE {
+    OMX_U32                       nSize;
+    OMX_VERSIONTYPE               nVersion;
+    OMX_U32                       nPortIndex;
+    OMX_U32                       nLumaIntra4x4Enable;
+    OMX_U32                       nLumaIntra8x8Enable;
+    OMX_U32                       nLumaIntra16x16Enable;
+    OMX_U32                       nChromaIntra8x8Enable;
+    OMX_VIDEO_CHROMACOMPONENTTYPE eChromaComponentEnable;
 }OMX_VIDEO_PARAM_INTRAPREDTYPE;
 
 
 /**
- *	@brief	Encoding Mode Preset
+ *  @brief  Encoding Mode Preset
  */
 typedef enum OMX_VIDEO_ENCODING_MODE_PRESETTYPE {
-	OMX_Video_Enc_Default=0, 	//!<  for all the params default values are taken
-	OMX_Video_Enc_High_Quality, //!<  todo: mention the parameters that takes specific values depending on this selection
-	OMX_Video_Enc_User_Defined,
-	OMX_Video_Enc_High_Speed_Med_Quality,
-	OMX_Video_Enc_Med_Speed_Med_Quality,
-	OMX_Video_Enc_Med_Speed_High_Quality,
-	OMX_Video_Enc_High_Speed,
-   	OMX_Video_Enc_Preset_MAX =  0X7FFFFFFF
+    OMX_Video_Enc_Default=0,    //!<  for all the params default values are taken
+    OMX_Video_Enc_High_Quality, //!<  todo: mention the parameters that takes specific values depending on this selection
+    OMX_Video_Enc_User_Defined,
+    OMX_Video_Enc_High_Speed_Med_Quality,
+    OMX_Video_Enc_Med_Speed_Med_Quality,
+    OMX_Video_Enc_Med_Speed_High_Quality,
+    OMX_Video_Enc_High_Speed,
+    OMX_Video_Enc_Preset_MAX =  0X7FFFFFFF
 }OMX_VIDEO_ENCODING_MODE_PRESETTYPE;
 
 /**
- *	@brief	Rate Control Preset
+ *  @brief  Rate Control Preset
  */
 typedef enum OMX_VIDEO_RATECONTROL_PRESETTYPE {
-	OMX_Video_RC_Low_Delay,	//!<todo:  mention the parameters that takes specific values depending on this selection
-	OMX_Video_RC_Storage,
-	OMX_Video_RC_Twopass,
-	OMX_Video_RC_None,
-	OMX_Video_RC_User_Defined,
-   	OMX_Video_RC_MAX =  0X7FFFFFFF
+    OMX_Video_RC_Low_Delay, //!<todo:  mention the parameters that takes specific values depending on this selection
+    OMX_Video_RC_Storage,
+    OMX_Video_RC_Twopass,
+    OMX_Video_RC_None,
+    OMX_Video_RC_User_Defined,
+    OMX_Video_RC_MAX =  0X7FFFFFFF
 }OMX_VIDEO_RATECONTROL_PRESETTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_PARAM_ENCODER_PRESETTYPE : to select the preset for Encoding Mode & Rate Control
- @param  eEncodingModePreset		to specify Encoding Mode Preset
- 							@sa OMX_VIDEO_ENCODING_MODE_PRESETTYPE
- @param  eRateControlPreset	to specify Rate Control Preset
- 							@sa OMX_VIDEO_RATECONTROL_PRESETTYPE
+ @param  eEncodingModePreset        to specify Encoding Mode Preset
+                            @sa OMX_VIDEO_ENCODING_MODE_PRESETTYPE
+ @param  eRateControlPreset to specify Rate Control Preset
+                            @sa OMX_VIDEO_RATECONTROL_PRESETTYPE
 */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_PARAM_ENCODER_PRESETTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_VIDEO_ENCODING_MODE_PRESETTYPE eEncodingModePreset;
-	OMX_VIDEO_RATECONTROL_PRESETTYPE eRateControlPreset;
+typedef struct OMX_VIDEO_PARAM_ENCODER_PRESETTYPE {
+    OMX_U32                            nSize;
+    OMX_VERSIONTYPE                    nVersion;
+    OMX_U32                            nPortIndex;
+    OMX_VIDEO_ENCODING_MODE_PRESETTYPE eEncodingModePreset;
+    OMX_VIDEO_RATECONTROL_PRESETTYPE   eRateControlPreset;
 }OMX_VIDEO_PARAM_ENCODER_PRESETTYPE;
 
 
 /**
- *	@brief	 input content type
+ *  @brief   input content type
  */
 typedef enum OMX_TI_VIDEO_FRAMECONTENTTYPE {
-	OMX_TI_Video_Progressive = 0,			//!<Progressive frame
-	OMX_TI_Video_Interlace_BothFieldsTogether = 1,	//!<Interlaced frame
-	OMX_TI_Video_Interlace_OneField = 2,
-	OMX_TI_Video_AVC_2004_StereoInfoType = 3,
-	OMX_TI_Video_AVC_2010_StereoFramePackingType = 4,
-	OMX_TI_Video_FrameContentType_MAX = 0x7FFFFFFF
+    OMX_TI_Video_Progressive = 0,           //!<Progressive frame
+    OMX_TI_Video_Interlace_BothFieldsTogether = 1,  //!<Interlaced frame
+    OMX_TI_Video_Interlace_OneField = 2,
+    OMX_TI_Video_AVC_2004_StereoInfoType = 3,
+    OMX_TI_Video_AVC_2010_StereoFramePackingType = 4,
+    OMX_TI_Video_FrameContentType_MAX = 0x7FFFFFFF
 }OMX_TI_VIDEO_FRAMECONTENTTYPE;
 
 /**
- *	@brief	 Specifies the type of interlace content
+ *  @brief   Specifies the type of interlace content
  */
 typedef enum OMX_TI_VIDEO_AVC_INTERLACE_CODINGTYPE {
-	OMX_TI_Video_Interlace_PICAFF = 0,	//!< PicAFF type of interlace coding
-	OMX_TI_Video_Interlace_MBAFF,		//!< MBAFF type of interlace coding
-	OMX_TI_Video_Interlace_Fieldonly,	//!< Field only coding
-	OMX_TI_Video_Interlace_Fieldonly_MRF=OMX_TI_Video_Interlace_Fieldonly,
-	OMX_TI_Video_Interlace_Fieldonly_ARF,
-	OMX_TI_Video_Interlace_Fieldonly_SPF,	//!< Field only coding where codec decides the partiy of the field to be used based upon content
-	OMX_Video_Interlace_MAX = 0x7FFFFFFF
+    OMX_TI_Video_Interlace_PICAFF = 0,  //!< PicAFF type of interlace coding
+    OMX_TI_Video_Interlace_MBAFF,       //!< MBAFF type of interlace coding
+    OMX_TI_Video_Interlace_Fieldonly,   //!< Field only coding
+    OMX_TI_Video_Interlace_Fieldonly_MRF=OMX_TI_Video_Interlace_Fieldonly,
+    OMX_TI_Video_Interlace_Fieldonly_ARF,
+    OMX_TI_Video_Interlace_Fieldonly_SPF,   //!< Field only coding where codec decides the partiy of the field to be used based upon content
+    OMX_Video_Interlace_MAX = 0x7FFFFFFF
 }OMX_TI_VIDEO_AVC_INTERLACE_CODINGTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE : to configure the data content
- @param  eContentType		to specify Content type
- 							@sa OMX_VIDEO_FRAMECONTENTTYPE
+ @param  eContentType       to specify Content type
+                            @sa OMX_VIDEO_FRAMECONTENTTYPE
 */
 /* ==========================================================================*/
-typedef struct OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_TI_VIDEO_FRAMECONTENTTYPE eContentType;
+typedef struct OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE {
+    OMX_U32                       nSize;
+    OMX_VERSIONTYPE               nVersion;
+    OMX_U32                       nPortIndex;
+    OMX_TI_VIDEO_FRAMECONTENTTYPE eContentType;
 }OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_TI_VIDEO_PARAM_AVCINTERLACECODING : to configure the interlace encoding related settings
- @param  eInterlaceCodingType	to specify the settings of interlace content
- 							@sa OMX_VIDEO_INTERLACE_CODINGTYPE
- @param  bTopFieldFirst				to specify the first field sent is top or bottom
- @param  bBottomFieldIntra		to specify codec that encode bottomfield also as intra or not
+ @param  eInterlaceCodingType   to specify the settings of interlace content
+                            @sa OMX_VIDEO_INTERLACE_CODINGTYPE
+ @param  bTopFieldFirst             to specify the first field sent is top or bottom
+ @param  bBottomFieldIntra      to specify codec that encode bottomfield also as intra or not
 */
 /* ==========================================================================*/
-typedef struct OMX_TI_VIDEO_PARAM_AVCINTERLACECODING{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_TI_VIDEO_AVC_INTERLACE_CODINGTYPE eInterlaceCodingType;
-	OMX_BOOL bTopFieldFirst;
-	OMX_BOOL bBottomFieldIntra;
+typedef struct OMX_TI_VIDEO_PARAM_AVCINTERLACECODING {
+    OMX_U32                               nSize;
+    OMX_VERSIONTYPE                       nVersion;
+    OMX_U32                               nPortIndex;
+    OMX_TI_VIDEO_AVC_INTERLACE_CODINGTYPE eInterlaceCodingType;
+    OMX_BOOL                              bTopFieldFirst;
+    OMX_BOOL                              bBottomFieldIntra;
 }OMX_TI_VIDEO_PARAM_AVCINTERLACECODING;
 /* ========================================================================== */
 /*!
@@ -362,23 +363,22 @@ typedef struct OMX_TI_VIDEO_PARAM_AVCINTERLACECODING{
 */
 /* ==========================================================================*/
 
-typedef struct OMX_TI_VIDEO_PARAM_AVCENC_STEREOINFO2004
-{
-	OMX_U32          nSize;
-	OMX_VERSIONTYPE  nVersion;
-	OMX_U32          nPortIndex;
-	OMX_BOOL         btopFieldIsLeftViewFlag;
-	OMX_BOOL         bViewSelfContainedFlag;
+typedef struct OMX_TI_VIDEO_PARAM_AVCENC_STEREOINFO2004 {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        btopFieldIsLeftViewFlag;
+    OMX_BOOL        bViewSelfContainedFlag;
 } OMX_TI_VIDEO_AVCENC_STEREOINFO2004;
 
-typedef enum OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE{
-	OMX_TI_Video_FRAMEPACK_CHECKERBOARD        = 0,
-	OMX_TI_Video_FRAMEPACK_COLUMN_INTERLEAVING = 1,
-	OMX_TI_Video_FRAMEPACK_ROW_INTERLEAVING    = 2,
-	OMX_TI_Video_FRAMEPACK_SIDE_BY_SIDE        = 3,
-	OMX_TI_Video_FRAMEPACK_TOP_BOTTOM          = 4,
-	OMX_TI_Video_FRAMEPACK_TYPE_DEFAULT        = OMX_TI_Video_FRAMEPACK_SIDE_BY_SIDE,
-	OMX_TI_Video_FRAMEPACK_TYPE_MAX = 0x7FFFFFFF
+typedef enum OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE {
+    OMX_TI_Video_FRAMEPACK_CHECKERBOARD        = 0,
+    OMX_TI_Video_FRAMEPACK_COLUMN_INTERLEAVING = 1,
+    OMX_TI_Video_FRAMEPACK_ROW_INTERLEAVING    = 2,
+    OMX_TI_Video_FRAMEPACK_SIDE_BY_SIDE        = 3,
+    OMX_TI_Video_FRAMEPACK_TOP_BOTTOM          = 4,
+    OMX_TI_Video_FRAMEPACK_TYPE_DEFAULT        = OMX_TI_Video_FRAMEPACK_SIDE_BY_SIDE,
+    OMX_TI_Video_FRAMEPACK_TYPE_MAX = 0x7FFFFFFF
 } OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE;
 
 /* ========================================================================== */
@@ -387,72 +387,71 @@ typedef enum OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE{
 */
 /* ==========================================================================*/
 
-typedef struct OMX_TI_VIDEO_PARAM_AVCENC_FRAMEPACKINGINFO2010
-{
-	OMX_U32          nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32          nPortIndex;
-	OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE eFramePackingType;
-	OMX_U8         nFrame0PositionX;
-	OMX_U8         nFrame0PositionY;
-	OMX_U8         nFrame1PositionX;
-	OMX_U8         nFrame1PositionY;
+typedef struct OMX_TI_VIDEO_PARAM_AVCENC_FRAMEPACKINGINFO2010 {
+    OMX_U32                              nSize;
+    OMX_VERSIONTYPE                      nVersion;
+    OMX_U32                              nPortIndex;
+    OMX_TI_VIDEO_AVCSTEREO_FRAMEPACKTYPE eFramePackingType;
+    OMX_U8                               nFrame0PositionX;
+    OMX_U8                               nFrame0PositionY;
+    OMX_U8                               nFrame1PositionX;
+    OMX_U8                               nFrame1PositionY;
 }OMX_TI_VIDEO_PARAM_AVCENC_FRAMEPACKINGINFO2010;
 
 /**
- *	@brief	 Specifies Transform Block Size
+ *  @brief   Specifies Transform Block Size
  */
 typedef enum OMX_VIDEO_TRANSFORMBLOCKSIZETYPE {
-	OMX_Video_Transform_Block_Size_4x4 =0,	//!< Transform blocks size is 8x8 : Valid for only High Profile
-	OMX_Video_Transform_Block_Size_8x8,	//!< Transform blocks size is 4x4
-	OMX_Video_Transform_Block_Size_Adaptive, //!< Adaptive transform block size : encoder decides as per content
+    OMX_Video_Transform_Block_Size_4x4 =0,  //!< Transform blocks size is 8x8 : Valid for only High Profile
+    OMX_Video_Transform_Block_Size_8x8, //!< Transform blocks size is 4x4
+    OMX_Video_Transform_Block_Size_Adaptive, //!< Adaptive transform block size : encoder decides as per content
     OMX_Video_Transform_Block_Size_MAX =  0X7FFFFFFF
 }OMX_VIDEO_TRANSFORMBLOCKSIZETYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_PARAM_TRANSFORM_BLOCKSIZETYPE : to select the Block Size used for transformation
- @param  eTransformBlocksize	to specify Block size used for transformation
- 							@sa OMX_VIDEO_TRANSFORMBLOCKSIZETYPE
+ @param  eTransformBlocksize    to specify Block size used for transformation
+                            @sa OMX_VIDEO_TRANSFORMBLOCKSIZETYPE
 */
 /* ==========================================================================*/
 
-typedef struct OMX_VIDEO_PARAM_TRANSFORM_BLOCKSIZETYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_VIDEO_TRANSFORMBLOCKSIZETYPE eTransformBlocksize;
+typedef struct OMX_VIDEO_PARAM_TRANSFORM_BLOCKSIZETYPE {
+    OMX_U32                          nSize;
+    OMX_VERSIONTYPE                  nVersion;
+    OMX_U32                          nPortIndex;
+    OMX_VIDEO_TRANSFORMBLOCKSIZETYPE eTransformBlocksize;
 }OMX_VIDEO_PARAM_TRANSFORM_BLOCKSIZETYPE;
 
 
 /* ========================================================================== */
 /*!
  @brief OMX_VIDEO_CONFIG_SLICECODINGTYPE : to configure the Slice Settings
- @param  eSliceMode	to specify the Slice mode
- 							@sa OMX_VIDEO_AVCSLICEMODETYPE
+ @param  eSliceMode to specify the Slice mode
+                            @sa OMX_VIDEO_AVCSLICEMODETYPE
  @param  nSlicesize to specify the sliceSize
 */
 /* ==========================================================================*/
 
-typedef struct OMX_VIDEO_CONFIG_SLICECODINGTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_VIDEO_AVCSLICEMODETYPE eSliceMode;
-	OMX_U32	 nSlicesize;
+typedef struct OMX_VIDEO_CONFIG_SLICECODINGTYPE {
+    OMX_U32                    nSize;
+    OMX_VERSIONTYPE            nVersion;
+    OMX_U32                    nPortIndex;
+    OMX_VIDEO_AVCSLICEMODETYPE eSliceMode;
+    OMX_U32                    nSlicesize;
 }OMX_VIDEO_CONFIG_SLICECODINGTYPE;
 
 /**
- *	@brief	 Specifies Slice Group Change Direction Flag
+ *  @brief   Specifies Slice Group Change Direction Flag
  */
-typedef enum OMX_VIDEO_SLIGRPCHANGEDIRTYPE{
-  OMX_Video_Raster_Scan             = 0 , //!< 0 : Raster scan order
-  OMX_Video_Clockwise              = 0 , //!< 0 : Clockwise (used for BOX OUT FMO Params)
-  OMX_Video_Right                   = 0 , //!< 0 : RIGHT (Used for Wipe FMO type)
-  OMX_Video_Reverse_Raster_Scan= 1 , //!< 1 : Reverse Raster Scan Order
-  OMX_Video_Counter_Clockwise       = 1 , //!< 1 : Counter Clockwise (used for BOX OUT FMO Params)
-  OMX_Video_Left                    = 1,  //!< 1 : LEFT (Used for Wipe FMO type)
-  OMX_Video_Left_MAX =  0X7FFFFFFF
+typedef enum OMX_VIDEO_SLIGRPCHANGEDIRTYPE {
+    OMX_Video_Raster_Scan             = 0, //!< 0 : Raster scan order
+    OMX_Video_Clockwise              = 0, //!< 0 : Clockwise (used for BOX OUT FMO Params)
+    OMX_Video_Right                   = 0, //!< 0 : RIGHT (Used for Wipe FMO type)
+    OMX_Video_Reverse_Raster_Scan= 1, //!< 1 : Reverse Raster Scan Order
+    OMX_Video_Counter_Clockwise       = 1, //!< 1 : Counter Clockwise (used for BOX OUT FMO Params)
+    OMX_Video_Left                    = 1, //!< 1 : LEFT (Used for Wipe FMO type)
+    OMX_Video_Left_MAX =  0X7FFFFFFF
 } OMX_VIDEO_SLICEGRPCHANGEDIRTYPE;
 
 /* ========================================================================== */
@@ -461,16 +460,16 @@ typedef enum OMX_VIDEO_SLIGRPCHANGEDIRTYPE{
  @param
 */
 /* ==========================================================================*/
-typedef struct OMX_VIDEO_PARAM_AVCADVANCEDFMOTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_U8 nNumSliceGroups;
-	OMX_U8 nSliceGroupMapType;
-	OMX_VIDEO_SLICEGRPCHANGEDIRTYPE eSliceGrpChangeDir;
-	OMX_U32 nSliceGroupChangeRate;
-	OMX_U32 nSliceGroupChangeCycle;
-	OMX_U32 nSliceGroupParams[H264ENC_MAXNUMSLCGPS] ;
+typedef struct OMX_VIDEO_PARAM_AVCADVANCEDFMOTYPE {
+    OMX_U32                         nSize;
+    OMX_VERSIONTYPE                 nVersion;
+    OMX_U32                         nPortIndex;
+    OMX_U8                          nNumSliceGroups;
+    OMX_U8                          nSliceGroupMapType;
+    OMX_VIDEO_SLICEGRPCHANGEDIRTYPE eSliceGrpChangeDir;
+    OMX_U32                         nSliceGroupChangeRate;
+    OMX_U32                         nSliceGroupChangeCycle;
+    OMX_U32                         nSliceGroupParams[H264ENC_MAXNUMSLCGPS];
 }OMX_VIDEO_PARAM_AVCADVANCEDFMOTYPE;
 
 /* ========================================================================== */
@@ -480,73 +479,73 @@ typedef struct OMX_VIDEO_PARAM_AVCADVANCEDFMOTYPE{
 */
 /* ==========================================================================*/
 
-typedef struct OMX_VIDEO_CONFIG_QPSETTINGSTYPE{
-	OMX_U32	 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32	 nPortIndex;
-	OMX_U32	 nQpI;
-	OMX_U32	 nQpMaxI;
-	OMX_U32	 nQpMinI;
-	OMX_U32	 nQpP;
-	OMX_U32	 nQpMaxP;
-	OMX_U32	 nQpMinP;
-	OMX_U32	 nQpOffsetB;
-	OMX_U32	 nQpMaxB;
-	OMX_U32	 nQpMinB;
+typedef struct OMX_VIDEO_CONFIG_QPSETTINGSTYPE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nQpI;
+    OMX_U32         nQpMaxI;
+    OMX_U32         nQpMinI;
+    OMX_U32         nQpP;
+    OMX_U32         nQpMaxP;
+    OMX_U32         nQpMinP;
+    OMX_U32         nQpOffsetB;
+    OMX_U32         nQpMaxB;
+    OMX_U32         nQpMinB;
 }OMX_VIDEO_CONFIG_QPSETTINGSTYPE;
 
 /* ========================================================================== */
 /*!
  @brief OMX_TI_VIDEO_PARAM_AVCHRDBUFFERSETTING : to configure the HRD
-	(Hypothetical Reference Decoder) related params
- @param  nInitialBufferLevel	Initial buffer level for HRD compliance
- @param  nHRDBufferSize		Hypothetical Reference Decoder buffer size
- @param  nTargetBitrate		Target bitrate to encode with
+    (Hypothetical Reference Decoder) related params
+ @param  nInitialBufferLevel    Initial buffer level for HRD compliance
+ @param  nHRDBufferSize     Hypothetical Reference Decoder buffer size
+ @param  nTargetBitrate     Target bitrate to encode with
 */
 /* ==========================================================================*/
 
 typedef struct OMX_TI_VIDEO_PARAM_AVCHRDBUFFERSETTING {
-	OMX_U32     nSize;
-	OMX_VERSIONTYPE     nVersion;
-	OMX_U32    nPortIndex;
-	OMX_U32    nInitialBufferLevel;
-	OMX_U32    nHRDBufferSize;
-	OMX_U32    nTargetBitrate;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nInitialBufferLevel;
+    OMX_U32         nHRDBufferSize;
+    OMX_U32         nTargetBitrate;
 } OMX_TI_VIDEO_PARAM_AVCHRDBUFFERSETTING;
 
 /* ========================================================================== */
 /*!
  @brief OMX_TI_VIDEO_CONFIG_AVCHRDBUFFERSETTING : to configure the HRD
-	(Hypothetical Reference Decoder) related params
- @param  nHRDBufferSize		Hypothetical Reference Decoder Buffer Size
- @param  nEncodeBitrate		Target bitrate to encode with
+    (Hypothetical Reference Decoder) related params
+ @param  nHRDBufferSize     Hypothetical Reference Decoder Buffer Size
+ @param  nEncodeBitrate     Target bitrate to encode with
 
 */
 /* ==========================================================================*/
 
 typedef struct OMX_TI_VIDEO_CONFIG_AVCHRDBUFFERSETTING {
-	OMX_U32    nSize;
-	OMX_VERSIONTYPE     nVersion;
-	OMX_U32     nPortIndex;
-	OMX_U32     nHRDBufferSize;
-	OMX_U32     nEncodeBitrate;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nHRDBufferSize;
+    OMX_U32         nEncodeBitrate;
 } OMX_TI_VIDEO_CONFIG_AVCHRDBUFFERSETTING;
 
 /* ========================================================================= */
 /*!
  @brief OMX_TI_VIDEO_CODINGTYPE :
-	Extension to video coding type enum for VP6 and VP7
+    Extension to video coding type enum for VP6 and VP7
  @param
 */
 /* ==========================================================================*/
 
 typedef enum OMX_TI_VIDEO_CODINGTYPE {
-	OMX_VIDEO_CodingVP6 =
-		(OMX_VIDEO_CODINGTYPE) OMX_VIDEO_CodingVendorStartUnused +1,  /* VP6 */
-	OMX_VIDEO_CodingVP7, /* VP7 */
-        OMX_TI_VIDEO_CodingSORENSONSPK, /* Sorenson spark*/
-        OMX_VIDEO_CodingSVC,    /**< H.264/SVC */
-	OMX_VIDEO_CodingVP8 /* VP8 */
+    OMX_VIDEO_CodingVP6 =
+        (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVendorStartUnused + 1,  /* VP6 */
+    OMX_VIDEO_CodingVP7, /* VP7 */
+    OMX_TI_VIDEO_CodingSORENSONSPK,     /* Sorenson spark*/
+    OMX_VIDEO_CodingSVC,        /**< H.264/SVC */
+    OMX_VIDEO_CodingVP8 /* VP8 */
 }OMX_TI_VIDEO_CODINGTYPE;
 
 
@@ -558,14 +557,14 @@ typedef enum OMX_TI_VIDEO_CODINGTYPE {
 */
 /* ==========================================================================*/
 typedef enum OMX_TI_VIDEO_MPEG4LEVELTYPE {
-        OMX_TI_VIDEO_MPEG4Level6  =
-            (OMX_VIDEO_MPEG4LEVELTYPE) OMX_VIDEO_MPEG4LevelVendorStartUnused + 1
+    OMX_TI_VIDEO_MPEG4Level6  =
+        (OMX_VIDEO_MPEG4LEVELTYPE)OMX_VIDEO_MPEG4LevelVendorStartUnused + 1
 } OMX_TI_VIDEO_MPEG4LEVELTYPE;
 
 
 
 /**
- *	@brief	 Specifies various intra refresh methods
+ *  @brief   Specifies various intra refresh methods
  */
 typedef enum OMX_TI_VIDEO_INTRAREFRESHTYPE {
     OMX_TI_VIDEO_IntraRefreshNone = 0,
@@ -580,17 +579,17 @@ typedef enum OMX_TI_VIDEO_INTRAREFRESHTYPE {
 /*!
  @brief OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE  : Configuration parameters for
                                                intra refresh settings
- @param  eRefreshMode		Various refresh modes supported
- @param  nIntraRefreshRate 	Intra refresh rate
+ @param  eRefreshMode       Various refresh modes supported
+ @param  nIntraRefreshRate  Intra refresh rate
 */
 /* ==========================================================================*/
 
 typedef struct OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
+    OMX_U32                       nSize;
+    OMX_VERSIONTYPE               nVersion;
+    OMX_U32                       nPortIndex;
     OMX_TI_VIDEO_INTRAREFRESHTYPE eRefreshMode;
-    OMX_U32 nIntraRefreshRate;
+    OMX_U32                       nIntraRefreshRate;
 } OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE;
 
 
@@ -602,33 +601,33 @@ typedef struct OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE {
 /* ============================================================================= */
 
 typedef struct OMX_TI_STEREODECINFO {
-	OMX_U32 nFieldViewsFlag;
-	OMX_U32 nTopFieldIsLeftViewFlag;
-	OMX_U32 nCurrentFrameIsLeftViewFlag;
-	OMX_U32 nNextFrameIsSecondViewFlag;
-	OMX_U32 nLeftViewSelfContainedFlag;
-	OMX_U32 nRightViewSelfContainedFlag;
+    OMX_U32 nFieldViewsFlag;
+    OMX_U32 nTopFieldIsLeftViewFlag;
+    OMX_U32 nCurrentFrameIsLeftViewFlag;
+    OMX_U32 nNextFrameIsSecondViewFlag;
+    OMX_U32 nLeftViewSelfContainedFlag;
+    OMX_U32 nRightViewSelfContainedFlag;
 } OMX_TI_STEREODECINFO;
 
 typedef struct OMX_TI_FRAMEPACKINGDECINFO {
-	OMX_U32 nFramePackingArrangementId;
-	OMX_U32 nFramePackingArrangementRepetitionPeriod;
-	OMX_U8  nFramePackingArrangementCancelFlag;
-	OMX_U8  nFramePackingArrangementType;
-	OMX_U8  nQuincunxSamplingFlag;
-	OMX_U8  nContentInterpretationType;
-	OMX_U8  nSpatialFlippingFlag;
-	OMX_U8  nFrame0FlippedFlag;
-	OMX_U8  nFieldViewsFlag;
-	OMX_U8  nCurrentFrameIsFrame0Flag;
-	OMX_U8  nFrame0SelfContainedFlag;
-	OMX_U8  nFrame1SelfContainedFlag;
-	OMX_U8  nFrame0GridPositionX;
-	OMX_U8  nFrame0GridPositionY;
-	OMX_U8  nFrame1GridPositionX;
-	OMX_U8  nFrame1GridPositionY;
-	OMX_U8  nFramePackingArrangementReservedByte;
-	OMX_U8  nFramePackingArrangementExtensionFlag;
+    OMX_U32 nFramePackingArrangementId;
+    OMX_U32 nFramePackingArrangementRepetitionPeriod;
+    OMX_U8  nFramePackingArrangementCancelFlag;
+    OMX_U8  nFramePackingArrangementType;
+    OMX_U8  nQuincunxSamplingFlag;
+    OMX_U8  nContentInterpretationType;
+    OMX_U8  nSpatialFlippingFlag;
+    OMX_U8  nFrame0FlippedFlag;
+    OMX_U8  nFieldViewsFlag;
+    OMX_U8  nCurrentFrameIsFrame0Flag;
+    OMX_U8  nFrame0SelfContainedFlag;
+    OMX_U8  nFrame1SelfContainedFlag;
+    OMX_U8  nFrame0GridPositionX;
+    OMX_U8  nFrame0GridPositionY;
+    OMX_U8  nFrame1GridPositionX;
+    OMX_U8  nFrame1GridPositionY;
+    OMX_U8  nFramePackingArrangementReservedByte;
+    OMX_U8  nFramePackingArrangementExtensionFlag;
 } OMX_TI_FRAMEPACKINGDECINFO;
 
 /* ============================================================================= */
@@ -642,8 +641,8 @@ typedef struct OMX_TI_FRAMEPACKINGDECINFO {
 /* ============================================================================= */
 
 typedef struct OMX_TI_VIDEO_RANGEMAPPING {
-	OMX_U32 nRangeMappingLuma;
-	OMX_U32 nRangeMappingChroma;
+    OMX_U32 nRangeMappingLuma;
+    OMX_U32 nRangeMappingChroma;
 } OMX_TI_VIDEO_RANGEMAPPING;
 
 /* ============================================================================= */
@@ -657,8 +656,8 @@ typedef struct OMX_TI_VIDEO_RANGEMAPPING {
 /* ============================================================================= */
 
 typedef struct OMX_TI_VIDEO_RESCALINGMATRIX {
-	OMX_U32 nScaledHeight;
-	OMX_U32 nScaledWidth;
+    OMX_U32 nScaledHeight;
+    OMX_U32 nScaledWidth;
 } OMX_TI_VIDEO_RESCALINGMATRIX;
 
 
@@ -676,9 +675,9 @@ typedef struct OMX_TI_VIDEO_RESCALINGMATRIX {
 /*==========================================================================*/
 
 typedef struct OMX_TI_PARAM_PAYLOADHEADERFLAG {
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_BOOL bPayloadHeaderFlag;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_BOOL        bPayloadHeaderFlag;
 } OMX_TI_PARAM_PAYLOADHEADERFLAG;
 
 
@@ -691,9 +690,9 @@ typedef struct OMX_TI_PARAM_PAYLOADHEADERFLAG {
 /*==========================================================================*/
 
 typedef struct OMX_TI_PARAM_IVFFLAG {
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_BOOL bIvfFlag;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_BOOL        bIvfFlag;
 } OMX_TI_PARAM_IVFFLAG;
 
 // A pointer to this struct is passed to OMX_SetParameter() when the extension
@@ -716,10 +715,10 @@ typedef struct OMX_TI_PARAM_IVFFLAG {
 // with the corresponding extension index, real YUV data is stored
 // in the buffers.
 typedef struct OMX_VIDEO_STOREMETADATAINBUFFERSPARAMS {
-    OMX_U32 nSize;
+    OMX_U32         nSize;
     OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_BOOL bStoreMetaData;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bStoreMetaData;
 } OMX_VIDEO_STOREMETADATAINBUFFERSPARAMS;
 
 
@@ -734,25 +733,25 @@ typedef struct OMX_VIDEO_STOREMETADATAINBUFFERSPARAMS {
  *  nTimeStamp : temporal timestamp information for the second field
  */
 typedef struct OMX_TI_INTERLACEFORMATTYPE {
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_U32 nFormat;
-	OMX_TICKS nTimeStamp;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nFormat;
+    OMX_TICKS       nTimeStamp;
 } OMX_TI_INTERLACEFORMATTYPE;
 
 /**
  * Interlace format types
  */
 typedef enum OMX_TI_INTERLACETYPE {
-	OMX_InterlaceFrameProgressive= 0x00,
-	OMX_InterlaceInterleaveFrameTopFieldFirst= 0x01,
-	OMX_InterlaceInterleaveFrameBottomFieldFirst= 0x02,
-	OMX_InterlaceFrameTopFieldFirst= 0x04,
-	OMX_InterlaceFrameBottomFieldFirst= 0x08,
-	OMX_InterlaceInterleaveFieldTop= 0x10,
-	OMX_InterlaceInterleaveFieldBottom= 0x20,
-	OMX_InterlaceFmtMask= 0x7FFFFFFF
+    OMX_InterlaceFrameProgressive= 0x00,
+    OMX_InterlaceInterleaveFrameTopFieldFirst= 0x01,
+    OMX_InterlaceInterleaveFrameBottomFieldFirst= 0x02,
+    OMX_InterlaceFrameTopFieldFirst= 0x04,
+    OMX_InterlaceFrameBottomFieldFirst= 0x08,
+    OMX_InterlaceInterleaveFieldTop= 0x10,
+    OMX_InterlaceInterleaveFieldBottom= 0x20,
+    OMX_InterlaceFmtMask= 0x7FFFFFFF
 } OMX_TI_INTERLACETYPE;
 
 /**
@@ -767,11 +766,11 @@ typedef enum OMX_TI_INTERLACETYPE {
  *  nInterlaceFormats : bitmapped value identifying the interlace formats detected within the stream
  */
 typedef struct OMX_TI_STREAMINTERLACEFORMATTYPE {
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_BOOL bInterlaceFormat;
-	OMX_U32 nInterlaceFormats;
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bInterlaceFormat;
+    OMX_U32         nInterlaceFormats;
 } OMX_TI_STREAMINTERLACEFORMAT;
 
 /*
@@ -808,12 +807,12 @@ typedef struct OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO {
     Currently we only support SVC baseline profile
 
  * !====================================================================!*/
-    typedef enum OMX_TI_VIDEO_SVCPROFILETYPE {
-        OMX_VIDEO_SVCProfileBaseline            = 0x01,     /**< Baseline profile */
-        OMX_VIDEO_SVCProfileHigh                = 0x02,     /**< High profile */
-        OMX_VIDEO_SVCProfileHighIntra           = 0x03,     /**< High Intra profile */
-        OMX_VIDEO_SVCProfileMax                 = 0x7FFFFFFF
-    } OMX_TI_VIDEO_SVCPROFILETYPE;
+typedef enum OMX_TI_VIDEO_SVCPROFILETYPE {
+    OMX_VIDEO_SVCProfileBaseline            = 0x01,         /**< Baseline profile */
+    OMX_VIDEO_SVCProfileHigh                = 0x02,         /**< High profile */
+    OMX_VIDEO_SVCProfileHighIntra           = 0x03,         /**< High Intra profile */
+    OMX_VIDEO_SVCProfileMax                 = 0x7FFFFFFF
+} OMX_TI_VIDEO_SVCPROFILETYPE;
 
 
 /*!====================================================================!
@@ -821,192 +820,192 @@ typedef struct OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO {
     Currently we support only SVC baseline profile upto level 4 for SVC encoder.
 
  * !====================================================================!*/
-    typedef enum OMX_TI_VIDEO_SVCLEVELTYPE {
-        OMX_VIDEO_SVCLevel1                     = 0x01,     /**< Level 1 */
-        OMX_VIDEO_SVCLevel1b                    = 0x02,     /**< Level 1b */
-        OMX_VIDEO_SVCLevel11                    = 0x04,     /**< Level 1.1 */
-        OMX_VIDEO_SVCLevel12                    = 0x08,     /**< Level 1.2 */
-        OMX_VIDEO_SVCLevel13                    = 0x10,     /**< Level 1.3 */
-        OMX_VIDEO_SVCLevel2                     = 0x20,     /**< Level 2 */
-        OMX_VIDEO_SVCLevel21                    = 0x40,     /**< Level 2.1 */
-        OMX_VIDEO_SVCLevel22                    = 0x80,     /**< Level 2.2 */
-        OMX_VIDEO_SVCLevel3                     = 0x100,    /**< Level 3 */
-        OMX_VIDEO_SVCLevel31                    = 0x200,    /**< Level 3.1 */
-        OMX_VIDEO_SVCLevel32                    = 0x400,    /**< Level 3.2 */
-        OMX_VIDEO_SVCLevel4                     = 0x800,    /**< Level 4 */
-        OMX_VIDEO_SVCLevel41                    = 0x1000,   /**< Level 4.1 */
-        OMX_VIDEO_SVCLevel42                    = 0x2000,   /**< Level 4.2 */
-        OMX_VIDEO_SVCLevel5                     = 0x4000,   /**< Level 5 */
-        OMX_VIDEO_SVCLevel51                    = 0x8000,   /**< Level 5.1 */
-        OMX_VIDEO_SVCLevelMax                   = 0x7FFFFFFF
-    } OMX_TI_VIDEO_SVCLEVELTYPE;
+typedef enum OMX_TI_VIDEO_SVCLEVELTYPE {
+    OMX_VIDEO_SVCLevel1                     = 0x01,         /**< Level 1 */
+    OMX_VIDEO_SVCLevel1b                    = 0x02,         /**< Level 1b */
+    OMX_VIDEO_SVCLevel11                    = 0x04,         /**< Level 1.1 */
+    OMX_VIDEO_SVCLevel12                    = 0x08,         /**< Level 1.2 */
+    OMX_VIDEO_SVCLevel13                    = 0x10,         /**< Level 1.3 */
+    OMX_VIDEO_SVCLevel2                     = 0x20,         /**< Level 2 */
+    OMX_VIDEO_SVCLevel21                    = 0x40,         /**< Level 2.1 */
+    OMX_VIDEO_SVCLevel22                    = 0x80,         /**< Level 2.2 */
+    OMX_VIDEO_SVCLevel3                     = 0x100,        /**< Level 3 */
+    OMX_VIDEO_SVCLevel31                    = 0x200,        /**< Level 3.1 */
+    OMX_VIDEO_SVCLevel32                    = 0x400,        /**< Level 3.2 */
+    OMX_VIDEO_SVCLevel4                     = 0x800,        /**< Level 4 */
+    OMX_VIDEO_SVCLevel41                    = 0x1000,       /**< Level 4.1 */
+    OMX_VIDEO_SVCLevel42                    = 0x2000,       /**< Level 4.2 */
+    OMX_VIDEO_SVCLevel5                     = 0x4000,       /**< Level 5 */
+    OMX_VIDEO_SVCLevel51                    = 0x8000,       /**< Level 5.1 */
+    OMX_VIDEO_SVCLevelMax                   = 0x7FFFFFFF
+} OMX_TI_VIDEO_SVCLEVELTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_STD_PARAMS {
-        OMX_U32  nSliceHeaderSpacing;
-        OMX_U32  nPFrames;
-        OMX_U32  nBFrames;
-        OMX_BOOL bUseHadamard;
-        OMX_U32  nRefFrames;
-        OMX_U32  nRefIdx10ActiveMinus1;
-        OMX_U32  nRefIdx11ActiveMinus1;
-        OMX_BOOL bEnableUEP;
-        /* Not needed as per SVC encoder requirements
-        OMX_BOOL                                bEnableFMO;
-        OMX_BOOL                                bEnableASO;
-        OMX_BOOL                                bEnableRS;
-        */
-        OMX_VIDEO_AVCLOOPFILTERTYPE eLoopFilterMode;
-        OMX_U32                     nAllowedPictureTypes;
-        OMX_BOOL                    bFrameMBsOnly;
-        OMX_BOOL                    bMBAFF;
-        OMX_BOOL                    bEntropyCodingCABAC;
-        OMX_BOOL                    bWeightedPPrediction;
-        OMX_U32                     nWeightedBipredicitonMode;
-        OMX_BOOL                    bconstIpred;
-        OMX_BOOL                    bDirect8x8Inference;
-        OMX_BOOL                    bDirectSpatialTemporal;
-        OMX_U32                     nCabacInitIdc;
-    } OMX_VIDEO_SVC_STD_PARAMS;
+typedef struct OMX_VIDEO_SVC_STD_PARAMS {
+    OMX_U32  nSliceHeaderSpacing;
+    OMX_U32  nPFrames;
+    OMX_U32  nBFrames;
+    OMX_BOOL bUseHadamard;
+    OMX_U32  nRefFrames;
+    OMX_U32  nRefIdx10ActiveMinus1;
+    OMX_U32  nRefIdx11ActiveMinus1;
+    OMX_BOOL bEnableUEP;
+    /* Not needed as per SVC encoder requirements
+    OMX_BOOL                                bEnableFMO;
+    OMX_BOOL                                bEnableASO;
+    OMX_BOOL                                bEnableRS;
+    */
+    OMX_VIDEO_AVCLOOPFILTERTYPE eLoopFilterMode;
+    OMX_U32                     nAllowedPictureTypes;
+    OMX_BOOL                    bFrameMBsOnly;
+    OMX_BOOL                    bMBAFF;
+    OMX_BOOL                    bEntropyCodingCABAC;
+    OMX_BOOL                    bWeightedPPrediction;
+    OMX_U32                     nWeightedBipredicitonMode;
+    OMX_BOOL                    bconstIpred;
+    OMX_BOOL                    bDirect8x8Inference;
+    OMX_BOOL                    bDirectSpatialTemporal;
+    OMX_U32                     nCabacInitIdc;
+} OMX_VIDEO_SVC_STD_PARAMS;
 
 
-    typedef struct OMX_VIDEO_SVC_RECTTYPE {
-        OMX_S32 nLeft;
-        OMX_S32 nTop;
-        OMX_U32 nWidth;
-        OMX_U32 nHeight;
-    } OMX_VIDEO_SVC_RECTTYPE;
+typedef struct OMX_VIDEO_SVC_RECTTYPE {
+    OMX_S32 nLeft;
+    OMX_S32 nTop;
+    OMX_U32 nWidth;
+    OMX_U32 nHeight;
+} OMX_VIDEO_SVC_RECTTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_BITRATETYPE {
-        OMX_VIDEO_CONTROLRATETYPE eControlRate;
-        OMX_U32                   nTargetBitrate;
-    } OMX_VIDEO_SVC_BITRATETYPE;
+typedef struct OMX_VIDEO_SVC_BITRATETYPE {
+    OMX_VIDEO_CONTROLRATETYPE eControlRate;
+    OMX_U32                   nTargetBitrate;
+} OMX_VIDEO_SVC_BITRATETYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_MOTIONVECTORTYPE {
-        OMX_VIDEO_MOTIONVECTORTYPE eAccuracy;
-        OMX_BOOL                   bUnrestrictedMVs;
-        OMX_BOOL                   bFourMV;
-        OMX_S32                    sXSearchRange;
-        OMX_S32                    sYSearchRange;
-    } OMX_VIDEO_SVC_MOTIONVECTORTYPE;
+typedef struct OMX_VIDEO_SVC_MOTIONVECTORTYPE {
+    OMX_VIDEO_MOTIONVECTORTYPE eAccuracy;
+    OMX_BOOL                   bUnrestrictedMVs;
+    OMX_BOOL                   bFourMV;
+    OMX_S32                    sXSearchRange;
+    OMX_S32                    sYSearchRange;
+} OMX_VIDEO_SVC_MOTIONVECTORTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_QUANTIZATIONTYPE {
-        OMX_U32 nQpI;
-        OMX_U32 nQpP;
-        OMX_U32 nQpB;
-    } OMX_VIDEO_SVC_QUANTIZATIONTYPE;
+typedef struct OMX_VIDEO_SVC_QUANTIZATIONTYPE {
+    OMX_U32 nQpI;
+    OMX_U32 nQpP;
+    OMX_U32 nQpB;
+} OMX_VIDEO_SVC_QUANTIZATIONTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_INTRAREFRESHTYPE {
-        OMX_VIDEO_INTRAREFRESHTYPE eRefreshMode;
-        OMX_U32                    nAirMBs;
-        OMX_U32                    nAirRef;
-        OMX_U32                    nCirMBs;
-    } OMX_VIDEO_SVC_INTRAREFRESHTYPE;
+typedef struct OMX_VIDEO_SVC_INTRAREFRESHTYPE {
+    OMX_VIDEO_INTRAREFRESHTYPE eRefreshMode;
+    OMX_U32                    nAirMBs;
+    OMX_U32                    nAirRef;
+    OMX_U32                    nCirMBs;
+} OMX_VIDEO_SVC_INTRAREFRESHTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_VBSMCTYPE {
-        OMX_BOOL b16x16;
-        OMX_BOOL b16x8;
-        OMX_BOOL b8x16;
-        OMX_BOOL b8x8;
-        OMX_BOOL b8x4;
-        OMX_BOOL b4x8;
-        OMX_BOOL b4x4;
-    } OMX_VIDEO_SVC_VBSMCTYPE;
+typedef struct OMX_VIDEO_SVC_VBSMCTYPE {
+    OMX_BOOL b16x16;
+    OMX_BOOL b16x8;
+    OMX_BOOL b8x16;
+    OMX_BOOL b8x8;
+    OMX_BOOL b8x4;
+    OMX_BOOL b4x8;
+    OMX_BOOL b4x4;
+} OMX_VIDEO_SVC_VBSMCTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_NALUCONTROLTYPE {
-        OMX_U32 nStartofSequence;
-        OMX_U32 nEndofSequence;
-        OMX_U32 nIDR;
-        OMX_U32 nIntraPicture;
-        OMX_U32 nNonIntraPicture;
-    }OMX_VIDEO_SVC_NALUCONTROLTYPE;
+typedef struct OMX_VIDEO_SVC_NALUCONTROLTYPE {
+    OMX_U32 nStartofSequence;
+    OMX_U32 nEndofSequence;
+    OMX_U32 nIDR;
+    OMX_U32 nIntraPicture;
+    OMX_U32 nNonIntraPicture;
+}OMX_VIDEO_SVC_NALUCONTROLTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_MEBLOCKSIZETYPE {
-        OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeP;
-        OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeB;
-    }OMX_VIDEO_SVC_MEBLOCKSIZETYPE;
+typedef struct OMX_VIDEO_SVC_MEBLOCKSIZETYPE {
+    OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeP;
+    OMX_VIDEO_BLOCKSIZETYPE eMinBlockSizeB;
+}OMX_VIDEO_SVC_MEBLOCKSIZETYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_INTRAPREDTYPE {
-        OMX_U32                       nLumaIntra4x4Enable;
-        OMX_U32                       nLumaIntra8x8Enable;
-        OMX_U32                       nLumaIntra16x16Enable;
-        OMX_U32                       nChromaIntra8x8Enable;
-        OMX_VIDEO_CHROMACOMPONENTTYPE eChromaComponentEnable;
-    }OMX_VIDEO_SVC_INTRAPREDTYPE;
+typedef struct OMX_VIDEO_SVC_INTRAPREDTYPE {
+    OMX_U32                       nLumaIntra4x4Enable;
+    OMX_U32                       nLumaIntra8x8Enable;
+    OMX_U32                       nLumaIntra16x16Enable;
+    OMX_U32                       nChromaIntra8x8Enable;
+    OMX_VIDEO_CHROMACOMPONENTTYPE eChromaComponentEnable;
+}OMX_VIDEO_SVC_INTRAPREDTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_ENCODER_PRESETTYPE {
-        OMX_VIDEO_ENCODING_MODE_PRESETTYPE eEncodingModePreset;
-        OMX_VIDEO_RATECONTROL_PRESETTYPE   eRateControlPreset;
-    }OMX_VIDEO_SVC_ENCODER_PRESETTYPE;
+typedef struct OMX_VIDEO_SVC_ENCODER_PRESETTYPE {
+    OMX_VIDEO_ENCODING_MODE_PRESETTYPE eEncodingModePreset;
+    OMX_VIDEO_RATECONTROL_PRESETTYPE   eRateControlPreset;
+}OMX_VIDEO_SVC_ENCODER_PRESETTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_VUIINFOTYPE {
-        OMX_BOOL                  bAspectRatioPresent;
-        OMX_VIDEO_ASPECTRATIOTYPE ePixelAspectRatio;
-        OMX_BOOL                  bFullRange;
-    }OMX_VIDEO_SVC_VUIINFOTYPE;
+typedef struct OMX_VIDEO_SVC_VUIINFOTYPE {
+    OMX_BOOL                  bAspectRatioPresent;
+    OMX_VIDEO_ASPECTRATIOTYPE ePixelAspectRatio;
+    OMX_BOOL                  bFullRange;
+}OMX_VIDEO_SVC_VUIINFOTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_HRDBUFFERSETTING {
-        OMX_U32 nInitialBufferLevel;
-        OMX_U32 nHRDBufferSize;
-        OMX_U32 nTargetBitrate;
-    }OMX_VIDEO_SVC_HRDBUFFERSETTING;
+typedef struct OMX_VIDEO_SVC_HRDBUFFERSETTING {
+    OMX_U32 nInitialBufferLevel;
+    OMX_U32 nHRDBufferSize;
+    OMX_U32 nTargetBitrate;
+}OMX_VIDEO_SVC_HRDBUFFERSETTING;
 
 
-    typedef struct OMX_VIDEO_SVC_INTRAPERIOD {
-        OMX_U32 nIDRPeriod;
-        OMX_U32 nPFrames;
-    } OMX_VIDEO_SVC_INTRAPERIOD;
+typedef struct OMX_VIDEO_SVC_INTRAPERIOD {
+    OMX_U32 nIDRPeriod;
+    OMX_U32 nPFrames;
+} OMX_VIDEO_SVC_INTRAPERIOD;
 
 
-    typedef struct OMX_VIDEO_SVC_PIXELINFOTYPE {
-        OMX_U32 nWidth;
-        OMX_U32 nHeight;
-    } OMX_VIDEO_SVC_PIXELINFOTYPE;
+typedef struct OMX_VIDEO_SVC_PIXELINFOTYPE {
+    OMX_U32 nWidth;
+    OMX_U32 nHeight;
+} OMX_VIDEO_SVC_PIXELINFOTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_MESEARCHRANGETYPE {
-        OMX_VIDEO_MOTIONVECTORTYPE eMVAccuracy;
-        OMX_U32                    nHorSearchRangeP;
-        OMX_U32                    nVerSearchRangeP;
-        OMX_U32                    nHorSearchRangeB;
-        OMX_U32                    nVerSearchRangeB;
-    }OMX_VIDEO_SVC_MESEARCHRANGETYPE;
+typedef struct OMX_VIDEO_SVC_MESEARCHRANGETYPE {
+    OMX_VIDEO_MOTIONVECTORTYPE eMVAccuracy;
+    OMX_U32                    nHorSearchRangeP;
+    OMX_U32                    nVerSearchRangeP;
+    OMX_U32                    nHorSearchRangeB;
+    OMX_U32                    nVerSearchRangeB;
+}OMX_VIDEO_SVC_MESEARCHRANGETYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_QPSETTINGSTYPE {
-        OMX_U32 nQpI;
-        OMX_U32 nQpMaxI;
-        OMX_U32 nQpMinI;
-        OMX_U32 nQpP;
-        OMX_U32 nQpMaxP;
-        OMX_U32 nQpMinP;
-        OMX_U32 nQpOffsetB;
-        OMX_U32 nQpMaxB;
-        OMX_U32 nQpMinB;
-    }OMX_VIDEO_SVC_QPSETTINGSTYPE;
+typedef struct OMX_VIDEO_SVC_QPSETTINGSTYPE {
+    OMX_U32 nQpI;
+    OMX_U32 nQpMaxI;
+    OMX_U32 nQpMinI;
+    OMX_U32 nQpP;
+    OMX_U32 nQpMaxP;
+    OMX_U32 nQpMinP;
+    OMX_U32 nQpOffsetB;
+    OMX_U32 nQpMaxB;
+    OMX_U32 nQpMinB;
+}OMX_VIDEO_SVC_QPSETTINGSTYPE;
 
 
-    typedef struct OMX_VIDEO_SVC_SLICECODINGTYPE {
-        OMX_VIDEO_AVCSLICEMODETYPE eSliceMode;
-        OMX_U32                    nSlicesize;
-    }OMX_VIDEO_SVC_SLICECODINGTYPE;
+typedef struct OMX_VIDEO_SVC_SLICECODINGTYPE {
+    OMX_VIDEO_AVCSLICEMODETYPE eSliceMode;
+    OMX_U32                    nSlicesize;
+}OMX_VIDEO_SVC_SLICECODINGTYPE;
 
 
-    typedef struct OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING {
-        OMX_U32 nHRDBufferSize;
-        OMX_U32 nEncodeBitrate;
-    }OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING;
+typedef struct OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING {
+    OMX_U32 nHRDBufferSize;
+    OMX_U32 nEncodeBitrate;
+}OMX_VIDEO_EXEC_SVC_HRDBUFFERSETTING;
 
 /**
  * SVC params
@@ -1061,52 +1060,52 @@ typedef struct OMX_TI_VIDEO_CONFIG_PICSIZECONTROLINFO {
  *  nCabacInitIdx             : Index used to init CABAC contexts
  *  eLoopFilterMode           : Enable/disable loop filter
  */
-    typedef struct OMX_TI_VIDEO_PARAM_SVCTYPE {
-        OMX_U32         nSize;
-        OMX_VERSIONTYPE nVersion;
-        OMX_U32         nPortIndex;
+typedef struct OMX_TI_VIDEO_PARAM_SVCTYPE {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
 
-        OMX_U32                nActualFrameWidth;
-        OMX_U32                nActualFrameHeight;
-        OMX_S32                nStride;
-        OMX_U32                xFramerate;
-        OMX_COLOR_FORMATTYPE   eColorFormat;
-        OMX_VIDEO_SVC_RECTTYPE sRecType;
+    OMX_U32                nActualFrameWidth;
+    OMX_U32                nActualFrameHeight;
+    OMX_S32                nStride;
+    OMX_U32                xFramerate;
+    OMX_COLOR_FORMATTYPE   eColorFormat;
+    OMX_VIDEO_SVC_RECTTYPE sRecType;
 
-        OMX_VIDEO_SVC_STD_PARAMS sBasicParams;
+    OMX_VIDEO_SVC_STD_PARAMS sBasicParams;
 
-        OMX_U32                     nRefFrames;
-        OMX_TI_VIDEO_SVCPROFILETYPE eProfile;
-        OMX_TI_VIDEO_SVCLEVELTYPE   eLevel;
+    OMX_U32                     nRefFrames;
+    OMX_TI_VIDEO_SVCPROFILETYPE eProfile;
+    OMX_TI_VIDEO_SVCLEVELTYPE   eLevel;
 
-        OMX_U32                   xEncodeFramerate;
-        OMX_VIDEO_SVC_BITRATETYPE sBitRateParams;
+    OMX_U32                   xEncodeFramerate;
+    OMX_VIDEO_SVC_BITRATETYPE sBitRateParams;
 
-        OMX_VIDEO_SVC_MOTIONVECTORTYPE sMotionVectorParams;
-        OMX_VIDEO_SVC_QUANTIZATIONTYPE sQuantizationParams;
-        OMX_VIDEO_SVC_INTRAREFRESHTYPE sIntraRefreshParams;
-        OMX_VIDEO_SVC_VBSMCTYPE        sVBSMCParams;
+    OMX_VIDEO_SVC_MOTIONVECTORTYPE sMotionVectorParams;
+    OMX_VIDEO_SVC_QUANTIZATIONTYPE sQuantizationParams;
+    OMX_VIDEO_SVC_INTRAREFRESHTYPE sIntraRefreshParams;
+    OMX_VIDEO_SVC_VBSMCTYPE        sVBSMCParams;
 
-        //OMX_NALUFORMATSTYPE               eNaluFormat;
-        OMX_VIDEO_SVC_NALUCONTROLTYPE sNalUnitParams;
+    //OMX_NALUFORMATSTYPE               eNaluFormat;
+    OMX_VIDEO_SVC_NALUCONTROLTYPE sNalUnitParams;
 
-        OMX_VIDEO_SVC_MEBLOCKSIZETYPE    sMEBlockSizeParams;
-        OMX_VIDEO_SVC_INTRAPREDTYPE      sIntraPredParams;
-        OMX_VIDEO_SVC_ENCODER_PRESETTYPE sEncPresetParams;
-        OMX_VIDEO_TRANSFORMBLOCKSIZETYPE eTransformBlocksize;
-        OMX_VIDEO_SVC_VUIINFOTYPE        sVUIInfoParams;
-        OMX_VIDEO_SVC_HRDBUFFERSETTING   sHRDBufferParams;
+    OMX_VIDEO_SVC_MEBLOCKSIZETYPE    sMEBlockSizeParams;
+    OMX_VIDEO_SVC_INTRAPREDTYPE      sIntraPredParams;
+    OMX_VIDEO_SVC_ENCODER_PRESETTYPE sEncPresetParams;
+    OMX_VIDEO_TRANSFORMBLOCKSIZETYPE eTransformBlocksize;
+    OMX_VIDEO_SVC_VUIINFOTYPE        sVUIInfoParams;
+    OMX_VIDEO_SVC_HRDBUFFERSETTING   sHRDBufferParams;
 
-        OMX_U32 nNumTemporalLayers;
-        OMX_S32 nDependencyID;
-        OMX_S32 nQualityID;
-        //OMX_VIDEO_SVC_ENCODE_MODE         eModeOfEncode;
+    OMX_U32 nNumTemporalLayers;
+    OMX_S32 nDependencyID;
+    OMX_S32 nQualityID;
+    //OMX_VIDEO_SVC_ENCODE_MODE         eModeOfEncode;
 
-        OMX_U32 nErrorConcealmentMode;
-        OMX_U32 nDeblockFilterMode;
-    } OMX_TI_VIDEO_PARAM_SVCTYPE;
+    OMX_U32 nErrorConcealmentMode;
+    OMX_U32 nDeblockFilterMode;
+} OMX_TI_VIDEO_PARAM_SVCTYPE;
 
- typedef struct OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS {
+typedef struct OMX_TI_VIDEO_CONFIG_SVCLAYERDETAILS {
     OMX_U32         nSize;
     OMX_VERSIONTYPE nVersion;
     OMX_U32         nPortIndex;
@@ -1156,26 +1155,26 @@ typedef struct OMX_TI_VIDEO_SLICEDATAINFO {
     OMX_U32 nSliceSize[OMXH264E_MAX_SLICE_SUPPORTED];
 } OMX_TI_VIDEO_SLICEDATAINFO;
 /**
-*	@brief	mode selection for the data that is given to the Codec
+*   @brief  mode selection for the data that is given to the Codec
  */
 
 typedef enum _OMX_VIDEO_AVCLTRMODE {
-  OMX_H264ENC_LTRP_NONE = 0,
-        /**< No longterm refernce frame in the sequnce
-           */
-  OMX_H264ENC_LTRP_REFERTOIDR = 1,
-          /**< Mark all the I frames as long term-reference frames and
-           * based on the frame control IH264ENC_Control, refere to
-           * a long-term reference frame (I frame).
-           */
-  OMX_H264ENC_LTRP_REFERTOP_PROACTIVE =2,
-          /**< Two long term frames are supported in this schme and
-           * long-term index marking and refernce frame update is done based
-           * the IH264ENC_Control values
-           */
-  OMX_H264ENC_LTRP_REFERTOP_REACTIVE = 3
-          /**< This is not supported in the current version of encoder
-           */
+    OMX_H264ENC_LTRP_NONE = 0,
+    /**< No longterm refernce frame in the sequnce
+       */
+    OMX_H264ENC_LTRP_REFERTOIDR = 1,
+    /**< Mark all the I frames as long term-reference frames and
+     * based on the frame control IH264ENC_Control, refere to
+     * a long-term reference frame (I frame).
+     */
+    OMX_H264ENC_LTRP_REFERTOP_PROACTIVE =2,
+    /**< Two long term frames are supported in this schme and
+     * long-term index marking and refernce frame update is done based
+     * the IH264ENC_Control values
+     */
+    OMX_H264ENC_LTRP_REFERTOP_REACTIVE = 3
+                                         /**< This is not supported in the current version of encoder
+                                          */
 } OMX_VIDEO_AVCLTRMODE;
 
 
@@ -1184,28 +1183,28 @@ typedef enum _OMX_VIDEO_AVCLTRMODE {
 @brief OMX_TI_VIDEO_PARAM_AVC_LTRP : Structure to enable the configuration of Long Term reference Picture feature in H264 Encoder for the session
 Enabling this parameter will instruct encoder to keep its recent I/IDR frame in its reference buffer list.
 So it increases the DDR foot print by one frame buffer
-@param eLTRMode	: enables the LongTerm Reference Picture, possible modes: 0, 1, 2
+@param eLTRMode : enables the LongTerm Reference Picture, possible modes: 0, 1, 2
 @param nLTRInterval : interval of the write indicating to codec interms of the frame number
 */
 /* ============================================================================= */
-typedef struct OMX_TI_VIDEO_PARAM_AVC_LTRP{
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_VIDEO_AVCLTRMODE eLTRMode;
-	OMX_U32 nLTRInterval;
+typedef struct OMX_TI_VIDEO_PARAM_AVC_LTRP {
+    OMX_U32              nSize;
+    OMX_VERSIONTYPE      nVersion;
+    OMX_U32              nPortIndex;
+    OMX_VIDEO_AVCLTRMODE eLTRMode;
+    OMX_U32              nLTRInterval;
 } OMX_TI_VIDEO_PARAM_AVC_LTRP;
 
 /*
 @brief OMX_TI_VIDEO_CONFIG_AVC_LTRP : Structure to provide the configuration to acknowledge successful decode of previous LTR
-@param eLTRFrameDecoded	: tells the decoder that the LTR has been decoded successfully when set to TRUE
+@param eLTRFrameDecoded : tells the decoder that the LTR has been decoded successfully when set to TRUE
 */
 /* ============================================================================= */
-typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP{
-    OMX_U32 nSize;
+typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP {
+    OMX_U32         nSize;
     OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_BOOL bEnableNextLTR;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bEnableNextLTR;
 } OMX_TI_VIDEO_CONFIG_AVC_LTRP;
 
 /* ============================================================================= */
@@ -1215,11 +1214,11 @@ Interval during runtime
 @param nLTRInterval : interval of the write indicating to codec interms of the frame number
 */
 /* ============================================================================= */
-typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL{
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-	OMX_U32 nPortIndex;
-	OMX_U32 nLTRInterval;
+typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nLTRInterval;
 } OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL;
 
 /* ============================================================================= */
@@ -1228,10 +1227,10 @@ typedef struct OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL{
             at i/p of decoders.
 */
 /* ============================================================================= */
-typedef struct OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER{
-	OMX_U32 nSize;
-	OMX_VERSIONTYPE nVersion;
-        OMX_BOOL bEnabled;
+typedef struct OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_BOOL        bEnabled;
 } OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER;
 
 /* ============================================================================= */
@@ -2647,6 +2646,240 @@ typedef struct OMX_TI_VIDEO_PARAM_DEBLOCKINGQP {
     OMX_U32         nPortIndex;
     OMX_U32         nDeblockingQP;
 } OMX_TI_VIDEO_PARAM_DEBLOCKINGQP;
+
+/* ============================================================================= */
+/*
+@brief Extended parameters for VC1 standard
+*/
+/* ============================================================================= */
+/**
+ * VC1 profile types, each profile indicates support for various
+ * performance bounds and different annexes.
+ */
+typedef enum OMX_TI_VIDEO_VC1PROFILETYPE {
+    OMX_VIDEO_VC1SimpleProfile   = 0,  /**< Simple Profile   */
+    OMX_VIDEO_VC1MainProfile     = 1,  /**< Main Profile     */
+    OMX_VIDEO_VC1AdvancedProfile = 3   /**< Advanced Profile */
+}OMX_TI_VIDEO_VC1PROFILETYPE;
+
+/**
+ * VC1 level types, each level indicates support for various frame sizes,
+ * bit rates, decoder frame rates.
+ */
+typedef enum OMX_TI_VIDEO_VC1LEVELTYPE {
+    OMX_VIDEO_VC1SPLOW  = 0,  /**< Simple Profile Level Low     */
+    OMX_VIDEO_VC1SPMED  = 2,  /**< Simple Profile Level Medium  */
+    OMX_VIDEO_VC1MPLOW  = 0,  /**< Main Profile Level Low       */
+    OMX_VIDEO_VC1MPMED  = 2,  /**< Main Profile Level Medium    */
+    OMX_VIDEO_VC1MPHIGH = 4,  /**< Main Profile Level High      */
+    OMX_VIDEO_VC1APL0   = 0,  /**< Advanced Profile Level L0    */
+    OMX_VIDEO_VC1APL1   = 1,  /**< Advanced Profile Level L1    */
+    OMX_VIDEO_VC1APL2   = 2,  /**< Advanced Profile Level L2    */
+    OMX_VIDEO_VC1APL3   = 3,  /**< Advanced Profile Level L3    */
+    OMX_VIDEO_VC1APL4   = 4,  /**< Advanced Profile Level L4    */
+    OMX_VIDEO_VC1LEVEL_MAX = 0X7FFFFFFF
+}OMX_TI_VIDEO_VC1LEVELTYPE;
+
+/**
+ *  @brief   Specifies the type of interlace content for VC1
+ */
+typedef enum OMX_TI_VIDEO_VC1_INTERLACE_CODINGTYPE {
+    OMX_TI_Video_VC1Interlace_PICAFF   = 0,                         /**< PicAFF type of interlace coding            */
+    OMX_TI_Video_VC1Interlace_Fieldonly     = 2,                    /**< Field only coding with fixed partiy scheme */
+    OMX_TI_Video_VC1Interlace_Fieldonly_MRF = OMX_TI_Video_VC1Interlace_Fieldonly,   /**< Use Most recent field for refernece        */
+    OMX_TI_Video_VC1Interlace_Fieldonly_ARF = 3,       /**< codec decides the partiy of of the field to
+      *  be used based upon content (adaptive)      */
+    OMX_TI_Video_VC1Interlace_DEFAULT       = OMX_TI_Video_VC1Interlace_Fieldonly_ARF,     /**< Default : adaptive partiy for reference    */
+    OMX_TI_Video_VC1Interlace_Fieldonly_SPF = 4,                    /**< Use same parity field for refernece        */
+    OMX_TI_Video_VC1Interlace_MAX =  0X7FFFFFFF
+}OMX_TI_VIDEO_VC1_INTERLACE_CODINGTYPE;
+
+/**
+ * VC1 loop filter modes
+ *
+ * OMX_VIDEO_AVCLoopFilterEnable               : Enable
+ * OMX_VIDEO_AVCLoopFilterDisable              : Disable
+ */
+typedef enum OMX_VIDEO_VC1LOOPFILTERTYPE {
+    OMX_VIDEO_VC1LoopFilterEnable = 0,
+    OMX_VIDEO_VC1LoopFilterDisable,
+    OMX_VIDEO_VC1LoopFilterKhronosExtensions = 0x6F000000,     /**< Reserved region for introducing Khronos Standard Extensions */
+    OMX_VIDEO_VC1LoopFilterVendorStartUnused = 0x7F000000,     /**< Reserved region for introducing Vendor Extensions */
+    OMX_VIDEO_VC1LoopFilterMax = 0x7FFFFFFF
+} OMX_VIDEO_VC1LOOPFILTERTYPE;
+
+/* ========================================================================== */
+/*!
+ @brief OMX_TI_VIDEO_PARAM_VC1INTERLACECODING : to configure the interlace encoding related settings
+ @param  eInterlaceCodingType   to specify the settings of interlace content
+                            @sa OMX_TI_VIDEO_VC1_INTERLACE_CODINGTYPE
+ @param  bTopFieldFirst             to speicfy the first field sent is top or bottom
+ @param  bBottom_Field_Intra        to specify codec that encode bottomfield also as intra or not
+*/
+/* ==========================================================================*/
+typedef struct OMX_TI_VIDEO_PARAM_VC1INTERLACECODING {
+    OMX_U32                               nSize;
+    OMX_VERSIONTYPE                       nVersion;
+    OMX_U32                               nPortIndex;
+    OMX_TI_VIDEO_VC1_INTERLACE_CODINGTYPE eInterlaceCodingType;
+    OMX_BOOL                              bTopFieldFirst;
+    OMX_BOOL                              bBottomFieldIntra;
+} OMX_TI_VIDEO_PARAM_VC1INTERLACECODING;
+
+/* ========================================================================== */
+/*!
+ @brief OMX_TI_VIDEO_PARAM_VC1HRDBUFFERSETTING : to configure the HRD related params
+ @param  nInitialBufferLevel        Initial Buffer level for HRD compliance
+
+ @param  nHRDBufferSize     Hypothetical Reference Decoder Buffer Size
+
+ @param  nTargetBitrate     Target bitrate to encode with
+
+*/
+/* ==========================================================================*/
+typedef struct OMX_TI_VIDEO_PARAM_VC1HRDBUFFERSETTING {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nInitialBufferLevel;
+    OMX_U32         nHRDBufferSize;
+    OMX_U32         nTargetBitrate;
+} OMX_TI_VIDEO_PARAM_VC1HRDBUFFERSETTING;
+
+/**
+ * VC1 intra Period Configs
+ *
+ * STRUCT MEMBERS:
+ *  nSize      : Size of the structure in bytes
+ *  nVersion   : OMX specification version information
+ *  nPortIndex : Port that this structure applies to
+ *  nPFrames : Specifies internal of coding Intra frames
+ */
+typedef struct OMX_TI_VIDEO_CONFIG_VC1INTRAPERIOD {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nPFrames;
+} OMX_TI_VIDEO_CONFIG_VC1INTRAPERIOD; // IDR is not supported in VC1
+
+/**
+ * VC1 Slice Mode modes
+ *
+ * OMX_VIDEO_SLICEMODE_VC1Default   : Default slice coding mode is disabled
+ * OMX_VIDEO_SLICEMODE_VC1ROWSlice  : Slices are controlled based upon number of Rows
+ * OMX_VIDEO_SLICEMODE_VC1OFFSET    : Slices are controlled based upon user defined offset in unit of Rows
+ */
+typedef enum OMX_TI_VIDEO_VC1SLICEMODETYPE {
+    OMX_VIDEO_SLICEMODE_VC1Default = 0,
+    OMX_VIDEO_SLICEMODE_VC1ROWSlice,
+    OMX_VIDEO_SLICEMODE_VC1OFFSET,
+    OMX_VIDEO_SLICEMODE_VC1KhronosExtensions = 0x6F000000,     /**< Reserved region for introducing Khronos Standard Extensions */
+    OMX_VIDEO_SLICEMODE_VC1VendorStartUnused = 0x7F000000,     /**< Reserved region for introducing Vendor Extensions */
+    OMX_VIDEO_SLICEMODE_VC1LevelMax = 0x7FFFFFFF
+} OMX_TI_VIDEO_VC1SLICEMODETYPE;
+
+/* ========================================================================== */
+/*!
+ @brief OMX_VIDEO_CONFIG_VC1SLICECODINGTYPE : to configure the Slice Settings
+ @param  eSliceMode to specify the Slice mode
+                            @sa OMX_TI_VIDEO_VC1SLICEMODETYPE
+ @param  nSlicesize to specify the sliceSize
+*/
+/* ==========================================================================*/
+typedef struct OMX_VIDEO_CONFIG_VC1SLICECODINGTYPE {
+    OMX_U32                       nSize;
+    OMX_VERSIONTYPE               nVersion;
+    OMX_U32                       nPortIndex;
+    OMX_TI_VIDEO_VC1SLICEMODETYPE eSliceMode;
+    OMX_U32                       nSlicesize;
+} OMX_VIDEO_CONFIG_VC1SLICECODINGTYPE;
+
+/* ========================================================================== */
+/*!
+ @brief OMX_TI_VIDEO_CONFIG_VC1HRDBUFFERSETTING : to configure the HRD related params
+
+ @param  nHRDBufferSize     Hypothetical Reference Decoder Buffer Size
+
+ @param  nEncodeBitrate     Target bitrate to encode with
+
+*/
+/* ==========================================================================*/
+typedef struct OMX_TI_VIDEO_CONFIG_VC1HRDBUFFERSETTING {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U32         nHRDBufferSize;
+    OMX_U32         nEncodeBitrate;
+} OMX_TI_VIDEO_CONFIG_VC1HRDBUFFERSETTING;
+
+/**
+ * VC1 params
+ *
+ * STRUCT MEMBERS:
+ *  nSize                     : Size of the structure in bytes
+ *  nVersion                  : OMX specification version information
+ *  nPortIndex                : Port that this structure applies to
+ *  eProfile                  : VC1 profile(s) to use
+ *  eLevel                    : VC1 level(s) to use
+ *  eLoopFilterMode           : Enable/disable loop filter
+ */
+typedef struct OMX_TI_VIDEO_VC1_STD_PARAMS {
+    OMX_U32                     nSize;
+    OMX_VERSIONTYPE             nVersion;
+    OMX_U32                     nPortIndex;
+    OMX_TI_VIDEO_VC1PROFILETYPE eProfile;
+    OMX_TI_VIDEO_VC1LEVELTYPE   eLevel;
+    OMX_VIDEO_VC1LOOPFILTERTYPE eLoopFilterMode;
+}OMX_TI_VIDEO_VC1_STD_PARAMS;
+
+/**
+ * GetConfigData params
+ *
+ * STRUCT MEMBERS:
+ *  nSize                     : Size of the structure in bytes
+ *  nVersion                  : OMX specification version information
+ *  nPortIndex                : Port that this structure applies to
+ *  nBufarray[100]            : Array containing config data
+ *  nBufSize                  : number of bytes of config data in the nBufarray
+ */
+typedef struct OMX_TI_VIDEO_GETCONFIGPARAMS {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_U8          nBufarray[100];
+    OMX_U32         nBufSize;
+}OMX_TI_VIDEO_GETCONFIGPARAMS;
+
+/**
+ * VC1 BitStreamFormat Type
+ */
+typedef enum OMX_VC1FORMATSTYPE {
+    OMX_VC1RAWStream = 0,
+    /**< bit-stream does not contain the RCV headers */
+    OMX_VC1RCVType1Stream = 1,
+    /**< bit-stream contain the RCV headers in Version 1 format */
+    OMX_VC1RCVType2Stream = 2,
+    /**< bit-stream contain the RCV headers in Version 2 format */
+    OMX_VC1StreamFormatDefault = OMX_VC1RCVType2Stream,
+    /**< Default stream format is RCV2 format */
+    OMX_VC1FormatCodingMax
+} OMX_VC1FORMATSTYPE;
+
+/**
+ * VC1 BitStream Format
+ *
+ * STRUCT MEMBERS:
+ *  nSize                     : Size of the structure in bytes
+ *  nVersion                  : OMX specification version information
+ *  nPortIndex                : Port that this structure applies to
+ *  eVC1Format                : The format of headers in the encoded bitstream
+ */
+typedef struct OMX_VC1BITSTREAMFORMATTYPE {
+    OMX_U32            nSize;
+    OMX_VERSIONTYPE    nVersion;
+    OMX_U32            nPortIndex;
+    OMX_VC1FORMATSTYPE eVC1Format;
+} OMX_VC1BITSTREAMFORMATTYPE;
 
 #endif /* OMX_TI_VIDEO_H */
 

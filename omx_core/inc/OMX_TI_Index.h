@@ -34,16 +34,17 @@
  *  @file  omx_ti_index.h
  *         This file contains the vendor(TI) specific indexes
  *
- *  @path \OMAPSW_SysDev\multimedia\omx\khronos1_1\omx_core\inc
+ *  @path \WTSD_DucatiMMSW\ omx\omx_il_1_x\omx_core\
  *
  *  @rev 1.0
  */
 
 /*==============================================================
- *! Revision History
- *! ============================
- *! 20-Dec-2008 x0052661@ti.com, initial version
- *================================================================*/
+ * ! Revision History
+ * ! ============================
+ * ! 20-Dec-2008 x0052661@ti.com, initial version
+ * ! 20-jun-2012 x0078587@ti.com
+ * ================================================================*/
 
 #ifndef _OMX_TI_INDEX_H_
 #define _OMX_TI_INDEX_H_
@@ -263,7 +264,19 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexParamVideoDeblockingQP,                 /**< 0x7F0000A8 reference: OMX_TI_VIDEO_PARAM_DEBLOCKINGQP */
     OMX_TI_IndexParamAVCTemporalScalabilitySetting,     /**< 0x7F0000A9 reference: OMX_TI_VIDEO_PARAM_TEMPORAL_SCALABILITY*/
     OMX_TI_IndexParamImagePyramid,                      /**< 0x7F0000AA reference: OMX_TI_PARAM_IMAGEPYRAMIDTYPE */
+
+    /*VC1 Encoder specific Indices*/
+    OMX_TI_IndexParamVC1InterlaceSettings,              /**< 0x7F000AB reference:OMX_TI_VIDEO_PARAM_VC1INTERLACECODING*/
+    OMX_IndexConfigVideoVC1IntraPeriod,                 /**< 0x7F000AC reference: OMX_TI_VIDEO_CONFIG_VC1INTRAPERIOD */
+    OMX_TI_IndexParamVC1HRDBufferSizeSetting,           /**< 0x7F000AD reference: OMX_TI_VIDEO_PARAM_VC1HRDBUFFERSETTING */
+    OMX_TI_IndexConfigVC1HRDBufferSizeSetting,          /**< 0x7F000AE reference: OMX_TI_VIDEO_CONFIG_VC1HRDBUFFERSETTING */
+    OMX_TI_IndexParamVideoStdVC1,                       /**< 0x7F000AF reference: OMX_TI_VIDEO_VC1_STD_PARAMS */
+    OMX_TI_IndexParamVideoGetConfigData,                /**< 0x7F000B0 reference: OMX_TI_VIDEO_GETCONFIGPARAMS */
+    OMX_IndexParamVC1BitStreamFormatSupported,          /**< 0x7F000B1 reference: OMX_VC1BITSTREAMFORMATTYPE */
+    OMX_IndexParamVC1BitStreamFormat,                   /**< 0x7F000B2 reference: OMX_VC1BITSTREAMFORMATTYPE */
+    OMX_IndexParamVC1BitStreamFormatSelect,             /**< 0x7F000B3 reference: OMX_VC1BITSTREAMFORMATTYPE */
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
+
 } OMX_TI_INDEXTYPE;
 
 
