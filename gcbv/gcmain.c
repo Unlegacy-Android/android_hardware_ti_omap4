@@ -30,6 +30,11 @@
 #include "gcmain.h"
 #include <semaphore.h>
 
+#if ANDROID
+#include <cutils/log.h>
+#include <cutils/process_name.h>
+#endif
+
 #define GCZONE_NONE		0
 #define GCZONE_ALL		(~0U)
 #define GCZONE_INIT		(1 << 0)
@@ -46,8 +51,22 @@ static int g_handle;
 /*******************************************************************************
  * Callback manager.
  */
+enum gccallbackinfo_status {
+	UNINIT,
+	SUPPORTED,
+	UNSUPPORTED
+};
+
+static const char* g_statusNames[] = {
+	"UNINIT",
+	"SUPPORTED",
+	"UNSUPPORTED"
+};
 
 struct gccallbackinfo {
+	/* Callback status */
+	enum gccallbackinfo_status status;
+
 	/* Callback handle. */
 	unsigned long handle;
 
@@ -56,9 +75,14 @@ struct gccallbackinfo {
 
 	/* Callback thread handle. */
 	pthread_t thread;
+
+    /* Start/stop mutex */
+	pthread_mutex_t mutex;
 };
 
-struct gccallbackinfo g_callbackinfo;
+struct gccallbackinfo g_callbackinfo = {
+	.status = UNINIT
+};
 
 static void *callbackthread(void *_gccallbackinfo)
 {
@@ -118,44 +142,70 @@ static int callback_start(struct gccallbackinfo *gccallbackinfo)
 	int result;
 	struct gccmdcallback gccmdcallback;
 
-	/* Initialize callback. */
+	GCENTER(GCZONE_CALLBACK);
+
+	pthread_mutex_lock(&gccallbackinfo->mutex);
+
+	if (gccallbackinfo->status != UNINIT) {
+		pthread_mutex_unlock(&gccallbackinfo->mutex);
+		return 0;
+	}
+
 	gccmdcallback.handle = 0;
-	result = ioctl(g_handle, GCIOCTL_CALLBACK_ALLOC, &gccmdcallback);
-	if (result != 0) {
-		GCERR("callback ioctl failed (%d).\n", result);
-		goto fail;
+	
+	gccallbackinfo->status =
+#if ANDROID
+		// The Android zygote process refuses to fork if there is
+		// more than one thread present.
+		(strcmp(get_process_name(), "zygote") == 0) ? UNSUPPORTED : 
+#endif
+		SUPPORTED;
+
+	GCDBG(GCZONE_CALLBACK, "callback status: %s\n", g_statusNames[gccallbackinfo->status]);
+	
+	if (gccallbackinfo->status == SUPPORTED) {
+		/* Initialize callback. */
+		result = ioctl(g_handle, GCIOCTL_CALLBACK_ALLOC, &gccmdcallback);
+		if (result != 0) {
+			GCERR("callback ioctl failed (%d).\n", result);
+			goto fail;
+		}
+		
+		if (gccmdcallback.gcerror != GCERR_NONE) {
+			GCERR("failed to initialize callback mechanism (0x%08X).\n",
+				  gccmdcallback.gcerror);
+			goto fail;
+		}
+
+		gccallbackinfo->handle = gccmdcallback.handle;
+		
+        /* Initialize the termination semaphore. */
+		result = sem_init(&gccallbackinfo->stop, 0, 0);
+		if (result != 0) {
+			GCERR("callback semaphore init failed (%d).\n", result);
+			goto fail;
+		}
+	
+		/* Start the thread. */
+		result = pthread_create(&gccallbackinfo->thread, NULL,
+								callbackthread, gccallbackinfo);
+		if (result != 0) {
+			GCERR("failed to start callback thread.\n");
+			goto fail;
+		}
+
+		gccmdcallback.handle = 0;
 	}
-
-	if (gccmdcallback.gcerror != GCERR_NONE) {
-		GCERR("failed to initialize callback mechanism (0x%08X).\n",
-		      gccmdcallback.gcerror);
-		goto fail;
-	}
-
-	gccallbackinfo->handle = gccmdcallback.handle;
-
-	/* Initialize the termiantion semaphore. */
-	result = sem_init(&gccallbackinfo->stop, 0, 0);
-	if (result != 0) {
-		GCERR("callback semaphore init failed (%d).\n", result);
-		goto fail;
-	}
-
-	/* Start the thread. */
-	result = pthread_create(&gccallbackinfo->thread, NULL,
-				callbackthread, gccallbackinfo);
-	if (result != 0) {
-		GCERR("failed to start callback thread.\n");
-		goto fail;
-	}
-
-	/* Success. */
-	return 0;
-
+	
 fail:
-	if (gccmdcallback.handle != 0)
+	if (gccmdcallback.handle != 0) {
 		ioctl(g_handle, GCIOCTL_CALLBACK_FREE, &gccmdcallback);
+		gccallbackinfo->handle = 0;
+	}
 
+	pthread_mutex_unlock(&gccallbackinfo->mutex);
+	
+	GCEXITARG(GCZONE_CALLBACK, "result=%d", result);
 	return result;
 }
 
@@ -163,24 +213,32 @@ static void callback_stop(struct gccallbackinfo *gccallbackinfo)
 {
 	struct gccmdcallback gccmdcallback;
 
-	/* Stop the thread. */
-	GCDBG(GCZONE_CALLBACK, "stopping active client.");
+	GCENTER(GCZONE_CALLBACK);
 
-	sem_post(&gccallbackinfo->stop);
-	pthread_kill(gccallbackinfo->thread, SIGINT);
+	pthread_mutex_lock(&gccallbackinfo->mutex);	
 
-	GCDBG(GCZONE_CALLBACK, "waiting to join callback thread...\n");
-
-	pthread_join(gccallbackinfo->thread, NULL);
-
-	gccallbackinfo->thread = 0;
-
-	/* Free kernel resources. */
-	if (gccmdcallback.handle != 0) {
+	if (gccallbackinfo->status == SUPPORTED) {
+		if (gccallbackinfo->thread) {
+			sem_post(&gccallbackinfo->stop);
+			pthread_kill(gccallbackinfo->thread, SIGINT);
+			
+			GCDBG(GCZONE_CALLBACK, "waiting to join callback thread...\n");
+			
+			pthread_join(gccallbackinfo->thread, NULL);
+			gccallbackinfo->thread = 0;		
+		}
+		
+		/* Free kernel resources. */
 		gccmdcallback.handle = gccallbackinfo->handle;
 		ioctl(g_handle, GCIOCTL_CALLBACK_FREE, &gccmdcallback);
 		gccallbackinfo->handle = 0;
 	}
+
+	gccallbackinfo->status == UNINIT;
+
+	pthread_mutex_unlock(&gccallbackinfo->mutex);
+	
+	GCEXIT(GCZONE_CALLBACK);
 }
 
 
@@ -225,6 +283,14 @@ void gc_commit_wrapper(struct gccommit *gccommit)
 	int result;
 
 	GCPRINTDELAY();
+
+	/* Callback start is delayed until needed to handle a case
+     * where it's unsupported on Android.
+     */
+	if (gccommit->callback) {
+		callback_start(&g_callbackinfo);		
+	}
+	
 	gccommit->handle = g_callbackinfo.handle;
 	result = ioctl(g_handle, GCIOCTL_COMMIT, gccommit);
 
@@ -337,11 +403,10 @@ void  __attribute__((constructor)) dev_init(void)
 		goto fail;
 	}
 
-	if (callback_start(&g_callbackinfo) != 0)
-		goto fail;
-
 	bv_init();
 
+	pthread_mutex_init(&g_callbackinfo.mutex, 0);
+	
 	GCEXIT(GCZONE_INIT);
 	return;
 

@@ -50,6 +50,9 @@ LOCAL_C_INCLUDES := \
 VERSION_H := external/bltsville/gcbv/version.h
 BV_VERSION := $(shell grep "VER_FILEVERSION_STR" $(VERSION_H) | sed "s,.*\"\([0-9.]*\)\\\0.*,\1,")
 
+LOCAL_SHARED_LIBRARIES := \
+    libcutils \
+
 LOCAL_MODULE_TAGS    := optional
 LOCAL_MODULE         := libbltsville_gc2d
 LOCAL_MODULE_SUFFIX  := .$(BV_VERSION).so

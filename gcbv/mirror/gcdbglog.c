@@ -36,6 +36,9 @@
 #include <gcx.h>
 #include "gcmain.h"
 
+#if ANDROID
+#include <cutils/log.h>
+#endif
 
 #if GCDEBUG_ENABLE
 
@@ -291,8 +294,13 @@ static getitemsize g_itemsize[] = {
  * Printing functions.
  */
 
+#if ANDROID
 #define GC_PRINTK(s, fmt, ...) \
-	printf(fmt, ##__VA_ARGS__); \
+	LOGI(fmt, ##__VA_ARGS__);
+#else
+#define GC_PRINTK(s, fmt, ...) \
+	printf(fmt, ##__VA_ARGS__);
+#endif
 
 #if GC_DEBUG_SELF
 #	define GC_DEBUGMSG(fmt, ...) \
