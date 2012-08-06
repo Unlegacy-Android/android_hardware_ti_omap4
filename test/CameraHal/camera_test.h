@@ -80,6 +80,8 @@
 #define BRACKETING_STREAM_BUFFERS       9
 
 #define SDCARD_PATH "/sdcard/"
+#define SECONDARY_SENSOR "_SEC"
+#define S3D_SENSOR "_S3D"
 
 #define MAX_BURST   15
 #define BURST_INC     5

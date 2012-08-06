@@ -3972,6 +3972,11 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             dir_name[count] = NULL;
 
             strcat(output_dir_path, dir_name);
+            if (camera_index == 1) {
+                strcat(output_dir_path, SECONDARY_SENSOR);
+            }else if (camera_index == 2) {
+                strcat(output_dir_path, S3D_SENSOR);
+            }
         }
     }
 
