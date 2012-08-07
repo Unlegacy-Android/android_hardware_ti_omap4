@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2012,
  * Texas Instruments, Inc. and Vivante Corporation
- * 
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,6 +66,14 @@
 
 #define gc_debug_blt(...)
 
+typedef int64_t s64;
+typedef uint64_t u64;
+
+#define div_u64(x, y) ((x) / (y))
+#define div_s64(x, y) ((x) / (y))
+#define div64_u64(x, y) ((x) / (y))
+#define div64_s64(x, y) ((x) / (y))
+
 
 /*******************************************************************************
  * Not defined in bltsville userspace headers.
@@ -84,9 +92,22 @@ struct bvphysdesc {
  * IOCTL wrappers.
  */
 
-void gc_map_wrapper(struct gcmap *gcmap);
-void gc_unmap_wrapper(struct gcmap *gcmap);
-void gc_commit_wrapper(struct gccommit *gccommit);
+void gc_getcaps_wrapper(struct gcicaps *gcicaps);
+void gc_map_wrapper(struct gcimap *gcimap);
+void gc_unmap_wrapper(struct gcimap *gcimap);
+void gc_commit_wrapper(struct gcicommit *gcicommit);
+void gc_callback_wrapper(struct gcicallbackarm *gcicallbackarm);
+
+
+/*******************************************************************************
+ * Surface allocation.
+ */
+enum bverror allocate_surface(struct bvbuffdesc **bvbuffdesc,
+			      void **buffer,
+			      unsigned int size);
+
+void free_surface(struct bvbuffdesc *bvbuffdesc,
+		  void *buffer);
 
 
 /*******************************************************************************

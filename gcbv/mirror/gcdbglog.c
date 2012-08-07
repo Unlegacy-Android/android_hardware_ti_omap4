@@ -1449,18 +1449,18 @@ int gc_parse_command_buffer(unsigned int *buffer, unsigned int size,
 					break;
 
 				case gcregSrcOriginRegAddrs:
-					info->src[0].rect.l
+					info->src[0].rect.left
 						= buffer[i] & 0xFFFF;
 
-					info->src[0].rect.t
+					info->src[0].rect.top
 						= (buffer[i] >> 16) & 0xFFFF;
 					break;
 
 				case gcregSrcSizeRegAddrs:
-					info->src[0].rect.r
+					info->src[0].rect.right
 						= buffer[i] & 0xFFFF;
 
-					info->src[0].rect.b
+					info->src[0].rect.bottom
 						= (buffer[i] >> 16) & 0xFFFF;
 					break;
 
@@ -1520,10 +1520,10 @@ int gc_parse_command_buffer(unsigned int *buffer, unsigned int size,
 				case gcregBlock4SrcOriginRegAddrs + 2:
 				case gcregBlock4SrcOriginRegAddrs + 3:
 					index = addr & 3;
-					info->src[index].rect.l
+					info->src[index].rect.left
 						= buffer[i] & 0xFFFF;
 
-					info->src[index].rect.t
+					info->src[index].rect.top
 						= (buffer[i] >> 16) & 0xFFFF;
 					break;
 
@@ -1532,10 +1532,10 @@ int gc_parse_command_buffer(unsigned int *buffer, unsigned int size,
 				case gcregBlock4SrcSizeRegAddrs + 2:
 				case gcregBlock4SrcSizeRegAddrs + 3:
 					index = addr & 3;
-					info->src[index].rect.r
+					info->src[index].rect.right
 						= buffer[i] & 0xFFFF;
 
-					info->src[index].rect.b
+					info->src[index].rect.bottom
 						= (buffer[i] >> 16) & 0xFFFF;
 					break;
 
@@ -1564,15 +1564,15 @@ int gc_parse_command_buffer(unsigned int *buffer, unsigned int size,
 			i += 2;
 
 			for (j = 0; j < info->dst.rectcount; j += 1) {
-				info->dst.rect[j].l
+				info->dst.rect[j].left
 						= buffer[i] & 0xFFFF;
-				info->dst.rect[j].t
+				info->dst.rect[j].top
 						= (buffer[i] >> 16) & 0xFFFF;
 				i += 1;
 
-				info->dst.rect[j].r
+				info->dst.rect[j].right
 						= buffer[i] & 0xFFFF;
-				info->dst.rect[j].b
+				info->dst.rect[j].bottom
 						= (buffer[i] >> 16) & 0xFFFF;
 				i += 1;
 			}

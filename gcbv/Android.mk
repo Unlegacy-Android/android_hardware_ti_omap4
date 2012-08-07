@@ -43,6 +43,7 @@ LOCAL_SRC_FILES := \
 LOCAL_CFLAGS :=
 
 LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/mirror \
 	$(LOCAL_PATH)/mirror/include \
 	external/bltsville/bltsville/include \
 	external/bltsville/ocd/include
