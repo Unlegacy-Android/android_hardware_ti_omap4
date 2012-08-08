@@ -631,7 +631,7 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
         sprintf(fn, "/sdcard/img%03d.raw", count);
         fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
         if (fd >= 0) {
-            if (offset && (info.format == HAL_PIXEL_FORMAT_TI_NV12)) {
+            if (HAL_PIXEL_FORMAT_TI_NV12 == info.format) {
                 writeCroppedNV12(offset, info.width, info.width, info.height,
                                  crop, fd, buffer);
             } else if (size != write(fd, buffer + offset, size)) {
