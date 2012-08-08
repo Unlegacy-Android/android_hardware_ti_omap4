@@ -89,7 +89,7 @@
 /*Needs to be specific for every configuration wrapper*/
 
 #undef LOG_TAG
-#define LOG_TAG "CameraHAL"
+#define LOG_TAG "DOMX_Camera"
 
 #define DEFAULT_DCC 1
 
@@ -448,7 +448,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
             }
             /* Configure Ducati to use DCC buffer from A9 side
              *ONLY* if DCC_Init is successful. */
-            if (dcc_eError == OMX_ErrorNone)
+            if (dcc_eError == OMX_ErrorNone && (DCC_Buff != NULL) )
             {
                 dcc_eError = send_DCCBufPtr(hComponent);
                 if (dcc_eError != OMX_ErrorNone)
@@ -788,6 +788,12 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	_PROXY_OMX_INIT_PARAM(&param, OMX_TI_PARAM_DCCURIINFO);
 
 	DOMX_ENTER("ENTER");
+	/* Check if DCC_PATH is present */
+	if (access(DCC_PATH, F_OK) == -1) {
+		DOMX_DEBUG("DCC dir path is not found. Stick with default DCC.");
+		return OMX_ErrorNone;
+	}
+
 	/* Read the the DCC URI info */
 	for (nIndex = 0; eError != OMX_ErrorNoMore; nIndex++)
 	{
@@ -825,8 +831,9 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 
     if(dccbuf_size <= 0)
     {
-	    DOMX_DEBUG("No DCC files found, switching back to default DCC");
-        return OMX_ErrorInsufficientResources;
+		DOMX_DEBUG(" No DCC files found, switching back to default DCC");
+		eError = OMX_ErrorNone;
+		goto EXIT;
     }
 
 #ifdef USE_ION
@@ -834,7 +841,8 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	if(ion_fd == 0)
 	{
 		DOMX_ERROR("ion_open failed!!!");
-		return OMX_ErrorInsufficientResources;
+		eError = OMX_ErrorInsufficientResources;
+		goto EXIT;
 	}
 	dccbuf_size = (dccbuf_size + LINUX_PAGE_SIZE -1) & ~(LINUX_PAGE_SIZE - 1);
 	ret = ion_alloc(ion_fd, dccbuf_size, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT,
@@ -846,16 +854,22 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
         }
 
         if (ret || ((int)DCC_Buff == -ENOMEM)) {
-                DOMX_ERROR("FAILED to allocate DCC buffer of size=%d. ret=0x%x",
+			DOMX_ERROR("FAILED to allocate DCC buffer of size=%d. ret=0x%x",
                                         dccbuf_size, ret);
-                return OMX_ErrorInsufficientResources;
+			eError = OMX_ErrorInsufficientResources;
+			ion_close(ion_fd);
+			goto EXIT;
         }
 
 	if (ion_map(ion_fd, DCC_Buff, dccbuf_size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
                    (unsigned char **)&DCC_Buff_ptr, &mmap_fd) < 0)
 	{
 		DOMX_ERROR("userspace mapping of ION buffers returned error");
-		return OMX_ErrorInsufficientResources;
+		eError = OMX_ErrorInsufficientResources;
+		ion_free(ion_fd, DCC_Buff);
+		ion_close(ion_fd);
+		DCC_Buff = NULL;
+		goto EXIT;
 	}
 	ptempbuf = DCC_Buff_ptr;
 #endif
@@ -864,7 +878,7 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	PROXY_assert(dccbuf_size > 0, OMX_ErrorInsufficientResources,
 		"ERROR in copy DCC files into buffer");
 
- EXIT:
+EXIT:
 	for (i = 0; i < nIndex - 1; i++)
 	{
 			TIMM_OSAL_Free(dcc_dir[i]);
