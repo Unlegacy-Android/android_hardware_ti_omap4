@@ -1907,7 +1907,6 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
 
                 //These events don't change the current state
                 case CAMERA_QUERY_RESOLUTION_PREVIEW:
-                case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA:
                     CAMHAL_LOGDB("Adapter state switch INTIALIZED_STATE->INTIALIZED_STATE event  = %s",
                             printState);
