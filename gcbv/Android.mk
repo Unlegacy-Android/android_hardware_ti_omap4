@@ -50,7 +50,27 @@ LOCAL_MODULE_SUFFIX  := .$(BV_VERSION).so
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/../vendor/lib
 
-$(shell ln -fs ./libbltsville_gc2d.$(BV_VERSION).so $(LOCAL_MODULE_PATH)/libbltsville_gc2d.so)
-$(shell ln -fs ./libbltsville_gc2d.so $(LOCAL_MODULE_PATH)/libbltsville_hw2d.so)
-
 include $(BUILD_SHARED_LIBRARY)
+
+#Creating SymLinks
+#libbltsville_gc2d.so -> libbltsville_gc2d.VERSION.so
+#libbltsville_hw2d.so -> libbltsville_gc2d.so
+SYMLINKS := $(TARGET_OUT_VENDOR)/lib/libbltsville_gc2d.so
+$(SYMLINKS): GC2D_BINARY := ./$(LOCAL_MODULE)$(LOCAL_MODULE_SUFFIX)
+$(SYMLINKS): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
+	@echo "Symlink: $@ -> $(GC2D_BINARY)"
+	@rm -rf $@
+	$(hide) ln -fs $(GC2D_BINARY) $@
+
+SYMLINKS1 := $(TARGET_OUT_VENDOR)/lib/libbltsville_hw2d.so
+$(SYMLINKS1): LINK_BINARY := ./libbltsville_gc2d.so
+$(SYMLINKS1): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
+	@echo "Symlink: $@ -> $(LINK_BINARY)"
+	@rm -rf $@
+	$(hide) ln -fs $(LINK_BINARY) $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS) $(SYMLINKS1)
+
+# for mm/mmm
+all_modules: $(SYMLINKS) $(SYMLINKS1)
+
