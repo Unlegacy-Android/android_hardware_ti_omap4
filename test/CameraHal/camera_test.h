@@ -237,6 +237,8 @@ status_t dump_mem_status();
 int openCamera();
 int closeCamera();
 void createBufferOutputSource();
+void createBufferInputSource();
+void requestBufferSourceReset();
 void initDefaults();
 void setDefaultExpGainPreset(ShotParameters &params, int idx);
 void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain);

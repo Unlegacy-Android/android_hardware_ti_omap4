@@ -534,6 +534,10 @@ int algoSharpeningIDX = 1;
 int algoThreeLinColorMapIDX = 1;
 int algoGICIDX = 1;
 
+/** Buffer source reset */
+bool bufferSourceInputReset = false;
+bool bufferSourceOutputReset = false;
+
 /** Calculate delay from a reference time */
 unsigned long long timeval_delay(const timeval *ref) {
     unsigned long long st, end, delay;
@@ -1183,6 +1187,8 @@ int openCamera() {
     layoutstr = new char[256];
     capturelayoutstr = new char[256];
 
+    requestBufferSourceReset();
+
     printf("openCamera(camera_index=%d)\n", camera_index);
     camera = Camera::connect(camera_index);
 
@@ -1231,6 +1237,10 @@ int closeCamera() {
 }
 
 void createBufferOutputSource() {
+    if(bufferSourceOutputThread.get() && bufferSourceOutputReset) {
+        bufferSourceOutputThread->requestExit();
+        bufferSourceOutputThread.clear();
+    }
     if(!bufferSourceOutputThread.get()) {
 #ifdef ANDROID_API_JB_OR_LATER
         bufferSourceOutputThread = new BQ_BufferSourceThread(123, camera);
@@ -1239,6 +1249,27 @@ void createBufferOutputSource() {
 #endif
         bufferSourceOutputThread->run();
     }
+    bufferSourceOutputReset = false;
+}
+
+void createBufferInputSource() {
+    if (bufferSourceInput.get() && bufferSourceInputReset) {
+        bufferSourceInput.clear();
+    }
+    if (!bufferSourceInput.get()) {
+#ifdef ANDROID_API_JB_OR_LATER
+        bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+        bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
+        bufferSourceInput->init();
+    }
+    bufferSourceInputReset = false;
+}
+
+void requestBufferSourceReset() {
+    bufferSourceInputReset = true;
+    bufferSourceOutputReset = true;
 }
 
 int startPreview() {
@@ -1337,14 +1368,7 @@ int startPreview() {
     const char *format = params.getPictureFormat();
     if((NULL != format) && isRawPixelFormat(format)) {
         createBufferOutputSource();
-        if (!bufferSourceInput.get()) {
-#ifdef ANDROID_API_JB_OR_LATER
-            bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
-#else
-            bufferSourceInput = new ST_BufferSourceInput(1234, camera);
-#endif
-            bufferSourceInput->init();
-        }
+        createBufferInputSource();
     }
 
     return 0;
@@ -2021,9 +2045,13 @@ int deleteAllocatedMemory() {
     delete [] layoutstr;
     delete [] capturelayoutstr;
 
+    // Release buffer sources if any
     if (bufferSourceOutputThread.get()) {
         bufferSourceOutputThread->requestExit();
         bufferSourceOutputThread.clear();
+    }
+    if ( bufferSourceInput.get() ) {
+        bufferSourceInput.clear();
     }
 
     return 0;
@@ -2713,13 +2741,7 @@ int functional_menu() {
             } else {
                 stopPreview();
             }
-            if (bufferSourceOutputThread.get()) {
-                bufferSourceOutputThread->requestExit();
-                bufferSourceOutputThread.clear();
-            }
-            if ( bufferSourceInput.get() ) {
-                bufferSourceInput.clear();
-            }
+
             break;
 
         case '3':
@@ -2766,6 +2788,9 @@ int functional_menu() {
 
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
+
+            requestBufferSourceReset();
+
             break;
 
         case 'l':
@@ -3017,6 +3042,8 @@ int functional_menu() {
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
 
+            requestBufferSourceReset();
+
             break;
 
         case 'K':
@@ -3143,6 +3170,8 @@ int functional_menu() {
                 params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
                 camera->setParameters(params.flatten());
             }
+
+            requestBufferSourceReset();
 
             break;
 
@@ -3514,15 +3543,7 @@ int functional_menu() {
             ShotParameters reprocParams;
 
             gettimeofday(&picture_start, 0);
-            if (!bufferSourceInput.get()) {
-#ifdef ANDROID_API_JB_OR_LATER
-                bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
-#else
-                bufferSourceInput = new ST_BufferSourceInput(1234, camera);
-#endif
-                bufferSourceInput->init();
-            }
-
+            createBufferInputSource();
             if (bufferSourceOutputThread.get() &&
                 bufferSourceOutputThread->hasBuffer())
             {
