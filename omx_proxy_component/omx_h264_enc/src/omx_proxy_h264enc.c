@@ -262,28 +262,13 @@ static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	OMX_BUFFERHEADERTYPE * pBufferHdr)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
-        OMX_U32 *pTempBuffer;
-        OMX_U32 nMetadataBufferType;
-        pTempBuffer = (OMX_U32 *) (pBufferHdr->pBuffer);
-        if(pTempBuffer == NULL) {
-                eError = OMX_ErrorBadParameter;
-		DOMX_ERROR("Null meta data buffer supplied - Cannot find metadata type");
-		goto EXIT;
-        }
-       nMetadataBufferType = *pTempBuffer;
-       if(nMetadataBufferType == kMetadataBufferTypeCameraSource) {
-	        eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
-		if( eError != OMX_ErrorNone)
-			DOMX_ERROR("Error while configuring FrameRate Dynamically.Error  info = %d - Non Fatal error",eError);
-	}
+
+    eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
+    if( eError != OMX_ErrorNone)
+        DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d",eError);
+
     DOMX_DEBUG("Redirection from ComponentPricateEmptyThisBuffer to PROXY_EmptyThisBuffer");
-    EXIT:
-		if( eError != OMX_ErrorNone) {
-			DOMX_EXIT("%s: exiting with error 0x%x",__FUNCTION__,eError);
-		} else {
-			DOMX_EXIT("%s: dynamic frame rate config successful",__FUNCTION__);
-		}
-                return LOCAL_PROXY_H264E_EmptyThisBuffer (hComponent,pBufferHdr);
+    return LOCAL_PROXY_H264E_EmptyThisBuffer (hComponent,pBufferHdr);
 }
 
 OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
