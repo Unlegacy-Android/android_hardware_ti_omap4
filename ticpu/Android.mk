@@ -15,6 +15,37 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-
 $(shell cp -afr $(LOCAL_PATH)/lib/android/* $(TARGET_OUT)/vendor/lib)
 
+#Copying libbltsville_ticpu.VERSION.so
+include $(CLEAR_VARS)
+BV_CPUVERSION :=$(shell ls external/bltsville/ticpu/lib/android/libbltsville_*.*.so|\
+             sed 's/external\/bltsville\/ticpu\/lib\/android\/libbltsville_ticpu.//')
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE := libbltsville_ticpu.$(BV_CPUVERSION)
+LOCAL_SRC_FILES := lib/android/libbltsville_ticpu.$(BV_CPUVERSION)
+LOCAL_MODULE_PATH:= $(TARGET_OUT_VENDOR)/lib
+include $(BUILD_PREBUILT)
+
+#Creating SymLinks
+#libbltsville_ticpu.so -> libbltsville_ticpu.VERSION.so
+#libbltsville_cpu.so -> libbltsville_ticpu.so
+SYMLINKS := $(TARGET_OUT_VENDOR)/lib/libbltsville_ticpu.so
+$(SYMLINKS): TICPU_BINARY := ./libbltsville_ticpu.$(BV_CPUVERSION)
+$(SYMLINKS): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
+	@echo "Symlink: $@ -> $(TICPU_BINARY)"
+	@mkdir -p $(dir $@)
+	@rm -rf $@
+	$(hide) ln -fs $(TICPU_BINARY) $@
+	@cp -afr external/bltsville/ticpu/lib/android/libbltsville_ticpu_license.txt $(TARGET_OUT_VENDOR)/lib
+ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS)
+
+SYMLINKS1 := $(TARGET_OUT_VENDOR)/lib/libbltsville_cpu.so
+$(SYMLINKS1): LINK_BINARY := ./libbltsville_ticpu.so
+$(SYMLINKS1): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
+	@echo "Symlink: $@ -> $(LINK_BINARY)"
+	@mkdir -p $(dir $@)
+	@rm -rf $@
+	$(hide) ln -fs $(LINK_BINARY) $@
+ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS1)
