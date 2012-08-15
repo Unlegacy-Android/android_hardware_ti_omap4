@@ -1213,6 +1213,7 @@ status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const bool enable
 
     mm.nVersion = mLocalVersionParam;
     mm.nSize = sizeof(OMX_TI_CONFIG_MM);
+    mm.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
     mm.bMM = enable ? OMX_TRUE : OMX_FALSE;
 
     eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
