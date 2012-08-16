@@ -1131,6 +1131,11 @@ public:
 #endif
 
     /**
+     * Release a tap-in or tap-out point.
+     */
+    int releaseBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout);
+
+    /**
      * Stop a previously started preview.
      */
     void        stopPreview();
@@ -1358,7 +1363,9 @@ private:
     //@}
 
     status_t setTapoutLocked(struct preview_stream_ops *out);
+    status_t releaseTapoutLocked(struct preview_stream_ops *out);
     status_t setTapinLocked(struct preview_stream_ops *in);
+    status_t releaseTapinLocked(struct preview_stream_ops *in);
 /*----------Member variables - Public ---------------------*/
 public:
     int32_t mMsgEnabled;
