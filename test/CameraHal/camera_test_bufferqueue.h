@@ -55,8 +55,10 @@ public:
         mFW = new FrameConsumer();
         mBufferQueue->setSynchronousMode(true);
         mBufferQueue->consumerConnect(mFW);
+        mCamera->setBufferSource(NULL, mBufferQueue);
     }
     virtual ~BQ_BufferSourceThread() {
+        mCamera->releaseBufferSource(NULL, mBufferQueue);
     }
 
     virtual bool threadLoop() {
@@ -97,7 +99,6 @@ public:
     }
 
     virtual void setBuffer(android::ShotParameters &params) {
-        mCamera->setBufferSource(NULL, mBufferQueue);
         {
             String8 id = mBufferQueue->getId();
 
@@ -124,19 +125,17 @@ public:
     BQ_BufferSourceInput(int tex_id, sp<Camera> camera) :
                   BufferSourceInput(camera), mTexId(tex_id) {
         mBufferQueue = new BufferQueue(true, 1);
-    }
-    virtual ~BQ_BufferSourceInput() {
-    }
-
-    virtual void init() {
         sp<ISurfaceTexture> surfaceTexture = mBufferQueue;
         mWindowTapIn = new SurfaceTextureClient(surfaceTexture);
+        mCamera->setBufferSource(mBufferQueue, NULL);
+    }
+    virtual ~BQ_BufferSourceInput() {
+        mCamera->releaseBufferSource(mBufferQueue, NULL);
     }
 
     virtual void setInput(buffer_info_t bufinfo, const char *format, android::ShotParameters &params) {
         mBufferQueue->setDefaultBufferSize(bufinfo.width, bufinfo.height);
         BufferSourceInput::setInput(bufinfo, format, params);
-        mCamera->setBufferSource(mBufferQueue, NULL);
         {
             String8 id = mBufferQueue->getId();
 

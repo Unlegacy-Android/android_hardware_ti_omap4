@@ -1262,7 +1262,6 @@ void createBufferInputSource() {
 #else
         bufferSourceInput = new ST_BufferSourceInput(1234, camera);
 #endif
-        bufferSourceInput->init();
     }
     bufferSourceInputReset = false;
 }

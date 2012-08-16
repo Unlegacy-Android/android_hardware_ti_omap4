@@ -468,8 +468,6 @@ public:
         mTapOut.clear();
     }
 
-    virtual void init() = 0;
-
     virtual void setInput(buffer_info_t, const char *format, ShotParameters &params);
 
 protected:
