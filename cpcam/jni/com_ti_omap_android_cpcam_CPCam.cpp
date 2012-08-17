@@ -672,6 +672,41 @@ static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
     }
 }
 
+static void com_ti_omap_android_cpcam_CPCam_releaseBufferSource(JNIEnv *env,
+        jobject thiz, jobject jTapIn, jobject jTapOut)
+{
+    CAMHAL_LOGV("releaseBufferSource");
+    sp<Camera> camera = get_native_camera(env, thiz, NULL);
+    if (camera == 0) return;
+
+    sp<PREVIEW_TEXTURE_TYPE> tapOut = NULL;
+    if (jTapOut!= NULL) {
+        tapOut = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
+                jTapOut, fields.bufferQueue));
+        if (tapOut == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "Tap out already released in releaseBufferSource");
+            return;
+        }
+    }
+
+    sp<PREVIEW_TEXTURE_TYPE> tapIn = NULL;
+    if (jTapIn != NULL) {
+        tapIn = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
+                jTapIn, fields.bufferQueue));
+        if (tapIn == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "Tap in already released in releaseBufferSource");
+            return;
+        }
+    }
+
+    if (camera->releaseBufferSource(tapIn, tapOut) != NO_ERROR) {
+       jniThrowException(env, "java/io/IOException",
+               "releaseBufferSource failed");
+    }
+}
+
 static void com_ti_omap_android_cpcam_CPCam_reprocess(JNIEnv *env,
         jobject thiz, jint msgType, jstring jShotParams)
 {
@@ -974,6 +1009,9 @@ static JNINativeMethod cpcamMethods[] = {
   { "setBufferSource",
     "(Lcom/ti/omap/android/cpcam/CPCamBufferQueue;Lcom/ti/omap/android/cpcam/CPCamBufferQueue;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setBufferSource },
+  { "releaseBufferSource",
+    "(Lcom/ti/omap/android/cpcam/CPCamBufferQueue;Lcom/ti/omap/android/cpcam/CPCamBufferQueue;)V",
+    (void *)com_ti_omap_android_cpcam_CPCam_releaseBufferSource },
   { "native_reprocess",
     "(ILjava/lang/String;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_reprocess },
