@@ -576,6 +576,7 @@ static void copy2Dto1D(void *dst,
                 // Step 2: UV plane: convert NV12 to NV21 by swapping U & V
                 bufferDst_UV = (uint16_t *) (((uint8_t*)dst)+row*height);
 
+#ifdef ARCH_ARM_HAVE_NEON
                 for (int i = 0 ; i < height/2 ; i++, bufferSrc_UV += alignedRow/2) {
                     int n = width;
                     asm volatile (
@@ -618,10 +619,16 @@ static void copy2Dto1D(void *dst,
                     : "cc", "memory", "q0", "q1"
                     );
                 }
+#else
+                for ( int i = 0; i < height/2; ++i ) {
+                    for ( int j = 0; j < width/2; ++j ) {
+                        bufferDst_UV[j] = (bufferSrc_UV[j] >> 8) | (bufferSrc_UV[j] << 8);
+                    }
+                    bufferSrc_UV += stride/bytesPerPixel/2;
+                    bufferDst_UV += width/2;
+                }
+#endif
             } else if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
-                 uint16_t *bufferDst_U;
-                 uint16_t *bufferDst_V;
-
                 // Step 2: UV plane: convert NV12 to YV12 by de-interleaving U & V
                 // TODO(XXX): This version of CameraHal assumes NV12 format it set at
                 //            camera adapter to support YV12. Need to address for
@@ -630,8 +637,10 @@ static void copy2Dto1D(void *dst,
                 size_t yStride, uvStride, ySize, uvSize, size;
                 alignYV12(width, height, yStride, uvStride, ySize, uvSize, size);
 
-                bufferDst_V = (uint16_t *) (((uint8_t*)dst) + ySize);
-                bufferDst_U = (uint16_t *) (((uint8_t*)dst) + ySize + uvSize);
+                uint16_t *bufferDst_V = (uint16_t *) (((uint8_t*)dst) + ySize);
+                uint16_t *bufferDst_U = (uint16_t *) (((uint8_t*)dst) + ySize + uvSize);
+
+#ifdef ARCH_ARM_HAVE_NEON
                 int inc = (uvStride - width/2)/2;
 
                 for (int i = 0 ; i < height/2 ; i++, bufferSrc_UV += alignedRow/2) {
@@ -680,7 +689,20 @@ static void copy2Dto1D(void *dst,
                     bufferDst_U += inc;
                     bufferDst_V += inc;
                 }
+#else
+                uint8_t * udst = reinterpret_cast<uint8_t*>(bufferDst_V);
+                uint8_t * vdst = reinterpret_cast<uint8_t*>(bufferDst_U);
 
+                for ( int i = 0; i < height/2; ++i ) {
+                    for ( int j = 0; j < width/2; ++j ) {
+                        udst[j] = bufferSrc_UV[j] >> 8;
+                        vdst[j] = bufferSrc_UV[j] & 0x00ff;
+                    }
+                    bufferSrc_UV += stride/bytesPerPixel/2;
+                    udst += width/2;
+                    vdst += width/2;
+                }
+#endif
             }
             return ;
 

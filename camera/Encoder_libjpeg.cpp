@@ -127,23 +127,9 @@ static void uyvy_to_yuv(uint8_t* dst, uint32_t* src, int width) {
         return; // not supporting odd widths
     }
 
+#ifdef ARCH_ARM_HAVE_NEON
     // currently, neon routine only supports multiple of 16 width
-    if (width % 16) {
-        while ((width-=2) >= 0) {
-            uint8_t u0 = (src[0] >> 0) & 0xFF;
-            uint8_t y0 = (src[0] >> 8) & 0xFF;
-            uint8_t v0 = (src[0] >> 16) & 0xFF;
-            uint8_t y1 = (src[0] >> 24) & 0xFF;
-            dst[0] = y0;
-            dst[1] = u0;
-            dst[2] = v0;
-            dst[3] = y1;
-            dst[4] = u0;
-            dst[5] = v0;
-            dst += 6;
-            src++;
-        }
-    } else {
+    if ((width % 16) == 0) {
         int n = width;
         asm volatile (
         "   pld [%[src], %[src_stride], lsl #2]                         \n\t"
@@ -170,6 +156,23 @@ static void uyvy_to_yuv(uint8_t* dst, uint32_t* src, int width) {
         : [src_stride] "r" (width)
         : "cc", "memory", "q0", "q1", "q2"
         );
+    } else
+#endif
+    {
+        while ((width-=2) >= 0) {
+            uint8_t u0 = (src[0] >> 0) & 0xFF;
+            uint8_t y0 = (src[0] >> 8) & 0xFF;
+            uint8_t v0 = (src[0] >> 16) & 0xFF;
+            uint8_t y1 = (src[0] >> 24) & 0xFF;
+            dst[0] = y0;
+            dst[1] = u0;
+            dst[2] = v0;
+            dst[3] = y1;
+            dst[4] = u0;
+            dst[5] = v0;
+            dst += 6;
+            src++;
+        }
     }
 }
 
@@ -182,23 +185,9 @@ static void yuyv_to_yuv(uint8_t* dst, uint32_t* src, int width) {
         return; // not supporting odd widths
     }
 
+#ifdef ARCH_ARM_HAVE_NEON
     // currently, neon routine only supports multiple of 16 width
-    if (width % 16) {
-        while ((width-=2) >= 0) {
-            uint8_t y0 = (src[0] >> 0) & 0xFF;
-            uint8_t u0 = (src[0] >> 8) & 0xFF;
-            uint8_t y1 = (src[0] >> 16) & 0xFF;
-            uint8_t v0 = (src[0] >> 24) & 0xFF;
-            dst[0] = y0;
-            dst[1] = u0;
-            dst[2] = v0;
-            dst[3] = y1;
-            dst[4] = u0;
-            dst[5] = v0;
-            dst += 6;
-            src++;
-        }
-    } else {
+    if ((width % 16) == 0) {
         int n = width;
         asm volatile (
         "   pld [%[src], %[src_stride], lsl #2]                         \n\t"
@@ -225,6 +214,23 @@ static void yuyv_to_yuv(uint8_t* dst, uint32_t* src, int width) {
         : [src_stride] "r" (width)
         : "cc", "memory", "q0", "q1", "q2"
         );
+    } else
+#endif
+    {
+        while ((width-=2) >= 0) {
+            uint8_t y0 = (src[0] >> 0) & 0xFF;
+            uint8_t u0 = (src[0] >> 8) & 0xFF;
+            uint8_t y1 = (src[0] >> 16) & 0xFF;
+            uint8_t v0 = (src[0] >> 24) & 0xFF;
+            dst[0] = y0;
+            dst[1] = u0;
+            dst[2] = v0;
+            dst[3] = y1;
+            dst[4] = u0;
+            dst[5] = v0;
+            dst += 6;
+            src++;
+        }
     }
 }
 
