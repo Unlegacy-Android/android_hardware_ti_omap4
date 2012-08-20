@@ -210,13 +210,21 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 			    eRPCError = RPC_OMX_ErrorBadParameter;
 			    goto EXIT;
 		}
-		if (pvr_data.handles[1])
-			*handle2 = pvr_data.handles[1];
+		if(pvr_data.num_handles > 1)
+		{
+			if (pvr_data.handles[1])
+				*handle2 = pvr_data.handles[1];
+			else
+			{
+				DOMX_ERROR("Registration failed - Invalid fd passed for gralloc - reg handle (UV) is NULL num_handles: %d",pvr_data.num_handles);
+				eRPCError = RPC_OMX_ErrorBadParameter;
+				goto EXIT;
+			}
+		}
 		else
 		{
-				DOMX_ERROR("Registration failed - Invalid fd passed for gralloc - reg handle (UV) is NULL");
-			    eRPCError = RPC_OMX_ErrorBadParameter;
-			    goto EXIT;
+			DOMX_DEBUG("Gralloc buffer has only one component");
+			*handle2 = NULL;
 		}
 #else
  DOMX_ERROR("No Registerbuffer implementation for gralloc - macro mess up!");
@@ -262,7 +270,7 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
 	struct ion_fd_data data;
 	RPC_OMX_CONTEXT *pRPCCtx = (RPC_OMX_CONTEXT *) hRPCCtx;
 
-	if ((handle1 ==  NULL) || (((proxyBufferType == GrallocPointers) || (proxyBufferType == BufferDescriptorVirtual2D)) && (handle2 ==  NULL))) {
+	if ((handle1 ==  NULL) || ((proxyBufferType == BufferDescriptorVirtual2D) && (handle2 ==  NULL))) {
 		eRPCError = RPC_OMX_ErrorBadParameter;
 		goto EXIT;
 	}
@@ -275,11 +283,14 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
 			eRPCError = RPC_OMX_ErrorInsufficientResources;
                         //unregisterbuffer will proceed to unregister handle2 even if handle1 unregister ioctl call failed"
 		}
-		data.handle = handle2;
-		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
-		if (status < 0) {
-			DOMX_ERROR("UnregisterBuffer ioctl call failed for handle2: 0x%x",handle2);
-			eRPCError = RPC_OMX_ErrorInsufficientResources;
+		if(handle2 != NULL)
+		{
+			data.handle = handle2;
+			status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
+			if (status < 0) {
+				DOMX_ERROR("UnregisterBuffer ioctl call failed for handle2: 0x%x",handle2);
+				eRPCError = RPC_OMX_ErrorInsufficientResources;
+			}
 		}
                 if(eRPCError != RPC_OMX_ErrorNone)
                     goto EXIT;
@@ -1064,8 +1075,15 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	{
 		//Extracting buffer pointer from the gralloc buffer
 		pAuxBuf0 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[0]);
-		((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
-			pAuxBuf1 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[1]);
+		if(((native_handle_t*)pBuffer)->numFds > 1) {
+			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+				pAuxBuf1 = (OMX_U8 *)(((IMG_native_handle_t*)pBuffer)->fd[1]);
+		}
+		else {
+			DOMX_DEBUG("Gralloc buffer has only one component");
+			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+				pAuxBuf1 = NULL;
+		}
 	}
 #endif
 
