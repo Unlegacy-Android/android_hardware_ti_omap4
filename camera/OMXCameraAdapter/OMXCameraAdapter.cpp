@@ -3327,7 +3327,7 @@ static void debugShowFPS()
         mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-        CAMHAL_LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+        CAMHAL_LOGI("Camera %d Frames, %f FPS", mFrameCount, mFps);
     }
     // XXX: mFPS has the value we want
 }
