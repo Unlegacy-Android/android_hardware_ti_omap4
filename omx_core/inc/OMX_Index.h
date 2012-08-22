@@ -1,23 +1,40 @@
+/* ------------------------------------------------------------------
+ * Copyright (C) 1998-2009 PacketVideo
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * See the License for the specific language governing permissions
+ * and limitations under the License.
+ * -------------------------------------------------------------------
+ */
 /*
- * Copyright (c) 2008 The Khronos Group Inc. 
- * 
+ * Copyright (c) 2008 The Khronos Group Inc.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject
- * to the following conditions: 
+ * to the following conditions:
  * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software. 
- * 
+ * in all copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
  * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
  * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
 
@@ -37,22 +54,22 @@ extern "C" {
 
 /* Each OMX header must include all required header files to allow the
  *  header to compile without errors.  The includes below are required
- *  for this header file to compile successfully 
+ *  for this header file to compile successfully
  */
 #include <OMX_Types.h>
 
 
 /** The OMX_INDEXTYPE enumeration is used to select a structure when either
- *  getting or setting parameters and/or configuration data.  Each entry in 
- *  this enumeration maps to an OMX specified structure.  When the 
+ *  getting or setting parameters and/or configuration data.  Each entry in
+ *  this enumeration maps to an OMX specified structure.  When the
  *  OMX_GetParameter, OMX_SetParameter, OMX_GetConfig or OMX_SetConfig methods
  *  are used, the second parameter will always be an entry from this enumeration
  *  and the third entry will be the structure shown in the comments for the entry.
- *  For example, if the application is initializing a cropping function, the 
- *  OMX_SetConfig command would have OMX_IndexConfigCommonInputCrop as the second parameter 
- *  and would send a pointer to an initialized OMX_RECTTYPE structure as the 
+ *  For example, if the application is initializing a cropping function, the
+ *  OMX_SetConfig command would have OMX_IndexConfigCommonInputCrop as the second parameter
+ *  and would send a pointer to an initialized OMX_RECTTYPE structure as the
  *  third parameter.
- *  
+ *
  *  The enumeration entries named with the OMX_Config prefix are sent using
  *  the OMX_SetConfig command and the enumeration entries named with the
  *  OMX_PARAM_ prefix are sent using the OMX_SetParameter command.
@@ -69,11 +86,11 @@ typedef enum OMX_INDEXTYPE {
     OMX_IndexParamActiveStream,             /**< reference: OMX_PARAM_U32TYPE */
     OMX_IndexParamSuspensionPolicy,         /**< reference: OMX_PARAM_SUSPENSIONPOLICYTYPE */
     OMX_IndexParamComponentSuspended,       /**< reference: OMX_PARAM_SUSPENSIONTYPE */
-    OMX_IndexConfigCapturing,               /**< reference: OMX_CONFIG_BOOLEANTYPE */ 
-    OMX_IndexConfigCaptureMode,             /**< reference: OMX_CONFIG_CAPTUREMODETYPE */ 
-    OMX_IndexAutoPauseAfterCapture,         /**< reference: OMX_CONFIG_BOOLEANTYPE */ 
+    OMX_IndexConfigCapturing,               /**< reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_IndexConfigCaptureMode,             /**< reference: OMX_CONFIG_CAPTUREMODETYPE */
+    OMX_IndexAutoPauseAfterCapture,         /**< reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_IndexParamContentURI,               /**< reference: OMX_PARAM_CONTENTURITYPE */
-    OMX_IndexParamCustomContentPipe,        /**< reference: OMX_PARAM_CONTENTPIPETYPE */ 
+    OMX_IndexParamCustomContentPipe,        /**< reference: OMX_PARAM_CONTENTPIPETYPE */
     OMX_IndexParamDisableResourceConcealment, /**< reference: OMX_RESOURCECONCEALMENTTYPE */
     OMX_IndexConfigMetadataItemCount,       /**< reference: OMX_CONFIG_METADATAITEMCOUNTTYPE */
     OMX_IndexConfigContainerNodeCount,      /**< reference: OMX_CONFIG_CONTAINERNODECOUNTTYPE */
@@ -86,7 +103,7 @@ typedef enum OMX_INDEXTYPE {
 
     OMX_IndexPortStartUnused = 0x02000000,
     OMX_IndexParamPortDefinition,           /**< reference: OMX_PARAM_PORTDEFINITIONTYPE */
-    OMX_IndexParamCompBufferSupplier,       /**< reference: OMX_PARAM_BUFFERSUPPLIERTYPE */ 
+    OMX_IndexParamCompBufferSupplier,       /**< reference: OMX_PARAM_BUFFERSUPPLIERTYPE */
     OMX_IndexReservedStartUnused = 0x03000000,
 
     /* Audio parameters and configurations */
@@ -118,6 +135,7 @@ typedef enum OMX_INDEXTYPE {
     OMX_IndexParamAudioEvrc,                /**< reference: OMX_AUDIO_PARAM_EVRCTYPE */
     OMX_IndexParamAudioSmv,                 /**< reference: OMX_AUDIO_PARAM_SMVTYPE */
     OMX_IndexParamAudioVorbis,              /**< reference: OMX_AUDIO_PARAM_VORBISTYPE */
+    OMX_IndexParamAudioFlac,                /**< reference: OMX_AUDIO_PARAM_FLACTYPE */
 
     OMX_IndexConfigAudioMidiImmediateEvent, /**< reference: OMX_AUDIO_CONFIG_MIDIIMMEDIATEEVENTTYPE */
     OMX_IndexConfigAudioMidiControl,        /**< reference: OMX_AUDIO_CONFIG_MIDICONTROLTYPE */
@@ -181,40 +199,40 @@ typedef enum OMX_INDEXTYPE {
 
     /* Image & Video common Configurations */
     OMX_IndexCommonStartUnused = 0x07000000,
-    OMX_IndexParamCommonDeblocking,         /**< 0x07000001 reference: OMX_PARAM_DEBLOCKINGTYPE */
-    OMX_IndexParamCommonSensorMode,         /**< 0x07000002 reference: OMX_PARAM_SENSORMODETYPE */
-    OMX_IndexParamCommonInterleave,         /**< 0x07000003 reference: OMX_PARAM_INTERLEAVETYPE */
-    OMX_IndexConfigCommonColorFormatConversion, /**< 0x07000004 reference: OMX_CONFIG_COLORCONVERSIONTYPE */
-    OMX_IndexConfigCommonScale,             /**< 0x07000005 reference: OMX_CONFIG_SCALEFACTORTYPE */
-    OMX_IndexConfigCommonImageFilter,       /**< 0x07000006 reference: OMX_CONFIG_IMAGEFILTERTYPE */
-    OMX_IndexConfigCommonColorEnhancement,  /**< 0x07000007 reference: OMX_CONFIG_COLORENHANCEMENTTYPE */
-    OMX_IndexConfigCommonColorKey,          /**< 0x07000008 reference: OMX_CONFIG_COLORKEYTYPE */
-    OMX_IndexConfigCommonColorBlend,        /**< 0x07000009 reference: OMX_CONFIG_COLORBLENDTYPE */
-    OMX_IndexConfigCommonFrameStabilisation, /**< 0x0700000A reference: OMX_CONFIG_FRAMESTABTYPE */
-    OMX_IndexConfigCommonRotate,            /**< 0x0700000B reference: OMX_CONFIG_ROTATIONTYPE */
-    OMX_IndexConfigCommonMirror,            /**< 0x0700000C reference: OMX_CONFIG_MIRRORTYPE */
-    OMX_IndexConfigCommonOutputPosition,    /**< 0x0700000D reference: OMX_CONFIG_POINTTYPE */
-    OMX_IndexConfigCommonInputCrop,         /**< 0x0700000E reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonOutputCrop,        /**< 0x0700000F reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonDigitalZoom,       /**< 0x07000010 reference: OMX_CONFIG_SCALEFACTORTYPE */
-    OMX_IndexConfigCommonOpticalZoom,       /**< 0x07000011 reference: OMX_CONFIG_SCALEFACTORTYPE*/
-    OMX_IndexConfigCommonWhiteBalance,      /**< 0x07000012 reference: OMX_CONFIG_WHITEBALCONTROLTYPE */
-    OMX_IndexConfigCommonExposure,          /**< 0x07000013 reference: OMX_CONFIG_EXPOSURECONTROLTYPE */
-    OMX_IndexConfigCommonContrast,          /**< 0x07000014 reference: OMX_CONFIG_CONTRASTTYPE */
-    OMX_IndexConfigCommonBrightness,        /**< 0x07000015 reference: OMX_CONFIG_BRIGHTNESSTYPE */
-    OMX_IndexConfigCommonBacklight,         /**< 0x07000016 reference: OMX_CONFIG_BACKLIGHTTYPE */
-    OMX_IndexConfigCommonGamma,             /**< 0x07000017 reference: OMX_CONFIG_GAMMATYPE */
-    OMX_IndexConfigCommonSaturation,        /**< 0x07000018 reference: OMX_CONFIG_SATURATIONTYPE */
-    OMX_IndexConfigCommonLightness,         /**< 0x07000019 reference: OMX_CONFIG_LIGHTNESSTYPE */
-    OMX_IndexConfigCommonExclusionRect,     /**< 0x0700001A reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonDithering,         /**< 0x0700001B reference: OMX_CONFIG_DITHERTYPE */
-    OMX_IndexConfigCommonPlaneBlend,        /**< 0x0700001C reference: OMX_CONFIG_PLANEBLENDTYPE */
-    OMX_IndexConfigCommonExposureValue,     /**< 0x0700001D reference: OMX_CONFIG_EXPOSUREVALUETYPE */
-    OMX_IndexConfigCommonOutputSize,        /**< 0x0700001E reference: OMX_FRAMESIZETYPE */
-    OMX_IndexParamCommonExtraQuantData,     /**< 0x0700001F reference: OMX_OTHER_EXTRADATATYPE */
-    OMX_IndexConfigCommonFocusRegion,       /**< 0x07000020 reference: OMX_CONFIG_FOCUSREGIONTYPE */
-    OMX_IndexConfigCommonFocusStatus,       /**< 0x07000021 reference: OMX_PARAM_FOCUSSTATUSTYPE */
-    OMX_IndexConfigCommonTransitionEffect,  /**< 0x07000022 reference: OMX_CONFIG_TRANSITIONEFFECTTYPE */
+    OMX_IndexParamCommonDeblocking,         /**< reference: OMX_PARAM_DEBLOCKINGTYPE */
+    OMX_IndexParamCommonSensorMode,         /**< reference: OMX_PARAM_SENSORMODETYPE */
+    OMX_IndexParamCommonInterleave,         /**< reference: OMX_PARAM_INTERLEAVETYPE */
+    OMX_IndexConfigCommonColorFormatConversion, /**< reference: OMX_CONFIG_COLORCONVERSIONTYPE */
+    OMX_IndexConfigCommonScale,             /**< reference: OMX_CONFIG_SCALEFACTORTYPE */
+    OMX_IndexConfigCommonImageFilter,       /**< reference: OMX_CONFIG_IMAGEFILTERTYPE */
+    OMX_IndexConfigCommonColorEnhancement,  /**< reference: OMX_CONFIG_COLORENHANCEMENTTYPE */
+    OMX_IndexConfigCommonColorKey,          /**< reference: OMX_CONFIG_COLORKEYTYPE */
+    OMX_IndexConfigCommonColorBlend,        /**< reference: OMX_CONFIG_COLORBLENDTYPE */
+    OMX_IndexConfigCommonFrameStabilisation,/**< reference: OMX_CONFIG_FRAMESTABTYPE */
+    OMX_IndexConfigCommonRotate,            /**< reference: OMX_CONFIG_ROTATIONTYPE */
+    OMX_IndexConfigCommonMirror,            /**< reference: OMX_CONFIG_MIRRORTYPE */
+    OMX_IndexConfigCommonOutputPosition,    /**< reference: OMX_CONFIG_POINTTYPE */
+    OMX_IndexConfigCommonInputCrop,         /**< reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonOutputCrop,        /**< reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonDigitalZoom,       /**< reference: OMX_CONFIG_SCALEFACTORTYPE */
+    OMX_IndexConfigCommonOpticalZoom,       /**< reference: OMX_CONFIG_SCALEFACTORTYPE*/
+    OMX_IndexConfigCommonWhiteBalance,      /**< reference: OMX_CONFIG_WHITEBALCONTROLTYPE */
+    OMX_IndexConfigCommonExposure,          /**< reference: OMX_CONFIG_EXPOSURECONTROLTYPE */
+    OMX_IndexConfigCommonContrast,          /**< reference: OMX_CONFIG_CONTRASTTYPE */
+    OMX_IndexConfigCommonBrightness,        /**< reference: OMX_CONFIG_BRIGHTNESSTYPE */
+    OMX_IndexConfigCommonBacklight,         /**< reference: OMX_CONFIG_BACKLIGHTTYPE */
+    OMX_IndexConfigCommonGamma,             /**< reference: OMX_CONFIG_GAMMATYPE */
+    OMX_IndexConfigCommonSaturation,        /**< reference: OMX_CONFIG_SATURATIONTYPE */
+    OMX_IndexConfigCommonLightness,         /**< reference: OMX_CONFIG_LIGHTNESSTYPE */
+    OMX_IndexConfigCommonExclusionRect,     /**< reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonDithering,         /**< reference: OMX_CONFIG_DITHERTYPE */
+    OMX_IndexConfigCommonPlaneBlend,        /**< reference: OMX_CONFIG_PLANEBLENDTYPE */
+    OMX_IndexConfigCommonExposureValue,     /**< reference: OMX_CONFIG_EXPOSUREVALUETYPE */
+    OMX_IndexConfigCommonOutputSize,        /**< reference: OMX_FRAMESIZETYPE */
+    OMX_IndexParamCommonExtraQuantData,     /**< reference: OMX_OTHER_EXTRADATATYPE */
+    OMX_IndexConfigCommonFocusRegion,       /**< reference: OMX_CONFIG_FOCUSREGIONTYPE */
+    OMX_IndexConfigCommonFocusStatus,       /**< reference: OMX_PARAM_FOCUSSTATUSTYPE */
+    OMX_IndexConfigCommonTransitionEffect,  /**< reference: OMX_CONFIG_TRANSITIONEFFECTTYPE */
 
     /* Reserved Configuration range */
     OMX_IndexOtherStartUnused = 0x08000000,
@@ -238,10 +256,10 @@ typedef enum OMX_INDEXTYPE {
     OMX_IndexConfigTimeSeekMode,            /**< reference: OMX_TIME_CONFIG_SEEKMODETYPE */
 
 
-    OMX_IndexKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+    OMX_IndexKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     /* Vendor specific area */
     OMX_IndexVendorStartUnused = 0x7F000000,
-    /* Vendor specific structures should be in the range of 0x7F000000 
+    /* Vendor specific structures should be in the range of 0x7F000000
        to 0x7FFFFFFE.  This range is not broken out by vendor, so
        private indexes are not guaranteed unique and therefore should
        only be sent to the appropriate component. */
