@@ -858,9 +858,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
 
     if ( msgType & CAMERA_MSG_SHUTTER )
         printf("Shutter done in %llu us\n", timeval_delay(&picture_start));
-
-    if ( msgType & CAMERA_MSG_ERROR && (ext1 == 1))
-      {
+    if ( msgType  == 1) {
         printf("Camera Test CAMERA_MSG_ERROR.....\n");
         if (stressTest)
           {
@@ -872,7 +870,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
             printf("Camera Test Notified of Error Stopping.....\n");
             stopScript =false;
             stopPreview();
-
+            closeCamera();
             if (recordingMode)
               {
                 stopRecording();
@@ -4014,6 +4012,7 @@ int restartCamera() {
 
   printf("+++Restarting Camera After Error+++\n");
   stopPreview();
+  closeCamera();
 
   if (recordingMode) {
     stopRecording();
