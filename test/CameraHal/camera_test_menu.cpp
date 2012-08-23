@@ -189,6 +189,8 @@ param_Array ** Vcapture_Array = 0;
 param_Array ** preview_Array = 0;
 param_Array ** thumbnail_Array = 0;
 fps_Array * fpsArray = 0;
+int iterationCount = 1;
+bool iterationPrint = true;
 
 int enableMisalignmentCorrectionIdx = 0;
 
@@ -4274,6 +4276,7 @@ int runRegressionTest(cmd_args_t *cmd_args) {
             free(cmd);
             cmd = NULL;
 
+            iterationCount = 0;
             restartTestCount ++;
             if(restartTestCount > 3) {
                 return res;
