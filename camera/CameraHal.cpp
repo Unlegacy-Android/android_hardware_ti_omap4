@@ -1465,10 +1465,12 @@ status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size
         mImageFd = mMemoryManager->getFd();
         mImageLength = bytes;
         mImageOffsets = mMemoryManager->getOffsets();
+        mImageCount = bufferCount;
     } else {
         mImageFd = -1;
         mImageLength = 0;
         mImageOffsets = NULL;
+        mImageCount = 0;
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -3174,6 +3176,7 @@ status_t CameraHal::__takePicture(const char *params)
     unsigned int rawBufferCount = 1;
     bool isCPCamMode = false;
     android::sp<DisplayAdapter> outAdapter = 0;
+    bool reuseTapout = false;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -3272,6 +3275,9 @@ status_t CameraHal::__takePicture(const char *params)
             }
             CAMHAL_LOGD("Found matching out adapter at %d", index);
             outAdapter = mOutAdapters.itemAt(index);
+            if ( outAdapter == mBufferSourceAdapter_Out ) {
+                reuseTapout = true;
+            }
         }
 
         mCameraAdapter->setParameters(mParameters);
@@ -3312,9 +3318,13 @@ status_t CameraHal::__takePicture(const char *params)
                                CameraHal::NO_BUFFERS_IMAGE_CAPTURE : burst;
 
              if (outAdapter.get()) {
-                bufferCount = outAdapter->getBufferCount();
-                if (bufferCount < 1) {
-                    bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+                if ( reuseTapout ) {
+                    bufferCount = mImageCount;
+                } else {
+                    bufferCount = outAdapter->getBufferCount();
+                    if (bufferCount < 1) {
+                        bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+                    }
                 }
              }
 
@@ -3373,20 +3383,22 @@ status_t CameraHal::__takePicture(const char *params)
             }
 
         if (outAdapter.get()) {
-            bool reset;
-            // Need to reset buffers if we are switching adapters since we don't know
-            // the state of the new buffer list
-            reset = (outAdapter.get() != mBufferSourceAdapter_Out.get());
-            ret = outAdapter->maxQueueableBuffers(max_queueable);
-            if (NO_ERROR != ret) {
-                CAMHAL_LOGE("Couldn't get max queuable");
-                return ret;
+            // Avoid locking the tapout again when reusing it
+            if (!reuseTapout) {
+                // Need to reset buffers if we are switching adapters since we don't know
+                // the state of the new buffer list
+                ret = outAdapter->maxQueueableBuffers(max_queueable);
+                if (NO_ERROR != ret) {
+                    CAMHAL_LOGE("Couldn't get max queuable");
+                    return ret;
+                }
+                mImageBuffers = outAdapter->getBuffers(true);
+                mImageOffsets = outAdapter->getOffsets();
+                mImageFd = outAdapter->getFd();
+                mImageLength = outAdapter->getSize();
+                mImageCount = bufferCount;
+                mBufferSourceAdapter_Out = outAdapter;
             }
-            mImageBuffers = outAdapter->getBuffers(reset);
-            mImageOffsets = outAdapter->getOffsets();
-            mImageFd = outAdapter->getFd();
-            mImageLength = outAdapter->getSize();
-            mBufferSourceAdapter_Out = outAdapter;
         } else {
             mBufferSourceAdapter_Out.clear();
             // allocImageBufs will only allocate new buffers if mImageBuffers is NULL
@@ -3858,6 +3870,7 @@ CameraHal::CameraHal(int cameraId)
     mImageOffsets = NULL;
     mImageLength = 0;
     mImageFd = 0;
+    mImageCount = 0;
     mVideoOffsets = NULL;
     mVideoFd = 0;
     mVideoLength = 0;
