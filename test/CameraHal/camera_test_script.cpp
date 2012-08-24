@@ -168,6 +168,7 @@ int manC = 0;
 extern int manualConv ;
 extern int manualConvMin ;
 extern int manualConvMax ;
+extern bool faceDetectToggle;
 
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
@@ -727,8 +728,10 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'F':
-                if ( hardwareActive )
+                if ( hardwareActive ) {
                     camera->sendCommand(CAMERA_CMD_START_FACE_DETECTION, 0, 0);
+                    faceDetectToggle = true;
+                }
 
                 break;
 
@@ -742,8 +745,12 @@ int execute_functional_script(char *script) {
 
             case 'T':
 
-                if ( hardwareActive )
+                if ( hardwareActive ) {
                     camera->sendCommand(CAMERA_CMD_STOP_FACE_DETECTION, 0, 0);
+                    faceDetectToggle = false;
+                }
+
+                break;
 
             case 'O':
                 params.set(KEY_GLBCE, (cmd+1));
