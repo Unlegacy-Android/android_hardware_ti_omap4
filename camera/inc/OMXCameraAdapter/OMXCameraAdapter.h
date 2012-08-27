@@ -259,10 +259,9 @@ public:
     enum CaptureSettingsFlags {
         SetFormat               = 1 << 0,
         SetThumb                = 1 << 1,
-        SetExpBracket           = 1 << 2,
+        SetBurstExpBracket      = 1 << 2,
         SetQuality              = 1 << 3,
         SetRotation             = 1 << 4,
-        SetBurst                = 1 << 5,
         ECaptureSettingMax,
         ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ), /// all possible flags raised
         ECaptureParamSettings = SetFormat | SetThumb | SetQuality, // Settings set with SetParam
