@@ -15,9 +15,8 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-$(shell cp -afr $(LOCAL_PATH)/lib/android/* $(TARGET_OUT)/vendor/lib)
 
-#Copying libbltsville_ticpu.VERSION.so
+#Copying libbltsville_ticpu.BV_CPUVERSION.so
 include $(CLEAR_VARS)
 BV_CPUVERSION :=$(shell ls external/bltsville/ticpu/lib/android/libbltsville_*.*.so|\
              sed 's/external\/bltsville\/ticpu\/lib\/android\/libbltsville_ticpu.//')
@@ -29,7 +28,7 @@ LOCAL_MODULE_PATH:= $(TARGET_OUT_VENDOR)/lib
 include $(BUILD_PREBUILT)
 
 #Creating SymLinks
-#libbltsville_ticpu.so -> libbltsville_ticpu.VERSION.so
+#libbltsville_ticpu.so -> libbltsville_ticpu.BV_CPUVERSION.so
 #libbltsville_cpu.so -> libbltsville_ticpu.so
 SYMLINKS := $(TARGET_OUT_VENDOR)/lib/libbltsville_ticpu.so
 $(SYMLINKS): TICPU_BINARY := ./libbltsville_ticpu.$(BV_CPUVERSION)
@@ -49,3 +48,6 @@ $(SYMLINKS1): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
 	@rm -rf $@
 	$(hide) ln -fs $(LINK_BINARY) $@
 ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS1)
+
+# for mm
+all_modules: $(SYMLINKS) $(SYMLINKS1)
