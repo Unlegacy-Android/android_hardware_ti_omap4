@@ -83,7 +83,11 @@ TI_CAMERAHAL_COMMON_SRC := \
     NV12_resize.cpp \
     CameraParameters.cpp \
     TICameraParameters.cpp \
-    CameraHalCommon.cpp
+    CameraHalCommon.cpp \
+    FrameDecoder.cpp \
+    SwFrameDecoder.cpp \
+    OmxFrameDecoder.cpp \
+    DecoderFactory.cpp
 
 TI_CAMERAHAL_OMX_SRC := \
     OMXCameraAdapter/OMX3A.cpp \

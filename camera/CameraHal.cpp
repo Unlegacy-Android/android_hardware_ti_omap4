@@ -35,7 +35,7 @@ namespace Ti {
 namespace Camera {
 
 extern "C" CameraAdapter* OMXCameraAdapter_Factory(size_t);
-extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t);
+extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t, CameraHal*);
 
 /*****************************************************************************/
 
@@ -2052,7 +2052,6 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
             CAMHAL_LOGE("Can't apply locking policy on AppCallbackNotifier");
             CAMHAL_ASSERT(0);
         }
-
         mDisplayAdapter = displayAdapter;
 #ifdef OMAP_ENHANCEMENT
         mDisplayAdapter->setExtendedOps(mExtendedPreviewStreamOps);
@@ -4095,7 +4094,7 @@ status_t CameraHal::initialize(CameraProperties::Properties* properties)
 
     if (strcmp(sensor_name, V4L_CAMERA_NAME_USB) == 0) {
 #ifdef V4L_CAMERA_ADAPTER
-        mCameraAdapter = V4LCameraAdapter_Factory(sensor_index);
+        mCameraAdapter = V4LCameraAdapter_Factory(sensor_index, this);
 #endif
     }
     else {

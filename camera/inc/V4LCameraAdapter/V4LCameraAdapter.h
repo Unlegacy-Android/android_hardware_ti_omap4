@@ -25,12 +25,17 @@
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"
 #include "Decoder_libjpeg.h"
+#include "FrameDecoder.h"
+
 
 namespace Ti {
 namespace Camera {
 
-//#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
-#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_MJPEG
+#ifndef V4L2_PIX_FMT_H264
+#define V4L2_PIX_FMT_H264 0
+#endif
+
+#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
 #define DEFAULT_CAPTURE_FORMAT V4L2_PIX_FMT_YUYV
 
 #define NB_BUFFER 10
@@ -102,7 +107,7 @@ public:
 
 public:
 
-    V4LCameraAdapter(size_t sensor_index);
+    V4LCameraAdapter(size_t sensor_index, CameraHal* hal);
     ~V4LCameraAdapter();
 
 
@@ -118,6 +123,8 @@ public:
     virtual status_t UseBuffersCapture(CameraBuffer *bufArr, int num);
 
     static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
+
+    void setupWorkingMode();
 
 protected:
 
@@ -160,8 +167,6 @@ private:
 
     int previewThread();
 
-public:
-
 private:
     //capabilities data
     static const CapPixelformat mPixelformats [];
@@ -198,6 +203,9 @@ private:
     status_t v4lSetFormat(int, int, uint32_t);
     status_t restartPreview();
     status_t applyFpsValue();
+    status_t returnBufferToV4L(int id);
+    void returnOutputBuffer(int index);
+    bool isNeedToUseDecoder() const;
 
     int mPreviewBufferCount;
     int mPreviewBufferCountQueueable;
@@ -230,12 +238,21 @@ private:
 
     int nQueued;
     int nDequeued;
+    int mQueuedOutputBuffers;
 
-    Decoder_libjpeg jpgdecoder;
-    unsigned char *jpeg_with_dht_buffer[NB_BUFFER];
-    unsigned int jpeg_with_dht_buffer_size;
+    FrameDecoder* mDecoder;
+    android::Vector< android::sp<MediaBuffer> > mInBuffers;
+    android::Vector< android::sp<MediaBuffer> > mOutBuffers;
 
+    android::Mutex mV4LLock;
+
+    int mPixelFormat;
     int mFrameRate;
+
+    android::Mutex mStopLock;
+    android::Condition mStopCondition;
+
+    CameraHal* mCameraHal;
 };
 
 } // namespace Camera
