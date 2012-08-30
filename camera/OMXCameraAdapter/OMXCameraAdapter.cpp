@@ -3654,7 +3654,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
         if ( NULL != mSharedAllocator ) {
-            setMetaData(cameraFrame, pBuffHeader->pPlatformPrivate, mSharedAllocator);
+            cameraFrame.mMetaData = new CameraMetadataResult(getMetaData(pBuffHeader->pPlatformPrivate, mSharedAllocator));
         }
 #endif
 
@@ -3696,6 +3696,10 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 #endif
 
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+        if ( NULL != cameraFrame.mMetaData.get() ) {
+            cameraFrame.mMetaData.clear();
+        }
+
         }
         else if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_VIDEO) {
             typeOfFrame = CameraFrame::RAW_FRAME;

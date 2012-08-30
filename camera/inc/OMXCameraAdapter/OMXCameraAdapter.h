@@ -764,9 +764,8 @@ private:
 
     // Meta data
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    status_t setMetaData(CameraFrame &frame,
-                         const OMX_PTR plat_pvt,
-                         camera_request_memory allocator) const;
+    camera_memory_t * getMetaData(const OMX_PTR plat_pvt,
+                                  camera_request_memory allocator) const;
 #endif
 
     // Mechanical Misalignment Correction

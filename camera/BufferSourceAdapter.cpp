@@ -696,14 +696,16 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         return;
     }
 
-    if ( NULL != frame->mMetaData ) {
-        camera_metadata_t *metaData = static_cast<camera_metadata_t *> (frame->mMetaData->data);
-        metaData->timestamp = frame->mTimestamp;
-        ret = extendedOps()->set_metadata(mBufferSource, frame->mMetaData);
-        if (ret != 0) {
-            CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+    if ( NULL != frame->mMetaData.get() ) {
+        camera_memory_t *extMeta = frame->mMetaData->getExtendedMetadata();
+        if ( NULL != extMeta ) {
+            camera_metadata_t *metaData = static_cast<camera_metadata_t *> (extMeta->data);
+            metaData->timestamp = frame->mTimestamp;
+            ret = extendedOps()->set_metadata(mBufferSource, extMeta);
+            if (ret != 0) {
+                CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+            }
         }
-        frame->mMetaData->release(frame->mMetaData);
     }
 
     // unlock buffer before enqueueing

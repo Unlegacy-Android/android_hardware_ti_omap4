@@ -32,11 +32,11 @@ namespace Ti {
 namespace Camera {
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
-status_t OMXCameraAdapter::setMetaData(CameraFrame &frame,
-                                       const OMX_PTR plat_pvt,
-                                       camera_request_memory allocator) const
+camera_memory_t * OMXCameraAdapter::getMetaData(const OMX_PTR plat_pvt,
+                                                camera_request_memory allocator) const
 {
-    status_t ret = NO_ERROR;
+    camera_memory_t * ret = NULL;
+
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_FACEDETECTIONTYPE *faceData = NULL;
     OMX_TI_WHITEBALANCERESULTTYPE * WBdata = NULL;
@@ -69,11 +69,11 @@ status_t OMXCameraAdapter::setMetaData(CameraFrame &frame,
         metaDataSize += OMX_TI_LSC_GAIN_TABLE_SIZE;
     }
 
-    frame.mMetaData = allocator(-1, metaDataSize, 1, NULL);
-    if ( NULL == frame.mMetaData ) {
-        return NO_MEMORY;
+    ret = allocator(-1, metaDataSize, 1, NULL);
+    if ( NULL == ret ) {
+        return NULL;
     } else {
-        metaData = static_cast<camera_metadata_t *> (frame.mMetaData->data);
+        metaData = static_cast<camera_metadata_t *> (ret->data);
         offset += sizeof(camera_metadata_t);
     }
 
@@ -81,7 +81,7 @@ status_t OMXCameraAdapter::setMetaData(CameraFrame &frame,
         metaData->number_of_faces = 0;
         int idx = 0;
         metaData->faces_offset = offset;
-        struct camera_metadata_face *faces = reinterpret_cast<struct camera_metadata_face *> (static_cast<char*>(frame.mMetaData->data) + offset);
+        struct camera_metadata_face *faces = reinterpret_cast<struct camera_metadata_face *> (static_cast<char*>(ret->data) + offset);
         for ( int j = 0; j < faceData->ulFaceCount ; j++ ) {
             if(faceData->tFacePosition[j].nScore <= FACE_DETECTION_THRESHOLD) {
                 continue;
@@ -113,7 +113,7 @@ status_t OMXCameraAdapter::setMetaData(CameraFrame &frame,
         metaData->lsc_table_applied = lscTbl->bApplied;
         metaData->lsc_table_size = OMX_TI_LSC_GAIN_TABLE_SIZE;
         metaData->lsc_table_offset = offset;
-        uint8_t *lsc_table = reinterpret_cast<uint8_t *> (static_cast<char*>(frame.mMetaData->data) + offset);
+        uint8_t *lsc_table = reinterpret_cast<uint8_t *> (static_cast<char*>(ret->data) + offset);
         memcpy(lsc_table, lscTbl->pGainTable, OMX_TI_LSC_GAIN_TABLE_SIZE);
         offset += metaData->lsc_table_size;
     }

@@ -80,6 +80,7 @@ private:
             while (!mFrames.empty()) {
                 CameraFrame *frame = mFrames.itemAt(0);
                 mFrames.removeAt(0);
+                frame->mMetaData.clear();
                 delete frame;
             }
             mFramesCondition.signal();
@@ -104,6 +105,7 @@ private:
 
             if (frame) {
                 mBufferSourceAdapter->handleFrameCallback(frame);
+                frame->mMetaData.clear();
                 delete frame;
             }
 
