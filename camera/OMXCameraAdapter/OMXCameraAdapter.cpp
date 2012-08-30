@@ -260,6 +260,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mountOrientationString = mCapabilities->get(CameraProperties::ORIENTATION_INDEX);
     CAMHAL_ASSERT(mountOrientationString);
     mDeviceOrientation = atoi(mountOrientationString);
+    mFaceOrientation = atoi(mountOrientationString);
 
     if (mSensorIndex != 2) {
         mCapabilities->setMode(MODE_HIGH_SPEED);
