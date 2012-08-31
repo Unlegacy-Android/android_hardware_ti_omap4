@@ -1388,6 +1388,23 @@ status_t OMXCameraAdapter::stopImageCapture()
             }
             mStartCaptureSem.Create(0);
         }
+    } else if (CP_CAM == mCapMode) {
+        // Reset shot config queue
+        OMX_TI_CONFIG_ENQUEUESHOTCONFIGS resetShotConfigs;
+        OMX_INIT_STRUCT_PTR(&resetShotConfigs, OMX_TI_CONFIG_ENQUEUESHOTCONFIGS);
+
+        resetShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        resetShotConfigs.bFlushQueue = OMX_TRUE;
+        resetShotConfigs.nNumConfigs = 0;
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                        ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
+                            &resetShotConfigs);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while reset shot config 0x%x", eError);
+            goto EXIT;
+        } else {
+            CAMHAL_LOGDA("Shot config reset successfully");
+        }
     }
 
     //Wait here for the capture to be done, in worst case timeout and proceed with cleanup
