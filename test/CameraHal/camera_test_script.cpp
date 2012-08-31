@@ -169,6 +169,7 @@ extern int manualConv ;
 extern int manualConvMin ;
 extern int manualConvMax ;
 extern bool faceDetectToggle;
+extern unsigned int burstCount;
 
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
@@ -843,6 +844,7 @@ int execute_functional_script(char *script) {
             case '#':
 
                 params.set(KEY_TI_BURST, atoi(cmd + 1));
+                burstCount = atoi(cmd + 1);
 
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());

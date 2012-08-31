@@ -95,7 +95,8 @@ int audioCodecIDX = 0;
 int outputFormatIDX = 0;
 int contrast = 0;
 int brightness = 0;
-unsigned int burst = 9;
+unsigned int burst = 0;
+unsigned int burstCount = 0;
 int sharpness = 0;
 int iso_mode = 0;
 int capture_mode = 0;
@@ -693,9 +694,15 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
 
     LOG_FUNCTION_NAME;
 
-    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
-        //Start preview after capture.
-        camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam")) {
+        if(burstCount > 1) {
+            burstCount --;
+            // Restart preview if taking a single capture
+            // or after the last iteration of burstCount
+        } else if(burstCount == 0 || burstCount == 1) {
+            camera->startPreview();
+            burstCount = burst;
+        }
     }
 
     if (mem == NULL)
@@ -2210,6 +2217,7 @@ void setExpGainPreset(ShotParameters &params, const char *input, bool force, par
         printf("relative EV input: \"%s\"\nnumber of relative EV values: %d (%s)\n",
                input, i, flush ? "reset" : "append");
         burst = i;
+        burstCount = i;
         params.set(ShotParameters::KEY_BURST, burst);
         params.set(ShotParameters::KEY_EXP_COMPENSATION, input);
         params.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
@@ -2225,6 +2233,7 @@ void setExpGainPreset(ShotParameters &params, const char *input, bool force, par
         printf("absolute exposure,gain input: \"%s\"\nNumber of brackets: %d (%s)\n",
                input, i, flush ? "reset" : "append");
         burst = i;
+        burstCount = i;
         params.set(ShotParameters::KEY_BURST, burst);
         params.set(ShotParameters::KEY_EXP_GAIN_PAIRS, input);
         params.remove(ShotParameters::KEY_EXP_COMPENSATION);
@@ -3031,6 +3040,7 @@ int functional_menu() {
             } else {
                 burst += BURST_INC;
             }
+            burstCount = burst;
             params.set(KEY_TI_BURST, burst);
 
             if ( hardwareActive )
