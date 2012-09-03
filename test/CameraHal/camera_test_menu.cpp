@@ -266,7 +266,7 @@ param_NamedExpBracketList_t expBracketing[] = {
   },
 };
 
-const char *tempBracketing[] = {"disable", "enable"};
+const char *tempBracketing[] = {"false", "true"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *afTimeout[] = {"enable", "disable" };
 
