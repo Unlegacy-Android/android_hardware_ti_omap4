@@ -781,8 +781,23 @@ int execute_functional_script(char *script) {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
                 }
 
-                if ( hardwareActive )
+                if ( hardwareActive ) {
+                    if (previewRunning) {
+                        stopPreview();
+                    }
                     camera->setParameters(params.flatten());
+                    // Get parameters from capabilities for the new capture mode
+                    params = camera->getParameters();
+                    getSizeParametersFromCapabilities();
+                    getParametersFromCapabilities();
+                    // Set framerate 30fps and 12MP capture resolution if available for the new capture mode.
+                    // If not available set framerate and capture mode under index 0 from fps_const_str and capture_Array.
+                    frameRateIDX = getDefaultParameter("30000,30000", constCnt, fps_const_str);
+                    captureSizeIDX = getDefaultParameterResol("12MP", numcaptureSize, capture_Array);
+                    params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRateIDX]);
+                    params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
+                    camera->setParameters(params.flatten());
+                }
 
                 break;
 
