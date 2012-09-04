@@ -31,8 +31,7 @@ static int getANWFormat(const char* parameters_format)
     if (parameters_format != NULL) {
         if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
-            // TODO(XXX): not defined yet
-            format = -1;
+            format = HAL_PIXEL_FORMAT_TI_UYVY;
         } else if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             format = HAL_PIXEL_FORMAT_TI_NV12;
@@ -78,6 +77,8 @@ static const char* getFormatFromANW(int format)
             return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
         case HAL_PIXEL_FORMAT_TI_Y16:
             return android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+        case HAL_PIXEL_FORMAT_TI_UYVY:
+            return android::CameraParameters::PIXEL_FORMAT_YUV422I;
         default:
             break;
     }
@@ -88,6 +89,7 @@ static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
     switch (getANWFormat(format)) {
         case HAL_PIXEL_FORMAT_TI_NV12:
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             // Assuming NV12 1D is RAW or Image frame
             return CameraFrame::RAW_FRAME;
         default:
@@ -102,6 +104,7 @@ static int getHeightFromFormat(const char* format, int stride, int size) {
         case HAL_PIXEL_FORMAT_TI_NV12:
             return (size / (3 * stride)) * 2;
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             return (size / stride) / 2;
         default:
             break;

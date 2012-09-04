@@ -60,6 +60,9 @@ status_t OMXCameraAdapter::setParametersReprocess(const android::CameraParameter
         } else if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
+        } else if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+            CAMHAL_LOGDA("YUV422i Picture format selected");
+            pixFormat = OMX_COLOR_FormatCbYCrY;
         } else {
             CAMHAL_LOGDA("Format not supported, selecting YUV420SP by default");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
@@ -74,7 +77,8 @@ status_t OMXCameraAdapter::setParametersReprocess(const android::CameraParameter
         portData->mWidth = w;
         portData->mHeight = h;
 
-        if ( OMX_COLOR_FormatRawBayer10bit == pixFormat ) {
+        if ( ( OMX_COLOR_FormatRawBayer10bit == pixFormat ) ||
+             ( OMX_COLOR_FormatCbYCrY == pixFormat ) ) {
             portData->mStride = w * 2;
         } else {
             portData->mStride = s;
