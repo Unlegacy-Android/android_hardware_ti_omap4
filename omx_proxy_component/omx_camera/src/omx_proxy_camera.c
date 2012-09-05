@@ -194,7 +194,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering Y Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
             pCamPrv->pRegBuff[i][0] = NULL;
-            ion_free(pCompPrv->ion_fd, pCamPrv->gCamIonHdl[i][0]);
+            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][0]);
             DOMX_DEBUG("%s: DOMX: #%d Y Memory freed; eRPCError = 0x%x", __func__, i, eRPCError);
             pCamPrv->gCamIonHdl[i][0] = NULL;
         }
@@ -204,7 +204,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering UV Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
             pCamPrv->pRegBuff[i][1] = NULL;
-            ion_free(pCompPrv->ion_fd, pCamPrv->gCamIonHdl[i][1]);
+            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][1]);
             DOMX_DEBUG("%s: DOMX: #%d UV Memory freed; eRPCError = 0x%x", __func__, i, eRPCError);
             pCamPrv->gCamIonHdl[i][1] = NULL;
         }
@@ -292,7 +292,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                     if (tVstabParam.bEnabled == OMX_FALSE && tVnfParam.eMode != OMX_VideoNoiseFilterModeOff) {
                         for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
                             pVtcConfig->nInternalBuffers = i;
-                            ret = ion_alloc_tiler(pCompPrv->ion_fd, nFrmWidth, nFrmHeight, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
+                            ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, nFrmWidth, nFrmHeight, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
                             if (ret != 0) {
                                 DOMX_ERROR("Tiler 2D buffer allocation (Y) for slice-based processing failed. Hence exiting!!!\n");
                                 eError = OMX_ErrorInsufficientResources;
@@ -304,10 +304,10 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                             * by registerBuffer for these ion buffers after the allocation.
                             * Refer to proxy buffer Usebuffer() call for more details.
                             */
-                            ret = ion_share(pCompPrv->ion_fd, handle, &fd1);
+                            ret = ion_share(pCompPrv->nMemmgrClientDesc, handle, &fd1);
                             if (ret < 0) {
                                 DOMX_ERROR("ION share failed");
-                                ion_free(pCompPrv->ion_fd, handle);
+                                ion_free(pCompPrv->nMemmgrClientDesc, handle);
                                 goto EXIT;
                             }
 
@@ -319,7 +319,7 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                             close (fd1);
                             DOMX_DEBUG(" DOMX: ION Buffer#%d: Y: 0x%x, ret = %d, eRPCError = 0x%x\n", i, pVtcConfig->IonBufhdl[0], ret, eRPCError);
 
-                            ret = ion_alloc_tiler(pCompPrv->ion_fd, nFrmWidth/2, nFrmHeight/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
+                            ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, nFrmWidth/2, nFrmHeight/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
                             if (ret != 0) {
                                 DOMX_ERROR("Tiler 2D buffer allocation (UV) for slice-based processing failed. Hence exiting!!!\n");
                                 if (pCamPrv->pRegBuff[i][0] != NULL) {
@@ -327,14 +327,14 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                                     PROXY_checkRpcError();
                                 }
 
-                                ion_free(pCompPrv->ion_fd, pCamPrv->gCamIonHdl[i][0]);
+                                ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][0]);
                                 eError = OMX_ErrorInsufficientResources;
                                 goto EXIT;
                             }
-                            ret = ion_share(pCompPrv->ion_fd, handle, &fd2);
+                            ret = ion_share(pCompPrv->nMemmgrClientDesc, handle, &fd2);
                             if (ret < 0) {
                                 DOMX_ERROR("ION share failed");
-                                ion_free(pCompPrv->ion_fd, handle);
+                                ion_free(pCompPrv->nMemmgrClientDesc, handle);
                                 goto EXIT;
                             }
 
@@ -405,7 +405,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
                 if (gComponentBufferAllocation[i][j]) {
-                    ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[i][j]);
+                    ion_free(pCompPrv->nMemmgrClientDesc, gComponentBufferAllocation[i][j]);
                 }
                 gComponentBufferAllocation[i][j] = NULL;
             }
@@ -466,7 +466,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
                 if (((j == nParam) || (nParam == OMX_ALL)) &&
                      gComponentBufferAllocation[i][j])
                 {
-                    ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[i][j]);
+                    ion_free(pCompPrv->nMemmgrClientDesc, gComponentBufferAllocation[i][j]);
                     gComponentBufferAllocation[i][j] = NULL;
                 }
             }
@@ -638,7 +638,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
                 index = bufferalloc->nIndex;
 
 		size = bufferalloc->nAllocWidth * bufferalloc->nAllocLines;
-		ret = ion_alloc_tiler (pCompPrv->ion_fd, size, 1,
+		ret = ion_alloc_tiler (pCompPrv->nMemmgrClientDesc, size, 1,
 				       TILER_PIXEL_FMT_PAGE,
 				       OMAP_ION_HEAP_TILER_ALLOCATION_MASK,
 				       &handle, &stride_Y);
@@ -647,10 +647,10 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 			goto EXIT;
 		}
 
-		ret = ion_share(pCompPrv->ion_fd, handle, &fd);
+		ret = ion_share(pCompPrv->nMemmgrClientDesc, handle, &fd);
 		if (ret < 0) {
 			DOMX_ERROR("ION share failed");
-			ion_free(pCompPrv->ion_fd, handle);
+			ion_free(pCompPrv->nMemmgrClientDesc, handle);
 			goto EXIT;
 		}
 
@@ -659,10 +659,10 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 					      OMX_TI_IndexParamComponentBufferAllocation,
 					      bufferalloc, &bufferalloc->pBuf[0], 1);
                 if (eError != OMX_ErrorNone) {
-                   ion_free(pCompPrv->ion_fd, handle);
+                   ion_free(pCompPrv->nMemmgrClientDesc, handle);
                 } else {
                    if (gComponentBufferAllocation[port][index]) {
-                       ion_free(pCompPrv->ion_fd, gComponentBufferAllocation[port][index]);
+                       ion_free(pCompPrv->nMemmgrClientDesc, gComponentBufferAllocation[port][index]);
                    }
                    gComponentBufferAllocation[port][index] = handle;
                 }

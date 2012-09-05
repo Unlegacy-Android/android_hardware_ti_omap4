@@ -244,8 +244,9 @@ extern "C"
 
 /* ========================================================================== */
 /**
-* PROXY_COMPONENT_PRIVATE
-*
+* struct PROXY_COMPONENT_PRIVATE
+*		@param nMemmgr_client_desc: Memory manager client descriptor
+* 		@param bMapBuffers: buffers need to be mapped or not
 */
 /* ========================================================================== */
 	typedef struct PROXY_COMPONENT_PRIVATE
@@ -272,10 +273,10 @@ extern "C"
 #ifdef ANDROID_QUIRK_LOCK_BUFFER
 		gralloc_module_t const *grallocModule;
 #endif
+		OMX_U32 nMemmgrClientDesc;
+		OMX_BOOL bMapBuffers;
 #ifdef USE_ION
-		int ion_fd;
 		OMX_BOOL bUseIon;
-		OMX_BOOL bMapIonBuffers;
 #endif
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
 		DebugFrame_Dump debugframeInfo;

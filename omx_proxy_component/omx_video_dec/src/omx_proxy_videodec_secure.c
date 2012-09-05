@@ -97,7 +97,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 
 #ifdef USE_ION
 	pComponentPrivate->bUseIon = OMX_TRUE;
-	pComponentPrivate->bMapIonBuffers = OMX_FALSE;
+	pComponentPrivate->bMapBuffers = OMX_FALSE;
 #endif
 	EXIT:
 	    if (eError != OMX_ErrorNone)

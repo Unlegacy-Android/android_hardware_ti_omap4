@@ -326,10 +326,10 @@ static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pC
 	struct ion_handle *temp;
 	size_t stride;
 
-	ret = ion_alloc(pCompPrv->ion_fd, len, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT, &temp);
+	ret = ion_alloc(pCompPrv->nMemmgrClientDesc, len, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT, &temp);
 
        if (ret || ((int)temp == -ENOMEM)) {
-               ret = ion_alloc_tiler(pCompPrv->ion_fd, len, 1, TILER_PIXEL_FMT_PAGE,
+               ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, len, 1, TILER_PIXEL_FMT_PAGE,
                        OMAP_ION_HEAP_TILER_MASK, &temp, &stride);
        }
 
@@ -826,10 +826,10 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	{
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, nSize, &handle);
 		pCompPrv->tBufList[currentBuffer].pYBuffer = handle;
-		if (pCompPrv->bMapIonBuffers == OMX_TRUE)
+		if (pCompPrv->bMapBuffers == OMX_TRUE)
 		{
 			DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
-			if (ion_map(pCompPrv->ion_fd, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+			if (ion_map(pCompPrv->nMemmgrClientDesc, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
 		                &pIonMappedBuffer, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0)
 			{
 				DOMX_ERROR("userspace mapping of ION buffers returned error");
@@ -837,7 +837,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 				goto EXIT;
 			}
 		} else {
-			if (ion_share(pCompPrv->ion_fd, handle, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0) {
+			if (ion_share(pCompPrv->nMemmgrClientDesc, handle, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0) {
 				DOMX_ERROR("ion_share failed !!! \n");
 				goto EXIT;
 			} else {
@@ -858,7 +858,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if(eError != OMX_ErrorNone) {
 		DOMX_ERROR("PROXY_UseBuffer in PROXY_AllocateBuffer failed with error %d (0x%08x)", eError, eError);
 #ifdef USE_ION
-		ion_free(pCompPrv->ion_fd,
+		ion_free(pCompPrv->nMemmgrClientDesc,
 		         (struct ion_handle *)pCompPrv->tBufList[currentBuffer].pYBuffer);
 		close(pCompPrv->tBufList[currentBuffer].mmap_fd);
 #endif
@@ -871,7 +871,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	}
 
 #ifdef USE_ION
-	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapIonBuffers == OMX_TRUE)
+	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapBuffers == OMX_TRUE)
 	{
 		DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
 		(*ppBufferHdr)->pBuffer = pIonMappedBuffer;
@@ -1126,8 +1126,8 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		pCompPrv->tBufList[currentBuffer].pMetaDataBuffer = ((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->
 			pPlatformPrivate)->pMetaDataBuffer;
 		DOMX_DEBUG("Metadata buffer ion handle = %d",((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer);
-		if (pCompPrv->bMapIonBuffers == OMX_TRUE) {
-			if (ion_map(pCompPrv->ion_fd, pPlatformPrivate->pMetaDataBuffer,
+		if (pCompPrv->bMapBuffers == OMX_TRUE) {
+			if (ion_map(pCompPrv->nMemmgrClientDesc, pPlatformPrivate->pMetaDataBuffer,
 				    pPlatformPrivate->nMetaDataSize,
 				    PROT_READ | PROT_WRITE, MAP_SHARED, 0,
 				    &pMetadataBuffer,
@@ -1156,10 +1156,10 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		if (pPlatformPrivate->pMetaDataBuffer != NULL)
 		{
 			int fd = -1;
-			if (pCompPrv->bMapIonBuffers == OMX_TRUE) {
+			if (pCompPrv->bMapBuffers == OMX_TRUE) {
 				fd = pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff;
 			} else {
-				ion_share (pCompPrv->ion_fd, pPlatformPrivate->pMetaDataBuffer, &fd);
+				ion_share (pCompPrv->nMemmgrClientDesc, pPlatformPrivate->pMetaDataBuffer, &fd);
 				pCompPrv->tBufList[currentBuffer].mmap_fd_metadata_buff = fd;
 			}
 			eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd, -1,
@@ -1182,10 +1182,10 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	    pBufHeaderRemote, pBufferHeader, pBufferHeader->pBuffer);
 
 #ifdef USE_ION
-	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapIonBuffers == OMX_TRUE && tMetaDataBuffer.bIsMetaDataEnabledOnPort)
+	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapBuffers == OMX_TRUE && tMetaDataBuffer.bIsMetaDataEnabledOnPort)
 	{
 		((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer = pMetadataBuffer;
-		//ion_free(pCompPrv->ion_fd, handleToMap);
+		//ion_free(pCompPrv->nMemmgrClientDesc, handleToMap);
 		memset(((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->pPlatformPrivate)->pMetaDataBuffer,
 			0x0, tMetaDataBuffer.nMetaDataSize);
 	}
@@ -1307,14 +1307,14 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 			{
 				if(pBufferHdr->pBuffer)
 				{
-					if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+					if(pCompPrv->bMapBuffers == OMX_TRUE)
 					{
 						munmap(pBufferHdr->pBuffer, pBufferHdr->nAllocLen);
 					}
 					//Perform close for ion map as well as ion share buffers
 					close(pCompPrv->tBufList[count].mmap_fd);
 				}
-				ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[count].pYBuffer);
+				ion_free(pCompPrv->nMemmgrClientDesc, pCompPrv->tBufList[count].pYBuffer);
 				pCompPrv->tBufList[count].pYBuffer = NULL;
 			}
 		}
@@ -1326,12 +1326,12 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 #ifdef USE_ION
         		if (pCompPrv->bUseIon == OMX_TRUE)
 			{
-				if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+				if(pCompPrv->bMapBuffers == OMX_TRUE)
 				{
 					munmap(pMetaDataBuffer, pPlatformPrivate->nMetaDataSize);
 				}
 				close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
-				ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[count].pMetaDataBuffer);
+				ion_free(pCompPrv->nMemmgrClientDesc, pCompPrv->tBufList[count].pMetaDataBuffer);
 				pPlatformPrivate->pMetaDataBuffer = NULL;
 			}
 #endif
@@ -2188,7 +2188,7 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
 
-	ion_close(pCompPrv->ion_fd);
+	ion_close(pCompPrv->nMemmgrClientDesc);
 
 	for (count = 0; count < pCompPrv->nTotalBuffers; count++)
 	{
@@ -2202,12 +2202,12 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 				{
 					if (pCompPrv->bUseIon == OMX_TRUE)
 					{
-						if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+						if(pCompPrv->bMapBuffers == OMX_TRUE)
 						{
 					                munmap(pCompPrv->tBufList[count].pBufHeader->pBuffer, pCompPrv->tBufList[count].pBufHeader->nAllocLen);
 							close(pCompPrv->tBufList[count].mmap_fd);
 						}
-						ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[count].pYBuffer);
+						ion_free(pCompPrv->nMemmgrClientDesc, pCompPrv->tBufList[count].pYBuffer);
 						pCompPrv->tBufList[count].pYBuffer = NULL;
 					}
 				}
@@ -2221,13 +2221,13 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 #ifdef USE_ION
 				if (pCompPrv->bUseIon == OMX_TRUE)
 				{
-					if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+					if(pCompPrv->bMapBuffers == OMX_TRUE)
 					{
 			                        munmap(pMetaDataBuffer, ((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
 								pPlatformPrivate)->nMetaDataSize);
 					}
 					close(pCompPrv->tBufList[count].mmap_fd_metadata_buff);
-					ion_free(pCompPrv->ion_fd, pMetaDataBuffer);
+					ion_free(pCompPrv->nMemmgrClientDesc, pMetaDataBuffer);
 					((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
 						pPlatformPrivate)->pMetaDataBuffer = NULL;
 				}
@@ -2348,10 +2348,10 @@ OMX_ERRORTYPE OMX_ProxyCommonInit(OMX_HANDLETYPE hComponent)
 
 #ifdef USE_ION
 	pCompPrv->bUseIon = OMX_TRUE;
-	pCompPrv->bMapIonBuffers = OMX_TRUE;
+	pCompPrv->bMapBuffers = OMX_TRUE;
 
-	pCompPrv->ion_fd = ion_open();
-	if(pCompPrv->ion_fd == 0)
+	pCompPrv->nMemmgrClientDesc = ion_open();
+	if(pCompPrv->nMemmgrClientDesc == 0)
 	{
 		DOMX_ERROR("ion_open failed!!!");
 		return OMX_ErrorInsufficientResources;
