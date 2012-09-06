@@ -799,7 +799,7 @@ status_t V4LCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t buffer
     return NO_ERROR;
 }
 
-status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t bufferCount)
+status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     int width = 0;
     int height = 0;
@@ -807,18 +807,14 @@ status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t buffe
 
     LOG_FUNCTION_NAME;
 
-    if (frame == NULL) {
-       return BAD_VALUE;
-    }
-
     mParams.getPictureSize( &width, &height );
-    frame->mLength = width * height * bytesPerPixel;
-    frame->mWidth = width;
-    frame->mHeight = height;
-    frame->mAlignment = width * bytesPerPixel;
+    frame.mLength = width * height * bytesPerPixel;
+    frame.mWidth = width;
+    frame.mHeight = height;
+    frame.mAlignment = width * bytesPerPixel;
 
     CAMHAL_LOGDB("Picture size: W x H = %u x %u (size=%u bytes, alignment=%u bytes)",
-                 frame->mWidth, frame->mHeight, frame->mLength, frame->mAlignment);
+                 frame.mWidth, frame.mHeight, frame.mLength, frame.mAlignment);
     LOG_FUNCTION_NAME_EXIT;
     return NO_ERROR;
 }
