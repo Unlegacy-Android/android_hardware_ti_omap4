@@ -2178,11 +2178,10 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 	    RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
-	OMX_U32 count = 0, nStride = 0;
+	OMX_U32 count = 0, nStride = 0, nPortIndex = 0;
 	OMX_PTR pMetaDataBuffer = NULL;
 
 	DOMX_ENTER("hComponent = %p", hComponent);
-
 	PROXY_assert((hComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
 
@@ -2194,6 +2193,11 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 	{
 		if (pCompPrv->tBufList[count].pBufHeader)
 		{
+			//find the input or output port index
+			if(pCompPrv->tBufList[count].pBufHeader->nInputPortIndex >= 0)
+				nPortIndex = pCompPrv->tBufList[count].pBufHeader->nInputPortIndex;
+			else if(pCompPrv->tBufList[count].pBufHeader->nOutputPortIndex >= 0)
+				nPortIndex = pCompPrv->tBufList[count].pBufHeader->nOutputPortIndex;
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
 			if(pCompPrv->tBufList[count].pYBuffer)
 			{
@@ -2231,6 +2235,29 @@ OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE hComponent)
 					((OMX_TI_PLATFORMPRIVATE *)(pCompPrv->tBufList[count].pBufHeader)->
 						pPlatformPrivate)->pMetaDataBuffer = NULL;
 				}
+#endif
+#ifdef USE_ION
+	{
+		// Need to unregister buffers when using ion and rpmsg
+		if (pCompPrv->tBufList[count].pRegisteredAufBux0 != NULL)
+		{
+			eTmpRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+								pCompPrv->tBufList[count].pRegisteredAufBux0,pCompPrv->tBufList[count].pRegisteredAufBux1,
+								pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType);
+			if (eTmpRPCError != RPC_OMX_ErrorNone) {
+				eRPCError = eTmpRPCError;
+			}
+		}
+
+		if (pCompPrv->tBufList[count].pRegisteredAufBux2 != NULL)
+		{
+			eTmpRPCError |= RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+								pCompPrv->tBufList[count].pRegisteredAufBux2, NULL, IONPointers);
+			if (eTmpRPCError != RPC_OMX_ErrorNone) {
+				eRPCError |= eTmpRPCError;
+			}
+		}
+	}
 #endif
 			}
 			if (pCompPrv->tBufList[count].pBufHeader->pPlatformPrivate)
