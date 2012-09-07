@@ -3697,9 +3697,11 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 #endif
 
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+#ifdef OMAP_ENHANCEMENT_CPCAM
         if ( NULL != cameraFrame.mMetaData.get() ) {
             cameraFrame.mMetaData.clear();
         }
+#endif
 
         }
         else if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_VIDEO) {
