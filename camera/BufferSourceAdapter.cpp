@@ -904,9 +904,6 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     }
 
     mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) frame->mBuffer->opaque);
-
-    // signal return frame thread that it can dequeue a buffer now
-    mReturnFrame->signal();
 }
 
 

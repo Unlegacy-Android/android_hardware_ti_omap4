@@ -47,6 +47,7 @@ private:
         ReturnFrame(BufferSourceAdapter* __this) : mBufferSourceAdapter(__this) {
             android::AutoMutex lock(mReturnFrameMutex);
             mDestroying = false;
+            mFrameCount = 0;
         }
 
         ~ReturnFrame() {
@@ -54,6 +55,8 @@ private:
          }
 
         void signal() {
+            android::AutoMutex lock(mReturnFrameMutex);
+            mFrameCount++;
             mReturnFrameCondition.signal();
         }
 
@@ -67,8 +70,13 @@ private:
 
         virtual bool threadLoop() {
             android::AutoMutex lock(mReturnFrameMutex);
-            mReturnFrameCondition.wait(mReturnFrameMutex);
-            if (!mDestroying) mBufferSourceAdapter->handleFrameReturn();
+            if ( 0 >= mFrameCount ) {
+                mReturnFrameCondition.wait(mReturnFrameMutex);
+            }
+            if (!mDestroying) {
+                mBufferSourceAdapter->handleFrameReturn();
+                mFrameCount--;
+            }
             return true;
         }
 
@@ -76,6 +84,7 @@ private:
         BufferSourceAdapter* mBufferSourceAdapter;
         android::Condition mReturnFrameCondition;
         android::Mutex mReturnFrameMutex;
+        int mFrameCount;
         bool mDestroying;
     };
 
@@ -124,6 +133,10 @@ private:
             if (frame) {
                 mBufferSourceAdapter->handleFrameCallback(frame);
                 frame->mMetaData.clear();
+
+                // signal return frame thread that it can dequeue a buffer now
+                mBufferSourceAdapter->mReturnFrame->signal();
+
                 delete frame;
             }
 
