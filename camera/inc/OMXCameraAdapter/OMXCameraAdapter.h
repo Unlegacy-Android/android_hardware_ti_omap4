@@ -765,9 +765,8 @@ private:
 
     // Meta data
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    status_t setMetaData(CameraFrame &frame,
-                         const OMX_PTR plat_pvt,
-                         camera_request_memory allocator) const;
+    camera_memory_t * getMetaData(const OMX_PTR plat_pvt,
+                                  camera_request_memory allocator) const;
 #endif
 
     // Mechanical Misalignment Correction
@@ -1030,6 +1029,7 @@ private:
     int mZoomBracketingValues[ZOOM_BRACKET_RANGE];
     size_t mZoomBracketingValidEntries;
 
+    static const uint32_t FACE_DETECTION_THRESHOLD;
     mutable android::Mutex mFaceDetectionLock;
     //Face detection status
     bool mFaceDetectionRunning;
@@ -1151,6 +1151,7 @@ private:
 
     int mSensorOrientation;
     int mDeviceOrientation;
+    int mFaceOrientation;
     bool mSensorOverclock;
 
     //Indicates if we should leave

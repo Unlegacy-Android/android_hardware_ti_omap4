@@ -3079,9 +3079,7 @@ status_t CameraHal::__takePicture(const char *params)
 
         // pause preview during normal image capture
         // do not pause preview if recording (video state)
-        if ((NO_ERROR == ret) &&
-                (NULL != mDisplayAdapter.get()) &&
-                (burst < 1 || isCPCamMode)) {
+        if ( (NO_ERROR == ret) && (NULL != mDisplayAdapter.get()) ) {
             if (mCameraAdapter->getState() != CameraAdapter::VIDEO_STATE) {
                 mDisplayPaused = true;
                 mPreviewEnabled = false;

@@ -239,6 +239,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 #endif
 
     mDeviceOrientation = 0;
+    mFaceOrientation = 0;
     mCapabilities = caps;
     mZoomUpdating = false;
     mZoomUpdate = false;
@@ -265,6 +266,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mountOrientationString = mCapabilities->get(CameraProperties::ORIENTATION_INDEX);
     CAMHAL_ASSERT(mountOrientationString);
     mDeviceOrientation = atoi(mountOrientationString);
+    mFaceOrientation = atoi(mountOrientationString);
 
     if (mSensorIndex != 2) {
         mCapabilities->setMode(MODE_HIGH_SPEED);
@@ -3663,7 +3665,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
         if ( NULL != mSharedAllocator ) {
-            setMetaData(cameraFrame, pBuffHeader->pPlatformPrivate, mSharedAllocator);
+            cameraFrame.mMetaData = new CameraMetadataResult(getMetaData(pBuffHeader->pPlatformPrivate, mSharedAllocator));
         }
 #endif
 
@@ -3705,6 +3707,12 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 #endif
 
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        if ( NULL != cameraFrame.mMetaData.get() ) {
+            cameraFrame.mMetaData.clear();
+        }
+#endif
+
         }
         else if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_VIDEO) {
             typeOfFrame = CameraFrame::RAW_FRAME;
