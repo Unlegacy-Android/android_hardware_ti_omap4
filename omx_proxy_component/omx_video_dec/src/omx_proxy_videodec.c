@@ -65,10 +65,8 @@
 #include "OMX_TI_Index.h"
 
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
-#define LOG_TAG "OMXPROXYVIDEODEC"
 #include <fcntl.h>
 #include <cutils/properties.h>
-#include <utils/Log.h>
 #endif
 
 #define COMPONENT_NAME "OMX.TI.DUCATI1.VIDEO.DECODER"
@@ -755,7 +753,7 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
 		pCompPrv->grallocModule->unlock((gralloc_module_t const *) pCompPrv->grallocModule, (buffer_handle_t)grallocHandle);
 
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
-		ALOGV("frm[%u] to[%u] run[%u]", pCompPrv->debugframeInfo.fromFrame, pCompPrv->debugframeInfo.toFrame, pCompPrv->debugframeInfo.runningFrame);
+		DOMX_DEBUG("frm[%u] to[%u] run[%u]", pCompPrv->debugframeInfo.fromFrame, pCompPrv->debugframeInfo.toFrame, pCompPrv->debugframeInfo.runningFrame);
 		/* Fill buffer Done successed, hence start dumping if requested	*/
 		OMX_BUFFERHEADERTYPE *pBufHdr = pCompPrv->tBufList[count].pBufHeader;
 		if ((pCompPrv->debugframeInfo.fromFrame == 0) && (pCompPrv->debugframeInfo.runningFrame <= pCompPrv->debugframeInfo.toFrame))

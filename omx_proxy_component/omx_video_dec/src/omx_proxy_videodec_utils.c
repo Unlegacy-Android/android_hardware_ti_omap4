@@ -49,10 +49,8 @@
 #include "OMX_TI_Index.h"
 
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
-#define LOG_TAG "OMXPROXYVIDEODEC"
 #include <fcntl.h>
 #include <cutils/properties.h>
-#include <utils/Log.h>
 #include <stdlib.h>
 #include <errno.h>
 #endif
@@ -287,24 +285,24 @@ void DumpVideoFrame(DebugFrame_Dump *frameInfo)
 	OMX_U8* localbuffer = malloc(framesize);
 	if (localbuffer == NULL)
 	{
-		LOGE("NO HEAP");
+		DOMX_ERROR("NO HEAP");
 		goto EXIT;
 	}
 	convertNV12ToYuv420(frameInfo, localbuffer);
 	int filedes = -1;
 	char framenumber[100];
 	sprintf(framenumber, "/data/frame_%ld.txt", frameInfo->runningFrame);
-	DOMX_DEBUG("file path %s",framenumber);
+	DOMX_ERROR("file path %s",framenumber);
 	filedes = open(framenumber, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
 	if(filedes < 0)
 	{
-		LOGE("\n!!!!!!!!!Error in file open!!!!!!!! [%d][%s]\n", filedes, strerror(errno));
+		DOMX_ERROR("\n!!!!!!!!!Error in file open!!!!!!!! [%d][%s]\n", filedes, strerror(errno));
 		goto EXIT;
 	}
 	int ret = write (filedes, (void*)localbuffer, framesize);
 	if (ret < (int)framesize)
 	{
-		LOGE("File Write Failed");
+		DOMX_ERROR("File Write Failed");
 	}
 EXIT:
 	if (localbuffer)
