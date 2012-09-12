@@ -693,6 +693,7 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillThisBuffer(OMX_HANDLETYPE hComponent, OMX_BUFFERH
 		pCompPrv->debugframeInfo.frame_height = rect.nHeight;
 		pCompPrv->debugframeInfo.frame_xoffset = rect.nLeft;
 		pCompPrv->debugframeInfo.frame_yoffset = rect.nTop;
+		pCompPrv->debugframeInfo.decoded_height = sPortDef.format.video.nFrameHeight;
 #endif
 		pCompPrv->grallocModule->lock((gralloc_module_t const *) pCompPrv->grallocModule,
 				(buffer_handle_t)grallocHandle, GRALLOC_USAGE_HW_RENDER,

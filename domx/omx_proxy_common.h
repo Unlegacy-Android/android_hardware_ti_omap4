@@ -234,7 +234,8 @@ extern "C"
 		OMX_U32 frame_width;
 		OMX_U32 frame_height;
 		OMX_U32 frame_xoffset;
-		OMX_U32	frame_yoffset;
+		OMX_U32 frame_yoffset;
+		OMX_U32 decoded_height;
 		OMX_U32 stride;
 		OMX_S32 runningFrame;
 		OMX_U32 *y_uv[2];

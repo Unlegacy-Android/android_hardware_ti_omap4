@@ -256,10 +256,13 @@ static void convertNV12ToYuv420(DebugFrame_Dump *frameInfo, void *dst)
 	* rearrange from  packed planar [uvuvuv] to planar [uuu][vvvv] packages pixel wise
 	* calculate the offset for UV buffer
 	*/
-	uint32_t UV_offset = frameInfo->frame_xoffset +
-                             (frameInfo->frame_yoffset * stride)/2;
 
-	const uint8_t* p1uv = (uint8_t*)frameInfo->y_uv[1] + UV_offset;
+	uint32_t UV_offset = frameInfo->frame_xoffset
+	        + (frameInfo->decoded_height
+	        + frameInfo->frame_yoffset / 2)
+	        * stride;
+
+	const uint8_t* p1uv = (uint8_t*)frameInfo->y_uv[0] + UV_offset;
 
 	uint8_t* p2u = ((uint8_t*) dst + (width * height));
 	uint8_t* p2v = ((uint8_t*) p2u + ((width/2) * (height/2)));
