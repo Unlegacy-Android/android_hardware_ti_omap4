@@ -1010,6 +1010,8 @@ int configureRecorder() {
 
     char videoFile[384],vbit_string[50];
     videoFd = -1;
+    struct CameraInfo cameraInfo;
+    camera->getCameraInfo(camera_index, &cameraInfo);
 
     if ( ( NULL == recorder.get() ) || ( NULL == camera.get() ) ) {
         printf("invalid recorder and/or camera references\n");
@@ -1072,10 +1074,16 @@ int configureRecorder() {
 
     recording_counter++;
 
-    if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
-        printf("error while configuring video size\n");
-
-        return -1;
+    if (cameraInfo.orientation == 90 || cameraInfo.orientation == 270 ) {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->width) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
+    } else {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
     }
 
     if ( recorder->setVideoEncoder(videoCodecs[videoCodecIDX].type) < 0 ) {
@@ -1306,6 +1314,11 @@ int startPreview() {
         } else {  // back-facing
             orientation = (cameraInfo.orientation - dinfo.orientation + 360) % 360;
         }
+
+        if(!strcmp(params.get(KEY_MODE), "video-mode") ) {
+            orientation = 0;
+        }
+
         camera->sendCommand(CAMERA_CMD_SET_DISPLAY_ORIENTATION, orientation, 0);
 
         camera->setParameters(params.flatten());
@@ -2055,6 +2068,15 @@ void stopPreview() {
 
 void initDefaults() {
 
+    struct CameraInfo cameraInfo;
+
+    camera->getCameraInfo(camera_index, &cameraInfo);
+    if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+        rotation = cameraInfo.orientation;
+    } else {  // back-facing
+        rotation = cameraInfo.orientation;
+    }
+
     antibanding_mode = getDefaultParameter("off", numAntibanding, antiband);
     focus_mode = getDefaultParameter("auto", numfocus, focus);
     fpsRangeIdx = getDefaultParameter("5000,30000", rangeCnt, fps_range_str);
@@ -2080,7 +2102,6 @@ void initDefaults() {
     metaDataToggle = false;
     expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
-    rotation = 0;
     previewRotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
@@ -2474,6 +2495,7 @@ int functional_menu() {
     int j = 0;
     int k = 0;
     const char *valstr = NULL;
+    struct CameraInfo cameraInfo;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -3069,11 +3091,20 @@ int functional_menu() {
                 ippIDX = 3;
                 params.set(KEY_IPP, ipp_mode[ippIDX]);
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             } else if ( !strcmp(modevalues[capture_mode], "video-mode") ) {
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::TRUE);
+                camera->getCameraInfo(camera_index, &cameraInfo);
+                previewRotation = ((360-cameraInfo.orientation)%360);
+                if (previewRotation >= 0 || previewRotation <=360) {
+                    params.set(KEY_SENSOR_ORIENTATION, previewRotation);
+                }
             } else {
                 ippIDX = ippIDX_old;
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             }
 
             params.set(KEY_MODE, (modevalues[capture_mode]));
