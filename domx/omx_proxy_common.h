@@ -159,6 +159,24 @@ extern "C"
 /*******************************************************************************
 * Structures
 *******************************************************************************/
+/**
+ * PROXY_BUFFER_ACCESSOR: This structure maintaines all possible accessors for an allocated buffer
+ *
+ * @param pBufferHandle:	This is a pointer to buffer handle
+ * @param bufferFd:		This is the context free file descriptor obtained by mapping
+ * @param pRegBufferHandle:	This is the handle obtained after registration of the buffer with rpmsg
+ * @param pBufferMappedAddress:	This is the mapped address of the buffer obtained after mapping
+ *
+ */
+ //move this structure to memmgr_util after its design and use it from there in PROXY_BUFFER_INFO
+ //TBD: if pRegBufferHandle can be part of this structure - it is kind of ION specific
+typedef struct PROXY_BUFFER_ACCESSOR
+{
+	OMX_PTR pBufferHandle;
+	OMX_U32 bufferFd;
+	OMX_PTR pRegBufferHandle;
+	OMX_PTR pBufferMappedAddress;
+}PROXY_BUFFER_ACCESSOR;
 /*===============================================================*/
 /** PROXY_BUFFER_INFO        : This structure maintains a table of A9 and
  *                             Ducati side buffers and headers.
@@ -167,26 +185,15 @@ extern "C"
  *
  * @param pBufHeaderRemote   : This is pointer to Ducati side bufferheader.
  *
- * @param pRegisteredAufBux0
- * @param pRegisteredAufBux1
- * @param pRegisteredAufBux2 : These are pointers to buffers registered with rpc driver
- *                             They will assigned when registering and used when
- *                             unregistering the buffer
+ * @param bufferAccessors[]	: This array contains the accessors {handle,reg handle, fd}
+ * 							  for Y,UV and metadata buffer in elements [0] [1] [2]
  */
 /*===============================================================*/
 	typedef struct PROXY_BUFFER_INFO
 	{
 		OMX_BUFFERHEADERTYPE *pBufHeader;
 		OMX_U32 pBufHeaderRemote;
-		OMX_PTR pYBuffer;
-		OMX_PTR pMetaDataBuffer;
-#ifdef USE_ION
-		int mmap_fd;
-		int mmap_fd_metadata_buff;
-		OMX_PTR pRegisteredAufBux0;
-		OMX_PTR pRegisteredAufBux1;
-		OMX_PTR pRegisteredAufBux2;
-#endif
+		PROXY_BUFFER_ACCESSOR bufferAccessors[3];
 	} PROXY_BUFFER_INFO;
 
 /*===============================================================*/
