@@ -315,32 +315,6 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
  EXIT:
 	return eRPCError;
 }
-
-static OMX_ERRORTYPE PROXY_AllocateBufferIonCarveout(PROXY_COMPONENT_PRIVATE *pCompPrv,
-						 size_t len, struct ion_handle **handle)
-{
-	int fd;
-	int ret;
-	struct ion_handle *temp;
-	size_t stride;
-
-	ret = ion_alloc(pCompPrv->nMemmgrClientDesc, len, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT, &temp);
-
-       if (ret || ((int)temp == -ENOMEM)) {
-               ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, len, 1, TILER_PIXEL_FMT_PAGE,
-                       OMAP_ION_HEAP_TILER_MASK, &temp, &stride);
-       }
-
-       if (ret || ((int)temp == -ENOMEM)) {
-               DOMX_ERROR("FAILED to allocate buffer of size=%d. ret=0x%x",len, ret);
-               return OMX_ErrorInsufficientResources;
-       }
-
-	if (ret)
-		return OMX_ErrorInsufficientResources;
-	*handle = temp;
-	return OMX_ErrorNone;
-}
 #endif
 
 /* ===========================================================================*/
