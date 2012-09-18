@@ -1834,6 +1834,46 @@ status_t OMXCameraAdapter::switchToLoaded(bool bPortEnableRequired) {
         }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
+    if ( !bPortEnableRequired ) {
+        OMXCameraPortParameters *mCaptureData , *mPreviewData, *measurementData;
+        mCaptureData = mPreviewData = measurementData = NULL;
+
+        mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
+        mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+        measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
+
+        ///Free the OMX Buffers
+        for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ ) {
+            eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                    mCameraAdapterParameters.mPrevPortIndex,
+                    mPreviewData->mBufferHeader[i]);
+
+            if(eError!=OMX_ErrorNone) {
+                CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+            }
+            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+        }
+
+        if ( mMeasurementEnabled ) {
+
+            for ( int i = 0 ; i < measurementData->mNumBufs ; i++ ) {
+                eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                        mCameraAdapterParameters.mMeasurementPortIndex,
+                        measurementData->mBufferHeader[i]);
+                if(eError!=OMX_ErrorNone) {
+                    CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+                }
+                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+            }
+
+            {
+                android::AutoMutex lock(mPreviewDataBufferLock);
+                mPreviewDataBuffersAvailable.clear();
+            }
+
+        }
+    }
+
     CAMHAL_LOGDA("Switching IDLE->LOADED state");
     ret = mSwitchToLoadedSem.WaitTimeout(OMX_CMD_TIMEOUT);
 
@@ -1868,6 +1908,11 @@ status_t OMXCameraAdapter::switchToLoaded(bool bPortEnableRequired) {
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    {
+        android::AutoMutex lock(mPreviewBufferLock);
+        ///Clear all the available preview buffers
+        mPreviewBuffersAvailable.clear();
+    }
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
@@ -2431,43 +2476,6 @@ status_t OMXCameraAdapter::stopPreview() {
     }
 
     mTunnelDestroyed = false;
-    OMXCameraPortParameters *mCaptureData , *mPreviewData, *measurementData;
-    mCaptureData = mPreviewData = measurementData = NULL;
-
-    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
-    mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
-    measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
-
-    ///Free the OMX Buffers
-    for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ ) {
-        eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                mCameraAdapterParameters.mPrevPortIndex,
-                mPreviewData->mBufferHeader[i]);
-
-        if(eError!=OMX_ErrorNone) {
-            CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-        }
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-    }
-
-    if ( mMeasurementEnabled ) {
-
-        for ( int i = 0 ; i < measurementData->mNumBufs ; i++ ) {
-            eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                    mCameraAdapterParameters.mMeasurementPortIndex,
-                    measurementData->mBufferHeader[i]);
-            if(eError!=OMX_ErrorNone) {
-                CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-            }
-            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-        }
-
-        {
-            android::AutoMutex lock(mPreviewDataBufferLock);
-            mPreviewDataBuffersAvailable.clear();
-        }
-
-    }
 
     {
         android::AutoMutex lock(mPreviewBufferLock);
@@ -2476,7 +2484,6 @@ status_t OMXCameraAdapter::stopPreview() {
     }
 
     switchToLoaded();
-
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
@@ -2487,18 +2494,6 @@ status_t OMXCameraAdapter::stopPreview() {
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
-
-EXIT:
-    CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
-    {
-        android::AutoMutex lock(mPreviewBufferLock);
-        ///Clear all the available preview buffers
-        mPreviewBuffersAvailable.clear();
-    }
-    performCleanupAfterError();
-    LOG_FUNCTION_NAME_EXIT;
-    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
-
 }
 
 status_t OMXCameraAdapter::setSensorOverclock(bool enable)
