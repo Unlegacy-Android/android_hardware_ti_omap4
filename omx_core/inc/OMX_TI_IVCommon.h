@@ -3661,6 +3661,30 @@ typedef struct OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE {
     OMX_TI_VECTSHOTSTOPMETHOD   eStopMethod;
 } OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE;
 
+/* Number of elements per color */
+#define OMX_TI_GAMMATABLE_SIZE (512)
+
+/**
+ * Describes each element of gamma table
+ */
+typedef struct OMX_TI_GAMMATABLE_ELEM_TYPE {
+    OMX_S16 nOffset;
+    OMX_S16 nSlope;
+} OMX_TI_GAMMATABLE_ELEM_TYPE;
+
+/**
+ * Gamma table
+ *
+ * STRUCT MEMBERS:
+ *  pR  : Red color table
+ *  pG  : Blue color table
+ *  pB  : Green color table
+ */
+typedef struct OMX_TI_CONFIG_GAMMATABLE_TYPE {
+    OMX_TI_GAMMATABLE_ELEM_TYPE pR[OMX_TI_GAMMATABLE_SIZE];
+    OMX_TI_GAMMATABLE_ELEM_TYPE pG[OMX_TI_GAMMATABLE_SIZE];
+    OMX_TI_GAMMATABLE_ELEM_TYPE pB[OMX_TI_GAMMATABLE_SIZE];
+} OMX_TI_CONFIG_GAMMATABLE_TYPE;
 /**
  * Define configuration structure to
  * specify computing of image pyramids

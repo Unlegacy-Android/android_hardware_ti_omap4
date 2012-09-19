@@ -250,7 +250,7 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigPortTapPoint,                     /**< 0x7F00009A reference: OMX_TI_CONFIG_PORTTAPPOINTTYPE */
     OMX_TI_IndexConfigDisableNSF2,                      /**< 0x7F00009B reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexConfigDisableSharpening,                /**< 0x7F00009C reference: OMX_CONFIG_BOOLEANTYPE */
-    OMX_TI_IndexConfigFixedGamma,                       /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigExternalGamma,                    /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexConfigDisableThreeLinColorMap,          /**< 0x7F00009E reference: OMX_CONFIG_BOOLEANTYPE */
     OMX_TI_IndexParamComponentBufferAllocation,         /**< 0x7F00009F reference: OMX_TI_PARAM_COMPONENTBUFALLOCTYPE */
     OMX_TI_IndexConfigEnqueueShotConfigs,               /**< 0x7F0000A0 reference: OMX_TI_CONFIG_ENQUEUESHOTCONFIGS */
@@ -275,9 +275,10 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_IndexParamVC1BitStreamFormatSupported,          /**< 0x7F000B1 reference: OMX_VC1BITSTREAMFORMATTYPE */
     OMX_IndexParamVC1BitStreamFormat,                   /**< 0x7F000B2 reference: OMX_VC1BITSTREAMFORMATTYPE */
     OMX_IndexParamVC1BitStreamFormatSelect,             /**< 0x7F000B3 reference: OMX_VC1BITSTREAMFORMATTYPE */
+    OMX_TI_IndexConfigGammaTable,                       /**< 0x7F0000B4 reference: OMX_TI_CONFIG_SHAREDBUFFER */
 
     /*H264 Encoder specific Indices*/
-    OMX_TI_IndexConfigVideoIntraRefresh,                /**< 0x7F000B4 reference: OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE */
+    OMX_TI_IndexConfigVideoIntraRefresh,                /**< 0x7F0000B5 reference: OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE */
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 
 } OMX_TI_INDEXTYPE;
