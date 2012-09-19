@@ -1709,6 +1709,10 @@ typedef enum OMX_EXT_EXTRADATATYPE {
     OMX_TI_FaceDetectionRaw,            /**< 0x7F000029 Face detect data without face tracking calculations */
     OMX_TI_HMSGamma,                    /**< 0x7F00002A Histogram Matched for Stereo Gamma table */
     OMX_TI_ImagePyramid,                /**< 0x7F00002B Describe image piramid sizes for each level of pyramid */
+    OMX_TI_ExtraData_AFStatistics,      /**< 0x7F00002C Auto Focus buffer and settings for corresponding frame */
+    OMX_TI_ExtraData_AEWBStatistics,    /**< 0x7F00002D Auto Exppsure, white balance buffer and settings for corresponding frame */
+    OMX_TI_ExtraData_BSCStatistics,     /**< 0x7F00002E Boundary signal calculator statistics for corresponding frame */
+    OMX_TI_ExtraData_AuxiliaryImage,    /**< 0x7F00002F Auxiliary image contains rescaled image at QVGA resolution */
     OMX_TI_ExtraData_Count,
     OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
     OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
@@ -3119,17 +3123,87 @@ typedef struct OMX_TI_PARAM_ENHANCEDPORTRECONFIG {
     OMX_BOOL bUsePortReconfigForPadding;
 } OMX_TI_PARAM_ENHANCEDPORTRECONFIG;
 
-
+/**
+* OMX_TI_H3aPAXELCFG: AF/AEWB paxel description structure
+* @param nVPos: vertical start point of paxel grid w.r.t first pixel of input image frame
+* @param nVSize: vertical paxel size
+* @param nHPos: horizontal start point of paxel grid w.r.t first pixel of input image frame
+* @param nHSize: horizontal paxel size
+* @param nVCount: num of vert paxels. AF/AEWB paxels are always adjacent to each other
+* @param nVIncr: num of pixels to skip within a paxel, vertically
+* @param nHCount: num of horz paxels. AF/AEWB paxels are always adjacent to each other
+* @param nHIncr: num of pixels to skip within a paxel, horizontally
+**/
 typedef struct {
-    OMX_U16 nVPos; //!< AEWINSTART WINSV  //AFPAXSTART PAXSV
-    OMX_U8  nVSize; //!< AEWWIN1 WINW      //AFPAX1 PAXH
-    OMX_U16 nHPos; //!< AEWINSTART WINSH  //AFPAXSTART PAXSH
-    OMX_U8  nHSize; //!< AEWWIN1 WINH      //AFPAX1 PAXW
-    OMX_U8  nVCount; //!< AEWWIN1 WINVC     //AFPAX2 PAXVC
-    OMX_U8  nVIncr; //!< AEWSUBWIN AEWINCV //AFPAX2 AFINCV
-    OMX_U8  nHCount; //!< AEWWIN1 WINHC     //AFPAX2 PAXHC
-    OMX_U8  nHIncr; //!< AEWSUBWIN AEWINCH //AFPAX2 AFINCH
-}OMX_TI_H3aPAXELCFG;
+    OMX_U16 nVPos;
+    OMX_U8  nVSize;
+    OMX_U16 nHPos;
+    OMX_U8  nHSize;
+    OMX_U8  nVCount;
+    OMX_U8  nVIncr;
+    OMX_U8  nHCount;
+    OMX_U8  nHIncr;
+} OMX_TI_H3aPAXELCFG;
+
+/**
+* OMX_TI_AF_COLOR_PAXEL_STATS: struct af_h3a_color_paxel
+* @param nSum                 : Sum of the pixels used to arrive at the statistics for a paxel
+* @param nFVSum             : Focus Value (sum/peak) for a paxel
+* @param nFVSquaredSum : Focus Value Squared (sum/peak) for a paxel
+* @param nReserved           : To be ignored
+**/
+typedef struct OMX_TI_AF_COLOR_PAXEL_STATS {
+    OMX_U32 nSum;
+    OMX_U32 nFVSum;
+    OMX_U32 nFVSquaredSum;
+    OMX_U32 nReserved;
+} OMX_TI_AF_COLOR_PAXEL_STATS;
+
+/**
+* OMX_TI_AFPAXELDATA
+* @param tGPaxel     : Paxel information for green color
+* @param tRBPaxel   : Paxel information for red/blue color
+* @param tBRPaxel   : Paxel information for blue/red color
+**/
+typedef struct {
+    OMX_TI_AF_COLOR_PAXEL_STATS tGPaxel;
+    OMX_TI_AF_COLOR_PAXEL_STATS tRBPaxel;
+    OMX_TI_AF_COLOR_PAXEL_STATS tBRPaxel;
+} OMX_TI_AFPAXELDATA;
+
+/**
+* OMX_TI_AF_RGB_POS_TYPE
+* Defines the RGB bayer pattern assumed while extracting AF statistics individually for R,G,B colour channels
+**/
+typedef enum OMX_TI_AF_RGB_POS_TYPE {
+    OMX_TI_AF_RGBPOSITION_BAYER_GR_GB = 0,
+    OMX_TI_AF_RGBPOSITION_BAYER_RG_GB = 1,
+    OMX_TI_AF_RGBPOSITION_BAYER_GR_BG = 2,
+    OMX_TI_AF_RGBPOSITION_BAYER_RG_BG = 3,
+    OMX_TI_AF_RGBPOSITION_CUSTOM_GG_RB = 4,
+    OMX_TI_AF_RGBPOSITION_CUSTOM_RB_GG = 5,
+    OMX_TI_AF_RGBPOSITION_BAYER_FORMAT = 0x7FFFFFFF
+} OMX_TI_AF_RGB_POS_TYPE;
+
+/* Max size of AF buffer output by ISP H3A engine */
+#define OMX_TI_AF_MAX_NUM_PAXELS (127 * 35)
+
+/**
+ * The extra data for AutoFocus data
+ * @param eAFBayerRgbPosition : When Vertical focus is disabled, R,G,B location w.r.t. to paxel start location is specified by this field.
+ * @param bAFPeakModeEnable : If enabled, peak for FV, FV^2 is computed for a paxel. If disabled, average of FV, FV^2 is computed for a paxel
+ * @param bAFVerticalFocusEnable : Whether vertical focus is enabled.
+ * @param tAFPaxelWindow : AF paxel description
+ * @param ptAFPaxelStatistics : Output AF buffer
+ */
+typedef struct OMX_TI_AF_STATISTICS_TYPE {
+    OMX_TI_AF_RGB_POS_TYPE eAFBayerRgbPosition;
+    OMX_BOOL               bAFPeakModeEnable;
+    OMX_BOOL               bAFVerticalFocusEnable;
+    OMX_TI_H3aPAXELCFG     tAFPaxelWindow;
+    OMX_TI_AFPAXELDATA     ptAFPaxelStatistics[OMX_TI_AF_MAX_NUM_PAXELS];
+} OMX_TI_AF_STATISTICS_TYPE;
+
 
 typedef struct {
     /** Average value for red pixels in current paxel */
@@ -3150,6 +3224,127 @@ typedef struct OMX_TI_H3AAFDATA {
     OMX_TI_CAMERAVIEWTYPE eCameraView;
     OMX_U8               *data;
 } OMX_TI_H3AAFDATA;
+
+
+#define OMX_TI_AEWB_MAX_NUM_PAXELS (35 * 127)
+
+/**
+* OMX_TI_AEWBPAXELDATA
+* @param nSubsampleAccumulatedValues[4]         : Sub sample accumulator(s), not-clipped. Seperate for each pixel in 2x2 sub-sample
+* @param nSaturatorAccumulatedValues[4]           : Saturator accumulator(s), clipped based upon threshold. Seperate for each pixel in 2x2 sub-sample
+* @param nUnsaturatedCount : Count of unsaturated 2x2 sub-samples in a paxel
+**/
+typedef struct OMX_TI_AEWBPAXELDATA {
+    OMX_U16 nSubsampleAccumulatedValues[4];
+    OMX_U16 nSaturatorAccumulatedValues[4];
+    OMX_U32 nUnsaturatedCount;
+} OMX_TI_AEWBPAXELDATA;
+
+/**
+* OMX_TI_AEWBMODE
+* @enum OMX_TI_AEWB_MODE_SUM_OF_SQUARE    : Sum of square calculated across sub-samples in a paxel
+* @enum OMX_TI_AEWB_MODE_MINMAX                  : Min-max calculted across sub-samples in a paxel
+* @enum OMX_TI_AEWB_MODE_SUM_ONLY              : Only Sum calculated across sub-samples in a paxel
+**/
+typedef enum {
+    OMX_TI_AEWB_MODE_SUM_OF_SQUARE=0,
+    OMX_TI_AEWB_MODE_MINMAX=1,
+    OMX_TI_AEWB_MODE_SUM_ONLY=2,
+    OMX_TI_AEWB_MODE_MAX = 0x7FFFFFFF
+} OMX_TI_AEWBMODE;
+
+/**
+ * The extra data for AutoExposure, AutoWhiteBalance data
+ * @param eAEWBMode : AEWB mode
+ * @param nAEWBThresholdPixelValue : Threshold against which pixel values are compared
+ * @param nAccumulationShift : Right shift value applied on result of pixel accumulation
+ * @param tAEWBPaxelWindow : AE/AWB paxel description
+ * @param ptAEWBPaxelStatistics : Output AE/AWB buffer
+ */
+typedef struct OMX_TI_AEWB_STATISTICS_TYPE {
+    OMX_TI_AEWBMODE               eAEWBMode;
+    OMX_U16                       nAEWBThresholdPixelValue;
+    OMX_U8                        nAccumulationShift;
+    OMX_TI_H3aPAXELCFG            tAEWBPaxelWindow;
+    OMX_TI_AEWBPAXELDATA          ptAEWBPaxelStatistics[OMX_TI_AEWB_MAX_NUM_PAXELS];
+} OMX_TI_AEWB_STATISTICS_TYPE;
+
+
+
+typedef enum OMX_TI_BSC_COLOUR_ELEMENT_TYPE {
+    OMX_TI_BSC_COLOUR_ELEMENT_Y = 0,
+    OMX_TI_BSC_COLOUR_ELEMENT_Cb = 1,
+    OMX_TI_BSC_COLOUR_ELEMENT_Cr = 2,
+    OMX_TIBSC_COLOUR_ELEMENT_MAX = 0x7FFFFFFF
+} OMX_TI_BSC_COLOUR_ELEMENT_TYPE;
+
+
+/**
+ * OMX_TI_BSC_POSITIONPARAMETERS
+ * @param nVectors : number of row/column sum vectors. Max value = 4
+ * @param nShift : down-shift of input data
+ * @param nVPos : vertical position of first pixel to be summed
+ * @param nHPos : horizontal position of first pixel to be summed
+ * @param nVNum : number of pixels sampled vertically
+ * @param nHNum : number of pixels sampled horizontally
+ * @param nVSkip : vertical spacing between adjacent pixels to be summed
+ * @param nHSkip : horizontal pixel spacing between adjacent pixels to be summed
+ *
+ * The number of row/column sums cannot exceed 1920, implies:
+ *   -  (nVectors + 1) * (nVNum) <=1920, for row sums
+ *   -  (nVectors + 1) * (nHNum) <=1920, for column sums
+ */
+typedef struct OMX_TI_BSC_POSITIONPARAMETERS {
+    OMX_U8  nVectors;
+    OMX_U8  nShift;
+    OMX_U16 nVPos;
+    OMX_U16 nHPos;
+    OMX_U16 nVNum;
+    OMX_U16 nHNum;
+    OMX_U8  nVSkip;
+    OMX_U8  nHSkip;
+} OMX_TI_BSC_POSITIONPARAMETERS;
+
+/* Max number of row/column sums supported by Bsc engine*/
+#define OMX_TI_BSC_MAX_NUM_ROW_COLUMN_SUMS (1920)
+
+/**
+ * The extra data for ISP Boundary Signal Calculator engine
+ * @param eBscColourElement : Selects the element to be summed (Y, Cb or Cr)
+ * @param nRowPosition : Bsc row sum descriptor
+ * @param nColumnPosition : Bsc column sum descriptor
+ * @param ptBscRowSumData : Each value corresponds to sum value in a row.
+ *                          Num of row sums = nRowPosition.nVectors * nRowPosition.VNum
+ * @param ptBscColumnSumData : Each value corresponds to sum value in a column.
+ *                             Num of column sums = nColumnPosition.nVectors * nColumnPosition.HNum
+ */
+typedef struct OMX_TI_BSC_STATISTICS_TYPE {
+    OMX_TI_BSC_COLOUR_ELEMENT_TYPE eBscColourElement;
+    OMX_TI_BSC_POSITIONPARAMETERS  nRowPosition;
+    OMX_TI_BSC_POSITIONPARAMETERS  nColumnPosition;
+    OMX_U16                        ptBscRowSumData[OMX_TI_BSC_MAX_NUM_ROW_COLUMN_SUMS];
+    OMX_U16                        ptBscColumnSumData[OMX_TI_BSC_MAX_NUM_ROW_COLUMN_SUMS];
+} OMX_TI_BSC_STATISTICS_TYPE;
+
+
+#define AUX_IMAGEDATA_MAX_SIZE_BYTES     ((320 * 240 * 3)/2)
+
+/**
+ * The extra data for AuxiliaryImageData
+ * @param eAuxImageFormat : Format of image. In case of Aux buffer, it is OMX_COLOR_FormatYUV420SemiPlanar (YUV 4:2:0)
+ * @param nAuxImageWidth : Width of Auxiliary Image (<=320)
+ * @param nAuxImageHeight : Height of Auxiliary Image (<=240)
+ * @param nAuxImageStrideBytes : Width in bytes for auxiliary buffer. In case of YUV4:2:0, stride for UV component is half of this value.
+ * @param ptAuxImage : Data Pointer for Auxiliary data. First 320*240 bytes is Y Component. Remaining is UV component.
+ */
+typedef struct OMX_TI_AUX_IMAGEDATA_TYPE {
+    OMX_COLOR_FORMATTYPE      eAuxImageFormat;
+    OMX_U16                   nAuxImageWidth;
+    OMX_U16                   nAuxImageHeight;
+    OMX_U16                   nAuxImageStrideBytes;
+    OMX_U8                    ptAuxImage[AUX_IMAGEDATA_MAX_SIZE_BYTES];
+} OMX_TI_AUX_IMAGEDATA_TYPE;
+
 
 /**
 * Data structure carrying information about
