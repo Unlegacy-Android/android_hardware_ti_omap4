@@ -1040,15 +1040,15 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 
 #endif
 
-    mFramesType.add( (int)mBuffers[i].opaque ,dispFrame.mType );
+    android::AutoMutex lock(mLock);
+
+    mFramesType.add( (int)mBuffers[i].opaque, dispFrame.mType);
 
     if ( mDisplayState == ANativeWindowDisplayAdapter::DISPLAY_STARTED &&
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
     {
         uint32_t xOff, yOff;
-
-        android::AutoMutex lock(mLock);
 
         CameraHal::getXYFromOffset(&xOff, &yOff, dispFrame.mOffset, PAGE_SIZE, mPixelFormat);
 
@@ -1089,7 +1089,6 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     }
     else
     {
-        android::AutoMutex lock(mLock);
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
 
         // unlock buffer before giving it up
@@ -1121,6 +1120,8 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     int stride;  // dummy variable to get stride
     android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
     android::Rect bounds;
+    CameraFrame::FrameType frameType = CameraFrame::PREVIEW_FRAME_SYNC;
+
     void *y_uv[2];
 
     // TODO(XXX): Do we need to keep stride information in camera hal?
@@ -1183,18 +1184,19 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     {
         android::AutoMutex lock(mLock);
         mFramesWithCameraAdapterMap.add((buffer_handle_t *) mBuffers[i].opaque, i);
-    }
 
-    for( k = 0; k < mFramesType.size() ; k++) {
-        if(mFramesType.keyAt(k) == (int)mBuffers[i].opaque)
-            break;
-    }
-    if ( k == mFramesType.size() ) {
-        CAMHAL_LOGE("Frame type for preview buffer 0%x not found!!", mBuffers[i].opaque);
-        return false;
-    }
+        for( k = 0; k < mFramesType.size() ; k++) {
+            if(mFramesType.keyAt(k) == (int)mBuffers[i].opaque)
+                break;
+        }
 
-    CameraFrame::FrameType frameType = (CameraFrame::FrameType) mFramesType.valueAt(k);
+        if ( k == mFramesType.size() ) {
+            CAMHAL_LOGE("Frame type for preview buffer 0%x not found!!", mBuffers[i].opaque);
+            return false;
+        }
+
+        frameType = (CameraFrame::FrameType) mFramesType.valueAt(k);
+    }
 
     CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
     mFrameProvider->returnFrame(&mBuffers[i], frameType);
