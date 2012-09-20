@@ -4011,6 +4011,7 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             const char *config = cmd_args->script_file_name;
             char dir_name[40];
             size_t count = 0;
+            char *p;
 
             // remove just the '.txt' part of the config
             while ((config[count] != '.') && ((count + 1) < sizeof(dir_name))) {
@@ -4020,6 +4021,15 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             strncpy(dir_name, config, count);
 
             dir_name[count] = NULL;
+            p = dir_name;
+            while (*p != '\0') {
+                if (*p == '/') {
+                    printf("SDCARD_PATH is not added to the output directory.\n");
+                    // Needed when camera_test script is executed using the OTC
+                    strcpy(output_dir_path, "");
+                    break;
+                }
+            }
 
             strcat(output_dir_path, dir_name);
             if (camera_index == 1) {
