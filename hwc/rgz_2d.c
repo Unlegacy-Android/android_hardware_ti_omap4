@@ -1231,13 +1231,16 @@ static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, bl
      * If the layer is scaled we use the whole cropping rectangle from the
      * source and just move the clipping rectangle for the region we want to
      * blit, this is done to prevent any artifacts when blitting subregions of
-     * a scaled layer
+     * a scaled layer. If there is a transform, adjust the width and height
+     * accordingly to match the rotated buffer geometry.
      */
     if (rgz_hwc_scaled(layer)) {
         delta_top = 0;
         delta_left = 0;
         res_width = WIDTH(layer->sourceCrop);
         res_height = HEIGHT(layer->sourceCrop);
+        if (layer->transform & HAL_TRANSFORM_ROT_90)
+            swap(res_width , res_height);
     } else {
         delta_top = subregion_rect->top - layer->displayFrame.top;
         delta_left = subregion_rect->left - layer->displayFrame.left;
