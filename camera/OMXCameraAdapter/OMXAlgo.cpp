@@ -52,6 +52,9 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
         } else if (strcmp(valstr, (const char *) TICameraParameters::EXPOSURE_BRACKETING) == 0) {
             capMode = OMXCameraAdapter::HIGH_SPEED;
             mCapabilitiesOpMode = MODE_HIGH_SPEED;
+        } else if (strcmp(valstr, (const char *) TICameraParameters::ZOOM_BRACKETING) == 0) {
+            capMode = OMXCameraAdapter::HIGH_SPEED;
+            mCapabilitiesOpMode = MODE_HIGH_SPEED;
         } else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_MODE) == 0) {
             capMode = OMXCameraAdapter::HIGH_QUALITY;
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
