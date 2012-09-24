@@ -18,34 +18,37 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
-#include <linux/fb.h>
-#include <linux/omapfb.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
-#include <stdbool.h>
 
 #include <cutils/properties.h>
 #include <cutils/log.h>
 #include <cutils/native_handle.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
-#include <EGL/egl.h>
 #include <hardware_legacy/uevent.h>
-#include <png.h>
-#include <utils/Timers.h>
-
 #include <system/graphics.h>
 #include <ui/S3DFormat.h>
+#include <utils/Timers.h>
+#include <EGL/egl.h>
+#include <png.h>
 #include <edid_parser.h>
 
+#include <linux/fb.h>
+#include <linux/omapfb.h>
 #include <linux/bltsville.h>
+#include <linux/ion.h>
+#include <linux/omap_ion.h>
+#include <ion/ion.h>
+#include <video/dsscomp.h>
+#include <video/omap_hwc.h>
 
-#define MAX_HWC_LAYERS 32
-
-#define ASPECT_RATIO_TOLERANCE 0.02f
+#include "hal_public.h"
+#include "rgz_2d.h"
 
 #define min(a, b) ( { typeof(a) __a = (a), __b = (b); __a < __b ? __a : __b; } )
 #define max(a, b) ( { typeof(a) __a = (a), __b = (b); __a > __b ? __a : __b; } )
@@ -56,19 +59,11 @@
 
 #define DIV_ROUND_UP(a, b) (((a) + (b) - 1) / (b))
 
-#include <video/dsscomp.h>
-#include <video/omap_hwc.h>
-
-#include "hal_public.h"
-#include "rgz_2d.h"
-
-#include <linux/ion.h>
-#include <linux/omap_ion.h>
-#include <ion/ion.h>
-
+#define MAX_HWC_LAYERS 32
 #define MAX_HW_OVERLAYS 4
 #define NUM_NONSCALING_OVERLAYS 1
 #define NUM_EXT_DISPLAY_BACK_BUFFERS 2
+#define ASPECT_RATIO_TOLERANCE 0.02f
 
 struct ext_transform {
     uint8_t rotation : 3;          /* 90-degree clockwise rotations */
