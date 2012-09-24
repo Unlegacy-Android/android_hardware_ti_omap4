@@ -571,6 +571,7 @@ typedef enum OMX_TI_VIDEO_INTRAREFRESHTYPE {
     OMX_TI_VIDEO_IntraRefreshCyclicMbs,
     OMX_TI_VIDEO_IntraRefreshCyclicRows,
     OMX_TI_VIDEO_IntraRefreshMandatory,
+    OMX_TI_VIDEO_IntraRefreshAdaptive,
     OMX_TI_VIDEO_IntraRefreshMax = 0x7FFFFFFF
 } OMX_TI_VIDEO_INTRAREFRESHTYPE;
 
@@ -591,6 +592,27 @@ typedef struct OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE {
     OMX_TI_VIDEO_INTRAREFRESHTYPE eRefreshMode;
     OMX_U32                       nIntraRefreshRate;
 } OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE;
+
+
+/* ========================================================================== */
+/*!
+ @brief OMX_TI_VIDEO_CONFIG_AVCINTRAREFRESHTYPE  : Configuration parameters for H264 Encoder
+                                               intra refresh settings
+ @param  eRefreshMode           Various refresh modes supported
+ @param  nIntraRefreshRate      Intra refresh rate
+  @param  nGDROverlapRows     Number of rows overlap between successive GDR frames if RefreshMode set to GDR.
+                                                   Else don't care. Value should be less than intraRefreshRate.
+*/
+/* ==========================================================================*/
+
+typedef struct OMX_TI_VIDEO_CONFIG_AVCINTRAREFRESHTYPE {
+    OMX_U32                       nSize;
+    OMX_VERSIONTYPE               nVersion;
+    OMX_U32                       nPortIndex;
+    OMX_TI_VIDEO_INTRAREFRESHTYPE eRefreshMode;
+    OMX_U32                       nIntraRefreshRate;
+    OMX_U32                       nGDROverlapRows;
+} OMX_TI_VIDEO_CONFIG_AVCINTRAREFRESHTYPE;
 
 
 /* ============================================================================= */
