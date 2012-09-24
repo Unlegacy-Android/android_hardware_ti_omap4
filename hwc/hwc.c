@@ -663,7 +663,7 @@ static void m_rotate(float m[2][3], int quarter_turns)
     if (quarter_turns & 2)
         m_scale(m, 1, -1, 1, -1);
     if (quarter_turns & 1) {
-        int q;
+        float q;
         q = m[0][0]; m[0][0] = -m[1][0]; m[1][0] = q;
         q = m[0][1]; m[0][1] = -m[1][1]; m[1][1] = q;
         q = m[0][2]; m[0][2] = -m[1][2]; m[1][2] = q;
