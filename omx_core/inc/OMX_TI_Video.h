@@ -572,6 +572,7 @@ typedef enum OMX_TI_VIDEO_INTRAREFRESHTYPE {
     OMX_TI_VIDEO_IntraRefreshCyclicRows,
     OMX_TI_VIDEO_IntraRefreshMandatory,
     OMX_TI_VIDEO_IntraRefreshAdaptive,
+    OMX_TI_VIDEO_IntraRefreshGDR,
     OMX_TI_VIDEO_IntraRefreshMax = 0x7FFFFFFF
 } OMX_TI_VIDEO_INTRAREFRESHTYPE;
 
