@@ -639,7 +639,7 @@ static void omap4_hwc_setup_layer(omap4_hwc_device_t *hwc_dev, struct dss2_ovl_i
 
 const float m_unit[2][3] = { { 1., 0., 0. }, { 0., 1., 0. } };
 
-static inline void m_translate(float m[2][3], int dx, int dy)
+static inline void m_translate(float m[2][3], float dx, float dy)
 {
     m[0][2] += dx;
     m[1][2] += dy;
@@ -718,7 +718,7 @@ static void set_ext_matrix(omap4_hwc_ext_t *ext, struct hwc_rect region)
        m = (center-from-target-center) * (scale-to-target) * (mirror) * (rotate) * (center-to-original-center) */
 
     memcpy(ext->m, m_unit, sizeof(m_unit));
-    m_translate(ext->m, -(orig_w >> 1) - region.left, -(orig_h >> 1) - region.top);
+    m_translate(ext->m, -(orig_w / 2.0f) - region.left, -(orig_h / 2.0f) - region.top);
     m_rotate(ext->m, ext->current.rotation);
     if (ext->current.hflip)
         m_scale(ext->m, 1, -1, 1, 1);
