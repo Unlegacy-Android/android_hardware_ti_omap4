@@ -1197,6 +1197,7 @@ private:
     android::Mutex mImageCaptureLock;
 
     bool mTunnelDestroyed;
+    bool mPreviewPortInitialized;
 
 };
 

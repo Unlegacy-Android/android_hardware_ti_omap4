@@ -1112,6 +1112,15 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
 
         mPreviewData->mWidth = tmpWidth;
         mPreviewData->mHeight = tmpHeight;
+        mPreviewPortInitialized = true;
+    }
+    else if (!mPreviewPortInitialized) {
+        ret = setFormat(OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error while configuring format 0x%x", ret);
+            return ret;
+        }
+        mPreviewPortInitialized = true;
     }
 
     /* Now set Required Orientation*/
