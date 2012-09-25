@@ -90,7 +90,8 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../domx \
 	$(HARDWARE_TI_OMAP4_BASE)/include/ \
 	$(LOCAL_PATH)/../domx/omx_rpc/inc \
-	$(LOCAL_PATH)/../domx/plugins/inc/
+	$(LOCAL_PATH)/../domx/plugins/inc/ \
+	$(LOCAL_PATH)/omx_camera/inc/
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
