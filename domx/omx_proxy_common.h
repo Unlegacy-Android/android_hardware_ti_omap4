@@ -71,6 +71,7 @@ extern "C"
 #include "omx_rpc.h"
 #include "omx_rpc_internal.h"
 #include "omx_rpc_utils.h"
+#include "memplugin.h"
 
 /****************************************************************
  * PUBLIC DECLARATIONS Defined here, used elsewhere
@@ -143,6 +144,14 @@ extern "C"
     } \
 } while(0)
 
+#define MEMPLUGIN_BUFFER_PARAMS_INIT(MEMPLUGIN_bufferinfo) do {\
+        MEMPLUGIN_bufferinfo.eBuffer_type = DEFAULT;\
+        MEMPLUGIN_bufferinfo.nHeight = 1;\
+        MEMPLUGIN_bufferinfo.nWidth  = -1;\
+        MEMPLUGIN_bufferinfo.bMap   = OMX_FALSE;\
+        MEMPLUGIN_bufferinfo.eTiler_format = -1;\
+} while(0)
+
 	typedef OMX_ERRORTYPE(*PROXY_EMPTYBUFFER_DONE) (OMX_HANDLETYPE
 	    hComponent, OMX_U32 remoteBufHdr, OMX_U32 nfilledLen,
 	    OMX_U32 nOffset, OMX_U32 nFlags);
@@ -159,24 +168,6 @@ extern "C"
 /*******************************************************************************
 * Structures
 *******************************************************************************/
-/**
- * PROXY_BUFFER_ACCESSOR: This structure maintaines all possible accessors for an allocated buffer
- *
- * @param pBufferHandle:	This is a pointer to buffer handle
- * @param bufferFd:		This is the context free file descriptor obtained by mapping
- * @param pRegBufferHandle:	This is the handle obtained after registration of the buffer with rpmsg
- * @param pBufferMappedAddress:	This is the mapped address of the buffer obtained after mapping
- *
- */
- //move this structure to memmgr_util after its design and use it from there in PROXY_BUFFER_INFO
- //TBD: if pRegBufferHandle can be part of this structure - it is kind of ION specific
-typedef struct PROXY_BUFFER_ACCESSOR
-{
-	OMX_PTR pBufferHandle;
-	OMX_U32 bufferFd;
-	OMX_PTR pRegBufferHandle;
-	OMX_PTR pBufferMappedAddress;
-}PROXY_BUFFER_ACCESSOR;
 /*===============================================================*/
 /** PROXY_BUFFER_INFO        : This structure maintains a table of A9 and
  *                             Ducati side buffers and headers.
@@ -193,7 +184,7 @@ typedef struct PROXY_BUFFER_ACCESSOR
 	{
 		OMX_BUFFERHEADERTYPE *pBufHeader;
 		OMX_U32 pBufHeaderRemote;
-		PROXY_BUFFER_ACCESSOR bufferAccessors[3];
+		MEMPLUGIN_BUFFER_ACCESSOR bufferAccessors[3];
 	} PROXY_BUFFER_INFO;
 
 /*===============================================================*/
@@ -282,9 +273,7 @@ typedef struct PROXY_BUFFER_ACCESSOR
 #endif
 		OMX_U32 nMemmgrClientDesc;
 		OMX_BOOL bMapBuffers;
-#ifdef USE_ION
-		OMX_BOOL bUseIon;
-#endif
+		OMX_PTR  pMemPluginHandle;
 #ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
 		DebugFrame_Dump debugframeInfo;
 #endif

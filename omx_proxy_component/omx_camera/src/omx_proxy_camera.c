@@ -135,16 +135,14 @@ OMX_S32 dccbuf_size = 0;
 /* Ducati Mapped Addr  */
 OMX_PTR DCC_Buff = NULL;
 
-#ifdef USE_ION
 OMX_PTR DCC_Buff_ptr = NULL;
 int ion_fd;
 int mmap_fd;
-#endif
 
 OMX_S32 read_DCCdir(OMX_PTR, OMX_STRING *, OMX_U16);
 OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE);
 OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent);
-void DCC_DeInit();
+void DCC_DeInit(OMX_HANDLETYPE);
 OMX_ERRORTYPE PROXY_ComponentDeInit(OMX_HANDLETYPE);
 OMX_ERRORTYPE __PROXY_SetConfig(OMX_HANDLETYPE, OMX_INDEXTYPE,
 								OMX_PTR, OMX_PTR);
@@ -455,7 +453,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
                 {
                     DOMX_ERROR(" Error in Sending DCC Buf ptr");
                 }
-                DCC_DeInit();
+                DCC_DeInit(hComponent);
             }
             dcc_loaded = OMX_TRUE;
         }
@@ -693,7 +691,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
     OMX_U32 i = 0, j = 0;
     OMX_PROXY_CAM_PRIVATE* pCamPrv;
-
+	MEMPLUGIN_ERRORTYPE eMemError = MEMPLUGIN_ERROR_NONE;
 	pHandle = (OMX_COMPONENTTYPE *) hComponent;
 	TIMM_OSAL_ERRORTYPE eOsalError = TIMM_OSAL_ERR_NONE;
 	DOMX_ENTER("_____________________INSIDE CAMERA PROXY"
@@ -733,7 +731,14 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
         pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pComponentPrivate->pCompProxyPrv;
         TIMM_OSAL_Memset(pComponentPrivate->pCompProxyPrv, 0,
                 sizeof(OMX_PROXY_CAM_PRIVATE));
-
+	eMemError = MemPlugin_Configure("MEMUTIL_ION",&(pComponentPrivate->pMemPluginHandle));
+	if(eMemError != MEMPLUGIN_ERROR_NONE)
+	{
+		DOMX_ERROR("MEMPLUGIN configure step failed");
+		eError = OMX_ErrorUndefined;
+		goto EXIT;
+	}
+	pComponentPrivate->bMapBuffers = OMX_TRUE;
 	/*Calling Proxy Common Init() */
 	eError = OMX_ProxyCommonInit(hComponent);
 	if (eError != OMX_ErrorNone)
@@ -777,10 +782,11 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	OMX_PTR ptempbuf;
 	OMX_U16 nIndex = 0;
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
-#ifdef USE_ION
-	int ret;
-	size_t stride;
-#endif
+	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
+	OMX_COMPONENTTYPE *pHandle = NULL;
+	MEMPLUGIN_BUFFER_PARAMS sDccBuff_params;
+	MEMPLUGIN_BUFFER_PROPERTIES sDccBuff_prop;
+	MEMPLUGIN_ERRORTYPE eMemError = MEMPLUGIN_ERROR_NONE;
 
 	OMX_S32 status = 0;
 	OMX_STRING dcc_dir[200];
@@ -788,6 +794,14 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	_PROXY_OMX_INIT_PARAM(&param, OMX_TI_PARAM_DCCURIINFO);
 
 	DOMX_ENTER("ENTER");
+	pHandle = (OMX_COMPONENTTYPE *) hComponent;
+	pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)pHandle->pComponentPrivate;
+	if(pComponentPrivate == NULL)
+	{
+	       eError = OMX_ErrorBadParameter;
+	       DOMX_ERROR("%s: Component private data NULL",__FUNCTION__);
+	       goto EXIT;
+	}
 	/* Read the the DCC URI info */
 	for (nIndex = 0; eError != OMX_ErrorNoMore; nIndex++)
 	{
@@ -828,43 +842,35 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	    DOMX_DEBUG("No DCC files found, switching back to default DCC");
         return OMX_ErrorInsufficientResources;
     }
+    eMemError = MemPlugin_Configure("MEMPLUGIN_ION",&(pComponentPrivate->pMemPluginHandle));
+	if(eMemError != MEMPLUGIN_ERROR_NONE)
+	{
+		DOMX_ERROR("MEMPLUGIN configure step failed");
+		eError = OMX_ErrorUndefined;
+		goto EXIT;
+	}
+	pComponentPrivate->bMapBuffers = OMX_TRUE;
 
-#ifdef USE_ION
-	ion_fd = ion_open();
-	if(ion_fd == 0)
+	eMemError = MemPlugin_Open(pComponentPrivate->pMemPluginHandle,&(pComponentPrivate->nMemmgrClientDesc));
+	if(eMemError != MEMPLUGIN_ERROR_NONE)
 	{
 		DOMX_ERROR("ion_open failed!!!");
-		return OMX_ErrorInsufficientResources;
+		eError = OMX_ErrorInsufficientResources;
+		goto EXIT;
 	}
 	dccbuf_size = (dccbuf_size + LINUX_PAGE_SIZE -1) & ~(LINUX_PAGE_SIZE - 1);
-	ret = ion_alloc(ion_fd, dccbuf_size, 0x1000, 1 << ION_HEAP_TYPE_CARVEOUT,
-		(struct ion_handle **)&DCC_Buff);
-
-        if (ret || ((int)DCC_Buff == -ENOMEM)) {
-                ret = ion_alloc_tiler(ion_fd, dccbuf_size, 1, TILER_PIXEL_FMT_PAGE,
-                                OMAP_ION_HEAP_TILER_MASK, &DCC_Buff, &stride);
-        }
-
-        if (ret || ((int)DCC_Buff == -ENOMEM)) {
-                DOMX_ERROR("FAILED to allocate DCC buffer of size=%d. ret=0x%x",
-                                        dccbuf_size, ret);
-                return OMX_ErrorInsufficientResources;
-        }
-
-	if (ion_map(ion_fd, DCC_Buff, dccbuf_size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                   (unsigned char **)&DCC_Buff_ptr, &mmap_fd) < 0)
-	{
-		DOMX_ERROR("userspace mapping of ION buffers returned error");
-		return OMX_ErrorInsufficientResources;
-	}
+	MEMPLUGIN_BUFFER_PARAMS_INIT(sDccBuff_params);
+	sDccBuff_params.nWidth = dccbuf_size;
+	sDccBuff_params.bMap = pComponentPrivate->bMapBuffers;
+	eMemError = MemPlugin_Alloc(pComponentPrivate->pMemPluginHandle,pComponentPrivate->nMemmgrClientDesc,&sDccBuff_params,&sDccBuff_prop);
+	DCC_Buff = sDccBuff_prop.sBuffer_accessor.pBufferHandle;
+	DCC_Buff_ptr = sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress;
+	mmap_fd = sDccBuff_prop.sBuffer_accessor.bufferFd;
 	ptempbuf = DCC_Buff_ptr;
-#endif
 	dccbuf_size = read_DCCdir(ptempbuf, dcc_dir, nIndex);
-
 	PROXY_assert(dccbuf_size > 0, OMX_ErrorInsufficientResources,
 		"ERROR in copy DCC files into buffer");
-
- EXIT:
+EXIT:
 	for (i = 0; i < nIndex - 1; i++)
 	{
 			TIMM_OSAL_Free(dcc_dir[i]);
@@ -889,18 +895,20 @@ OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent)
 {
 	OMX_TI_CONFIG_SHAREDBUFFER uribufparam;
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
+	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
+	OMX_COMPONENTTYPE *pHandle = NULL;
 
 	_PROXY_OMX_INIT_PARAM(&uribufparam, OMX_TI_CONFIG_SHAREDBUFFER);
 	uribufparam.nPortIndex = OMX_ALL;
 
 	DOMX_ENTER("ENTER");
-
+	pHandle = (OMX_COMPONENTTYPE *) hComponent;
+	pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)pHandle->pComponentPrivate;
 	uribufparam.nSharedBuffSize = dccbuf_size;
-#ifdef USE_ION
+if(pComponentPrivate->bMapBuffers)
 	uribufparam.pSharedBuff = (OMX_PTR) mmap_fd;
-#else
+else
 	uribufparam.pSharedBuff = (OMX_PTR) DCC_Buff;
-#endif
 
 	DOMX_DEBUG("SYSLINK MAPPED ADDR:  0x%x sizeof buffer %d",
 		uribufparam.pSharedBuff, uribufparam.nSharedBuffSize);
@@ -1010,25 +1018,33 @@ OMX_S32 read_DCCdir(OMX_PTR buffer, OMX_STRING * dir_path, OMX_U16 numofURI)
 /**
  * @name DCC_Deinit()
  * @brief
- * @param void
+ * @param hComponent: OMX_HANDLETYPE
  * @return void
  * @sa TBD
  *
  */
 /* ===========================================================================*/
-void DCC_DeInit()
+void DCC_DeInit(OMX_HANDLETYPE hComponent)
 {
+	OMX_S16 status;
+	MEMPLUGIN_BUFFER_PARAMS sDccBuff_params;
+	MEMPLUGIN_BUFFER_PROPERTIES sDccBuff_prop;
+	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
+	OMX_COMPONENTTYPE *pHandle = NULL;
 	DOMX_ENTER("ENTER");
-
+	pHandle = (OMX_COMPONENTTYPE *) hComponent;
+	pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)pHandle->pComponentPrivate;
 	if (DCC_Buff)
 	{
-#ifdef USE_ION
-		munmap(DCC_Buff_ptr, dccbuf_size);
-		close(mmap_fd);
-		ion_free(ion_fd, DCC_Buff);
-		ion_close(ion_fd);
+		MEMPLUGIN_BUFFER_PARAMS_INIT(sDccBuff_params);
+		sDccBuff_prop.sBuffer_accessor.pBufferHandle = DCC_Buff;
+		sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress = DCC_Buff_ptr;
+		sDccBuff_prop.sBuffer_accessor.bufferFd = mmap_fd;
+		sDccBuff_params.nWidth = dccbuf_size;
+		MemPlugin_Free(pComponentPrivate->pMemPluginHandle,pComponentPrivate->nMemmgrClientDesc,&sDccBuff_params,&sDccBuff_prop);
 		DCC_Buff = NULL;
-#endif
+		mmap_fd = -1;
+		DCC_Buff_ptr = NULL;
 	}
 
 	DOMX_EXIT("EXIT");
