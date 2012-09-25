@@ -310,9 +310,11 @@ struct surfaceinfo {
 
 	/* Surface geometry. */
 	struct bvsurfgeom *geom;
+	bool newgeom;
 
 	/* Rectangle to source from/render to. */
 	struct gcrect rect;
+	bool newrect;
 
 	/* Surface format. */
 	struct bvformatxlate format;
@@ -381,6 +383,27 @@ struct gcfilter {
 	/* Scale factors. */
 	unsigned int horscalefactor;
 	unsigned int verscalefactor;
+
+	/* Destination angle. */
+	bool angleoverride;
+	int dstangle;
+
+	/* Geometry size that follows angle adjustments. */
+	struct bvsurfgeom dstgeom;
+
+	/* Original source and destination rectangles adjusted
+	 * by the source angle. */
+	struct gcrect dstrect;
+	struct gcrect dstrectaux;
+
+	/* Clipped destination rectangle adjusted by the source angle. */
+	struct gcrect dstclipped;
+	struct gcrect dstclippedaux;
+
+	/* Destination rectangles that were clipped, adjusted for
+	 * the surface misalignment and the source angle. */
+	struct gcrect dstadjusted;
+	struct gcrect dstadjustedaux;
 };
 
 /* Batch header. */
@@ -395,13 +418,17 @@ struct gcbatch {
 	gcbatchend batchend;
 
 	/* State of the current operation. */
-	union {
+	struct {
 		struct gcblit blit;
 		struct gcfilter filter;
 	} op;
 
 	/* Destination surface. */
 	struct surfaceinfo dstinfo;
+
+	/* Aux rectangle present. */
+	bool haveaux;
+	struct gcrect dstrectaux;
 
 	/* Clipped destination rectangle coordinates. */
 	struct gcrect dstclipped;
@@ -420,7 +447,9 @@ struct gcbatch {
 	unsigned int dstwidth;
 	unsigned int dstheight;
 
-	/* Physical size of the destination surface. */
+	/* Physical size of the source and destination surfaces. */
+	unsigned int srcphyswidth;
+	unsigned int srcphysheight;
 	unsigned int dstphyswidth;
 	unsigned int dstphysheight;
 
