@@ -366,6 +366,10 @@ struct gcblit {
 
 	/* Block walker enable. */
 	int blockenable;
+
+	/* Destination format and swizzle */
+	unsigned int format;
+	unsigned int swizzle;
 };
 
 /* Filter states. */
