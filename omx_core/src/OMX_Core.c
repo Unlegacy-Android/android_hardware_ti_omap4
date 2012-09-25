@@ -97,6 +97,8 @@ char   *tComponentName[MAXCOMP][MAX_ROLES] =
       "video_decoder.h263", NULL },
     { "OMX.TI.DUCATI1.VIDEO.H264E",
       "video_encoder.avc", NULL },
+    { "OMX.TI.DUCATI1.VIDEO.H264E.secure",
+      "video_encoder.avc", NULL},
     { "OMX.TI.DUCATI1.VIDEO.VC1E",
       "video_encoder.wmv", NULL },
     { "OMX.TI.DUCATI1.VIDEO.MPEG4E",
