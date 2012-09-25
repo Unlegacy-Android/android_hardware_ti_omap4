@@ -625,8 +625,8 @@ static enum bverror startvr(struct bvbltparams *bvbltparams,
 	gcmovrdst->address = GET_MAP_HANDLE(dstmap);
 	gcmovrdst->stride = dstinfo->geom->virtstride;
 	gcmovrdst->config.raw = 0;
-	gcmovrdst->config.reg.swizzle = dstinfo->format->swizzle;
-	gcmovrdst->config.reg.format = dstinfo->format->format;
+	gcmovrdst->config.reg.swizzle = dstinfo->format.swizzle;
+	gcmovrdst->config.reg.format = dstinfo->format.format;
 
 	/* Set surface width and height. */
 	gcmovrdst->rotation.raw = 0;
@@ -648,7 +648,7 @@ static enum bverror startvr(struct bvbltparams *bvbltparams,
 	/* Compute the source alignments needed to compensate
 	 * for the surface base address misalignment if any. */
 	srcpixalign = get_pixel_offset(srcinfo, 0);
-	srcbytealign = (srcpixalign * (int) srcinfo->format->bitspp) / 8;
+	srcbytealign = (srcpixalign * (int) srcinfo->format.bitspp) / 8;
 
 	switch (srcinfo->angle) {
 	case ROT_ANGLE_0:
@@ -708,11 +708,12 @@ static enum bverror startvr(struct bvbltparams *bvbltparams,
 	gcmovrsrc->rotation.reg.surf_width = srcsurfwidth;
 
 	gcmovrsrc->config.raw = 0;
-	gcmovrsrc->config.reg.swizzle = srcinfo->format->swizzle;
-	gcmovrsrc->config.reg.format = srcinfo->format->format;
+	gcmovrsrc->config.reg.swizzle = srcinfo->format.swizzle;
+	gcmovrsrc->config.reg.format = srcinfo->format.format;
 
 	if (gccontext->gcfeatures2.reg.l2cachefor420 &&
-	    ((srcinfo->format->type & BVFMT_PLANAR) != 0) &&
+	    (srcinfo->format.type == BVFMT_YUV) &&
+	    (srcinfo->format.cs.yuv.planecount > 1) &&
 	    ((srcinfo->angle & 1) != 0))
 		gcmovrsrc->config.reg.disable420L2cache
 			= GCREG_SRC_CONFIG_DISABLE420_L2_CACHE_DISABLED;
@@ -776,6 +777,47 @@ static enum bverror startvr(struct bvbltparams *bvbltparams,
 		= GCREG_COLOR_MULTIPLY_MODES_DST_DEMULTIPLY_DISABLE;
 	}
 
+	if (srcinfo->format.format == GCREG_DE_FORMAT_NV12) {
+		struct gcmoxsrcyuv *gcmoxsrcyuv;
+		int index = 0;
+		int uvshift;
+
+		uvshift = srcbytealign
+			+ srcinfo->geom->virtstride
+			* srcinfo->geom->height;
+		GCDBG(GCZONE_FILTER, "  uvshift = 0x%08X (%d)\n",
+			uvshift, uvshift);
+
+		bverror = claim_buffer(bvbltparams, batch,
+				       sizeof(struct gcmoxsrcyuv),
+				       (void **) &gcmoxsrcyuv);
+		if (bverror != BVERR_NONE)
+			goto exit;
+
+		gcmoxsrcyuv->uplaneaddress_ldst =
+			gcmoxsrcyuv_uplaneaddress_ldst[index];
+		gcmoxsrcyuv->uplaneaddress = GET_MAP_HANDLE(srcmap);
+		add_fixup(bvbltparams, batch, &gcmoxsrcyuv->uplaneaddress,
+			  uvshift);
+
+		gcmoxsrcyuv->uplanestride_ldst =
+			gcmoxsrcyuv_uplanestride_ldst[index];
+		gcmoxsrcyuv->uplanestride = srcinfo->geom->virtstride;
+
+		gcmoxsrcyuv->vplaneaddress_ldst =
+			gcmoxsrcyuv_vplaneaddress_ldst[index];
+		gcmoxsrcyuv->vplaneaddress = GET_MAP_HANDLE(srcmap);
+		add_fixup(bvbltparams, batch, &gcmoxsrcyuv->vplaneaddress,
+			  uvshift);
+
+		gcmoxsrcyuv->vplanestride_ldst =
+			gcmoxsrcyuv_vplanestride_ldst[index];
+		gcmoxsrcyuv->vplanestride = srcinfo->geom->virtstride;
+
+		gcmoxsrcyuv->pectrl_ldst =
+			gcmoxsrcyuv_pectrl_ldst[index];
+		gcmoxsrcyuv->pectrl = GCREG_PE_CONTROL_ResetValue;
+	}
 
 	/***********************************************************************
 	 * Program blending.
@@ -910,10 +952,23 @@ enum bverror do_filter(struct bvbltparams *bvbltparams,
 
 	GCENTER(GCZONE_FILTER);
 
-	/* Finish previous batch if any. */
-	bverror = batch->batchend(bvbltparams, batch);
-	if (bverror != BVERR_NONE)
-		goto exit;
+	/* Additional stride requirements. */
+	if (srcinfo->format.format == GCREG_DE_FORMAT_NV12) {
+		/* Nv12 may be shifted up to 32 bytes for alignment.
+		 * In the worst case stride must be 32 bytes greater.
+		 */
+		int min_stride = srcinfo->geom->width + 32;
+
+		if (srcinfo->geom->virtstride < min_stride) {
+			BVSETBLTERROR((srcinfo->index == 0)
+						  ? BVERR_SRC1GEOM_STRIDE
+						  : BVERR_SRC2GEOM_STRIDE,
+						  "nv12 source stride too small (%ld < %d)\n",
+						  srcinfo->geom->virtstride,
+						  min_stride);
+			goto exit;
+		}
+	}
 
 	/* Determine the destination rectangle. */
 	if ((srcinfo->index == 1) &&
@@ -1079,7 +1134,7 @@ enum bverror do_filter(struct bvbltparams *bvbltparams,
 		tmpinfo.gca = srcinfo->gca;
 
 		/* Determine temporary surface format. */
-		if (srcinfo->format->type == BVFMT_YUV) {
+		if (srcinfo->format.type == BVFMT_YUV) {
 			tmpinfo.format = dstinfo->format;
 			tmpgeom.format = dstinfo->geom->format;
 		} else {
@@ -1089,7 +1144,7 @@ enum bverror do_filter(struct bvbltparams *bvbltparams,
 
 		/* Determine pixel alignment. */
 		tmpalignmask = GC_BITS_PER_CACHELINE
-			     / tmpinfo.format->bitspp - 1;
+			     / tmpinfo.format.bitspp - 1;
 
 		/* In partial filter blit cases, the vertical pass has to render
 		 * more pixel information to the left and to the right of the
@@ -1126,7 +1181,7 @@ enum bverror do_filter(struct bvbltparams *bvbltparams,
 			      & ~tmpalignmask;
 		tmpgeom.height = tmpinfo.rect.bottom;
 		tmpgeom.virtstride = (tmpgeom.width
-				   * tmpinfo.format->bitspp) / 8;
+				   * tmpinfo.format.bitspp) / 8;
 		tmpsize = tmpgeom.virtstride * tmpgeom.height;
 
 		/* Allocate the temporary buffer. */
