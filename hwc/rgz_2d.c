@@ -313,8 +313,149 @@ static void rgz_get_displayframe_rect(hwc_layer_t *layer, blit_rect_t *res_rect)
     res_rect->right = layer->displayFrame.right;
 }
 
+/*
+ * Returns a clock-wise rotated view of the inner rectangle relative to
+ * the outer rectangle. The inner rectangle must be contained in the outer
+ * rectangle and coordinates must be relative to the top,left corner of the outer
+ * rectangle.
+ */
+static void rgz_get_rotated_view(blit_rect_t *outer_rect, blit_rect_t *inner_rect,
+    blit_rect_t *res_rect, int orientation)
+{
+    int outer_width = WIDTH(*outer_rect);
+    int outer_height = HEIGHT(*outer_rect);
+    int inner_width = WIDTH(*inner_rect);
+    int inner_height = HEIGHT(*inner_rect);
+    int delta_top = inner_rect->top - outer_rect->top;
+    int delta_left = inner_rect->left - outer_rect->left;
+
+    /* Normalize the angle */
+    orientation = (orientation % 360) + 360;
+
+    /*
+     * Calculate the top,left offset of the inner rectangle inside the outer
+     * rectangle depending on the tranformation value.
+     */
+    switch(orientation % 360) {
+        case 0:
+            res_rect->left = delta_left;
+            res_rect->top = delta_top;
+            break;
+        case 180:
+            res_rect->left = outer_width - inner_width - delta_left;
+            res_rect->top = outer_height - inner_height - delta_top;
+            break;
+        case 90:
+            res_rect->left = outer_height - inner_height - delta_top;
+            res_rect->top = delta_left;
+            break;
+        case 270:
+            res_rect->left = delta_top;
+            res_rect->top = outer_width - inner_width - delta_left;
+            break;
+        default:
+            OUTE("Invalid transform value %d", orientation);
+    }
+
+    if (orientation % 180)
+        swap(inner_width, inner_height);
+
+    res_rect->right = res_rect->left + inner_width;
+    res_rect->bottom = res_rect->top + inner_height;
+}
+
+static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect)
+{
+    if (rgz_hwc_scaled(layer)) {
+        /*
+         * If the layer is scaled we use the whole cropping rectangle from the
+         * source and just move the clipping rectangle for the region we want to
+         * blit, this is done to prevent any artifacts when blitting subregions of
+         * a scaled layer.
+         */
+        res_rect->top = layer->sourceCrop.top;
+        res_rect->left = layer->sourceCrop.left;
+        res_rect->bottom = layer->sourceCrop.bottom;
+        res_rect->right = layer->sourceCrop.right;
+        return;
+    }
+
+    blit_rect_t display_frame;
+    rgz_get_displayframe_rect(layer, &display_frame);
+
+    /*
+     * Get the rotated subregion rectangle with respect to the display frame.
+     * In order to get this correctly we need to take in account the HWC
+     * orientation is clock-wise so to return to the 0 degree view we need to
+     * rotate counter-clock wise the orientation. For example, if the
+     * orientation is 90 we need to rotate -90 to return to a 0 degree view.
+     */
+    int src_orientation = 0 - rgz_get_orientation(layer->transform);
+    rgz_get_rotated_view(&display_frame, subregion_rect, res_rect, src_orientation);
+
+    /*
+     * In order to translate the resulting rectangle relative to the cropping
+     * rectangle the only thing left is account for the offset (result is already
+     * rotated).
+     */
+    res_rect->left += layer->sourceCrop.left;
+    res_rect->right += layer->sourceCrop.left;
+    res_rect->top += layer->sourceCrop.top;
+    res_rect->bottom += layer->sourceCrop.top;
+}
+
+/*
+ * Convert a destination geometry and rectangle to a specified rotated view.
+ * Since clipping rectangle is relative to the destination geometry it will be
+ * rotated as well.
+ */
+static void rgz_rotate_dst(struct rgz_blt_entry* e, int dst_orientation)
+{
+    struct bvsurfgeom *dstgeom = &e->dstgeom;
+    struct bvrect *dstrect = &e->bp.dstrect;
+    struct bvrect *cliprect = &e->bp.cliprect;
+
+    /*
+     * Create a rectangle that represents the destination geometry (outter
+     * rectangle), destination and clipping rectangles (inner rectangles).
+     */
+    blit_rect_t dstgeom_r;
+    dstgeom_r.top = dstgeom_r.left = 0;
+    dstgeom_r.bottom = dstgeom->height;
+    dstgeom_r.right = dstgeom->width;
+
+    blit_rect_t dstrect_r;
+    dstrect_r.top = dstrect->top;
+    dstrect_r.left = dstrect->left;
+    dstrect_r.bottom = dstrect->top + dstrect->height;
+    dstrect_r.right = dstrect->left + dstrect->width;
+
+    blit_rect_t cliprect_r;
+    cliprect_r.top = cliprect->top;
+    cliprect_r.left = cliprect->left;
+    cliprect_r.bottom = cliprect->top + cliprect->height;
+    cliprect_r.right = cliprect->left + cliprect->width;
+
+    /* Get the CW rotated view of the destination rectangle */
+    blit_rect_t res_rect;
+    rgz_get_rotated_view(&dstgeom_r, &dstrect_r, &res_rect, dst_orientation);
+    dstrect->left = res_rect.left;
+    dstrect->top = res_rect.top;
+    dstrect->width = WIDTH(res_rect);
+    dstrect->height = HEIGHT(res_rect);
+
+    rgz_get_rotated_view(&dstgeom_r, &cliprect_r, &res_rect, dst_orientation);
+    cliprect->left = res_rect.left;
+    cliprect->top = res_rect.top;
+    cliprect->width = WIDTH(res_rect);
+    cliprect->height = HEIGHT(res_rect);
+
+    if (dst_orientation % 180)
+        swap(e->dstgeom.width, e->dstgeom.height);
+}
+
 static void rgz_set_dst_data(rgz_out_params_t *params, blit_rect_t *subregion_rect,
-    struct rgz_blt_entry* e)
+    struct rgz_blt_entry* e, int dst_orientation)
 {
     struct bvsurfgeom *screen_geom;
     rgz_get_screen_info(params, &screen_geom);
@@ -324,17 +465,56 @@ static void rgz_set_dst_data(rgz_out_params_t *params, blit_rect_t *subregion_re
     e->dstgeom.format = screen_geom->format;
     e->dstgeom.width = screen_geom->width;
     e->dstgeom.height = screen_geom->height;
-    e->dstgeom.orientation = screen_geom->orientation;
+    e->dstgeom.orientation = dst_orientation;
     e->dstgeom.virtstride = DSTSTRIDE(screen_geom);
 
     e->bp.dstrect.left = subregion_rect->left;
     e->bp.dstrect.top = subregion_rect->top;
     e->bp.dstrect.width = WIDTH(*subregion_rect);
     e->bp.dstrect.height = HEIGHT(*subregion_rect);
+
+    /* Give a rotated buffer representation of the destination if requested */
+    if (e->dstgeom.orientation)
+        rgz_rotate_dst(e, dst_orientation);
+}
+
+/* Convert a source geometry and rectangle to a specified rotated view */
+static void rgz_rotate_src(struct rgz_blt_entry* e, int src_orientation, int is_src2)
+{
+    struct bvsurfgeom *srcgeom = is_src2 ? &e->src2geom : &e->src1geom;
+    struct bvrect *srcrect = is_src2 ? &e->bp.src2rect : &e->bp.src1rect;
+
+    /*
+     * Create a rectangle that represents the source geometry (outter rectangle),
+     * source rectangle (inner rectangle).
+     */
+    blit_rect_t srcgeom_r;
+    srcgeom_r.top = srcgeom_r.left = 0;
+    srcgeom_r.bottom = srcgeom->height;
+    srcgeom_r.right = srcgeom->width;
+
+    blit_rect_t srcrect_r;
+    srcrect_r.top = srcrect->top;
+    srcrect_r.left = srcrect->left;
+    srcrect_r.bottom = srcrect->top + srcrect->height;
+    srcrect_r.right = srcrect->left + srcrect->width;
+
+    /* Get the CW rotated view of the source rectangle */
+    blit_rect_t res_rect;
+    rgz_get_rotated_view(&srcgeom_r, &srcrect_r, &res_rect, src_orientation);
+
+    srcrect->left = res_rect.left;
+    srcrect->top = res_rect.top;
+    srcrect->width = WIDTH(res_rect);
+    srcrect->height = HEIGHT(res_rect);
+
+    if (src_orientation % 180)
+        swap(srcgeom->width, srcgeom->height);
 }
 
 static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
-    blit_rect_t *subregion_rect, struct rgz_blt_entry* e, int is_src2)
+    blit_rect_t *subregion_rect, struct rgz_blt_entry* e, int src_orientation,
+    int is_src2)
 {
     hwc_layer_t *hwc_layer = rgz_layer->hwc_layer;
     struct bvbuffdesc *srcdesc = is_src2 ? &e->src2desc : &e->src1desc;
@@ -349,10 +529,7 @@ static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
     srcgeom->format = hal_to_ocd(handle->iFormat);
     srcgeom->width = handle->iWidth;
     srcgeom->height = handle->iHeight;
-    srcgeom->orientation = rgz_get_orientation(hwc_layer->transform);
     srcgeom->virtstride = HANDLE_TO_STRIDE(handle);
-    if (hwc_layer->transform & HAL_TRANSFORM_ROT_90)
-        swap(srcgeom->width, srcgeom->height);
 
     /* Find out what portion of the src we want to use for the blit */
     blit_rect_t res_rect;
@@ -361,6 +538,13 @@ static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
     srcrect->top = res_rect.top;
     srcrect->width = WIDTH(res_rect);
     srcrect->height = HEIGHT(res_rect);
+
+    /* Give a rotated buffer representation of this source if requested */
+    if (src_orientation) {
+        srcgeom->orientation = src_orientation;
+        rgz_rotate_src(e, src_orientation, is_src2);
+    } else
+        srcgeom->orientation = 0;
 }
 
 /*
@@ -397,6 +581,12 @@ static void rgz_set_src2_is_dst(rgz_out_params_t *params, struct rgz_blt_entry* 
     e->bp.src2rect = e->bp.dstrect;
 }
 
+static int rgz_is_layer_nv12(hwc_layer_t *layer)
+{
+    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+    return is_NV12(handle->iFormat);
+}
+
 /*
  * Configure the scaling mode according to the layer format
  */
@@ -406,8 +596,7 @@ static void rgz_cfg_scale_mode(struct rgz_blt_entry* e, hwc_layer_t *layer)
      * TODO: Revisit scaling mode assignment later, output between GPU and GC320
      * seem different
      */
-    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
-    e->bp.scalemode = is_NV12(handle->iFormat) ? BVSCALE_9x9_TAP : BVSCALE_BILINEAR;
+    e->bp.scalemode = rgz_is_layer_nv12(layer) ? BVSCALE_9x9_TAP : BVSCALE_BILINEAR;
 }
 
 /*
@@ -431,9 +620,12 @@ static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
     } else
         tmp_rect = *subregion_rect;
 
-    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
-    rgz_set_dst_data(params, &tmp_rect, e);
+    int src1_orientation = rgz_get_orientation(hwc_src1->transform);
+    int dst_orientation = 0;
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
+    rgz_set_dst_data(params, &tmp_rect, e, dst_orientation);
 
     if((e->src1geom.format == OCDFMT_BGR124) ||
        (e->src1geom.format == OCDFMT_RGB124) ||
@@ -466,9 +658,12 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
     } else
         tmp_rect = *subregion_rect;
 
-    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
-    rgz_set_dst_data(params, &tmp_rect, e);
+    int src1_orientation = rgz_get_orientation(hwc_src1->transform);
+    int dst_orientation = 0;
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
+    rgz_set_dst_data(params, &tmp_rect, e, dst_orientation);
 
     if (rgz_src2) {
         /*
@@ -478,8 +673,15 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
         hwc_layer_t *hwc_src2 = rgz_src2->hwc_layer;
         if (rgz_hwc_scaled(hwc_src2))
             OUTE("src2 layer %p has scaling, this is not supported", hwc_src2);
+        /*
+         * We shouldn't receive a NV12 buffer as src2 at this point, this is an
+         * invalid parameter for the blend request
+         */
+        if (rgz_is_layer_nv12(hwc_src2))
+            OUTE("invalid input layer, src2 layer %p is NV12", hwc_src2);
         e->bp.flags |= rgz_get_flip_flags(hwc_src2->transform, 1);
-        rgz_set_src_data(params, rgz_src2, subregion_rect, e, 1);
+        int src2_orientation = rgz_get_orientation(hwc_src2->transform);
+        rgz_set_src_data(params, rgz_src2, subregion_rect, e, src2_orientation, 1);
     } else
         rgz_set_src2_is_dst(params, e);
 
@@ -525,8 +727,8 @@ static void rgz_out_clrdst(rgz_out_params_t *params, blit_rect_t *rect)
         clear_rect.bottom = screen_geom->height;
     }
 
-    rgz_set_dst_data(params, &clear_rect, e);
     rgz_set_clip_rect(params, &clear_rect, e);
+    rgz_set_dst_data(params, &clear_rect, e, 0);
 }
 
 static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
@@ -1212,72 +1414,19 @@ static int rgz_hwc_layer_blit(rgz_out_params_t *params, rgz_layer_t *rgz_layer)
     return 0;
 }
 
-/*
- * Calculate the src rectangle on the basis of the layer display, source crop
- * and subregion rectangles. Additionally any rotation will be taken in
- * account. The resulting rectangle is written in res_rect.
- */
-static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect)
+static int rgz_can_blend_together(hwc_layer_t* src1_layer, hwc_layer_t* src2_layer)
 {
-    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
-    int res_left = 0;
-    int res_top = 0;
-    int delta_left;
-    int delta_top;
-    int res_width;
-    int res_height;
+    /* If any layer is scaled we cannot blend both layers in one blit */
+    if (rgz_hwc_scaled(src1_layer) || rgz_hwc_scaled(src2_layer))
+        return 0;
 
-    /*
-     * If the layer is scaled we use the whole cropping rectangle from the
-     * source and just move the clipping rectangle for the region we want to
-     * blit, this is done to prevent any artifacts when blitting subregions of
-     * a scaled layer. If there is a transform, adjust the width and height
-     * accordingly to match the rotated buffer geometry.
-     */
-    if (rgz_hwc_scaled(layer)) {
-        delta_top = 0;
-        delta_left = 0;
-        res_width = WIDTH(layer->sourceCrop);
-        res_height = HEIGHT(layer->sourceCrop);
-        if (layer->transform & HAL_TRANSFORM_ROT_90)
-            swap(res_width , res_height);
-    } else {
-        delta_top = subregion_rect->top - layer->displayFrame.top;
-        delta_left = subregion_rect->left - layer->displayFrame.left;
-        res_width = WIDTH(*subregion_rect);
-        res_height = HEIGHT(*subregion_rect);
-    }
+    /* NV12 buffers don't have alpha information on it */
+    IMG_native_handle_t *src1_hndl = (IMG_native_handle_t *)src1_layer->handle;
+    IMG_native_handle_t *src2_hndl = (IMG_native_handle_t *)src2_layer->handle;
+    if (is_NV12(src1_hndl->iFormat) || is_NV12(src2_hndl->iFormat))
+        return 0;
 
-    /*
-     * Calculate the top, left offset from the source cropping rectangle
-     * depending on the rotation
-     */
-    switch(layer->transform) {
-        case 0:
-            res_left = layer->sourceCrop.left + delta_left;
-            res_top = layer->sourceCrop.top + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_90:
-            res_left = handle->iHeight - layer->sourceCrop.bottom + delta_left;
-            res_top = layer->sourceCrop.left + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_180:
-            res_left = handle->iWidth - layer->sourceCrop.right + delta_left;
-            res_top = handle->iHeight - layer->sourceCrop.bottom + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_270:
-            res_left = layer->sourceCrop.top + delta_left;
-            res_top = handle->iWidth - layer->sourceCrop.right + delta_top;
-            break;
-        default:
-            OUTE("Invalid transform value %d", layer->transform);
-    }
-
-    /* Resulting rectangle has the subregion dimensions */
-    res_rect->left = res_left;
-    res_rect->top = res_top;
-    res_rect->right = res_left + res_width;
-    res_rect->bottom = res_top + res_height;
+    return 1;
 }
 
 static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned int set)
@@ -1359,36 +1508,28 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
          * We save a read and a write from the FB if we blend the bottom
          * two layers, we can do this only if both layers are not scaled
          */
-        int first_batchflags = 0;
-        if (!rgz_hwc_scaled(hregion->rgz_layers[lix]->hwc_layer) &&
-            !rgz_hwc_scaled(hregion->rgz_layers[s2lix]->hwc_layer)) {
-            e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix],
-                hregion->rgz_layers[s2lix]);
-            first_batchflags |= BVBATCH_SRC2;
-        } else {
+        rgz_layer_t *rgz_src1 = hregion->rgz_layers[lix];
+        rgz_layer_t *rgz_src2 = hregion->rgz_layers[s2lix];
+        if (rgz_can_blend_together(rgz_src1->hwc_layer, rgz_src2->hwc_layer))
+            e = rgz_hwc_subregion_blend(params, rect, rgz_src1, rgz_src2);
+        else {
             /* Return index to the first operation and make a copy of the first layer */
             lix = s2lix;
             e = rgz_hwc_subregion_copy(params, rect, hregion->rgz_layers[lix]);
-            first_batchflags |= BVBATCH_OP | BVBATCH_SRC2;
         }
         rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
-        int first = 1;
         while((lix = get_layer_ops_next(hregion, sidx, lix)) != -1) {
-            int batchflags = 0;
             e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix], NULL);
-            if (first) {
-                first = 0;
-                batchflags |= first_batchflags;
-            }
             /*
              * TODO: This will work when scaling is introduced, however we need
              * to think on a better way to optimize this.
              */
-            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE |
-                BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE | BVBATCH_SRC2RECT_ORIGIN |
-                BVBATCH_SRC2RECT_SIZE | BVBATCH_SCALE;
+            int batchflags = BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE |
+                BVBATCH_DST | BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
+                BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
+                BVBATCH_OP | BVBATCH_SCALE | BVBATCH_CLIPRECT;
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
 
@@ -1623,7 +1764,6 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     geom->height = fb_varinfo.yres;
     geom->virtstride = fb_fixinfo.line_length;
     geom->format = hal_to_ocd(fmt);
-    /* Always set to 0, src buffers will contain rotation values as needed */
     geom->orientation = 0;
     return 0;
 }
