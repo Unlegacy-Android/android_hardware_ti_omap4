@@ -114,10 +114,8 @@
 
 typedef struct OMX_PROXY_CAM_PRIVATE
 {
-    OMX_PTR gCamIonHdl[MAX_NUM_INTERNAL_BUFFERS][2];
-    OMX_PTR pRegBuff[MAX_NUM_INTERNAL_BUFFERS][2];
+	MEMPLUGIN_BUFFER_ACCESSOR sInternalBuffers[MAX_NUM_INTERNAL_BUFFERS][2];
 }OMX_PROXY_CAM_PRIVATE;
-
 /* Tiler heap resservation specific */
 #define OMAP_ION_HEAP_TILER_ALLOCATION_MASK (1<<4)
 /* store handles for tracking and freeing */
@@ -132,12 +130,8 @@ TIMM_OSAL_PTR cam_mutex = NULL;
 /* To store DCC buffer size */
 OMX_S32 dccbuf_size = 0;
 
-/* Ducati Mapped Addr  */
-OMX_PTR DCC_Buff = NULL;
-
-OMX_PTR DCC_Buff_ptr = NULL;
-int ion_fd;
-int mmap_fd;
+/* DCC buff accessors */
+MEMPLUGIN_BUFFER_ACCESSOR sDccBuffer;
 
 OMX_S32 read_DCCdir(OMX_PTR, OMX_STRING *, OMX_U16);
 OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE);
@@ -186,25 +180,25 @@ static OMX_ERRORTYPE _OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
     pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
 
     for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
-        if (pCamPrv->gCamIonHdl[i][0] != NULL) {
-            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0], NULL , IONPointers);
+        if (pCamPrv->sInternalBuffers[i][0].pBufferHandle != NULL) {
+            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->sInternalBuffers[i][0].pRegBufferHandle, NULL , IONPointers);
             if (eRPCError != RPC_OMX_ErrorNone) {
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering Y Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
-            pCamPrv->pRegBuff[i][0] = NULL;
-            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][0]);
+            pCamPrv->sInternalBuffers[i][0].pRegBufferHandle = NULL;
+            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->sInternalBuffers[i][0].pBufferHandle);
             DOMX_DEBUG("%s: DOMX: #%d Y Memory freed; eRPCError = 0x%x", __func__, i, eRPCError);
-            pCamPrv->gCamIonHdl[i][0] = NULL;
+            pCamPrv->sInternalBuffers[i][0].pBufferHandle = NULL;
         }
-        if (pCamPrv->gCamIonHdl[i][1] != NULL) {
-            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][1], NULL , IONPointers);
+        if (pCamPrv->sInternalBuffers[i][1].pBufferHandle != NULL) {
+            eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->sInternalBuffers[i][1].pRegBufferHandle, NULL , IONPointers);
             if (eRPCError != RPC_OMX_ErrorNone) {
                 DOMX_ERROR("%s: DOMX: Unexpected error occurred while Unregistering UV Buffer#%d: eRPCError = 0x%x", __func__, i, eRPCError);
             }
-            pCamPrv->pRegBuff[i][1] = NULL;
-            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][1]);
+            pCamPrv->sInternalBuffers[i][1].pRegBufferHandle = NULL;
+            ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->sInternalBuffers[i][1].pBufferHandle);
             DOMX_DEBUG("%s: DOMX: #%d UV Memory freed; eRPCError = 0x%x", __func__, i, eRPCError);
-            pCamPrv->gCamIonHdl[i][1] = NULL;
+            pCamPrv->sInternalBuffers[i][1].pBufferHandle = NULL;
         }
     }
 
@@ -310,22 +304,22 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                             }
 
                             eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd1, -1,
-                                                           &pCamPrv->pRegBuff[i][0], NULL, IONPointers);
+                                                           &pCamPrv->sInternalBuffers[i][0].pRegBufferHandle, NULL, IONPointers);
                             PROXY_checkRpcError();
-                            pVtcConfig->IonBufhdl[0] = (OMX_PTR)pCamPrv->pRegBuff[i][0];
-                            pCamPrv->gCamIonHdl[i][0] = handle;
+                            pVtcConfig->IonBufhdl[0] = (OMX_PTR)pCamPrv->sInternalBuffers[i][0].pRegBufferHandle;
+                            pCamPrv->sInternalBuffers[i][0].pBufferHandle = handle;
                             close (fd1);
                             DOMX_DEBUG(" DOMX: ION Buffer#%d: Y: 0x%x, ret = %d, eRPCError = 0x%x\n", i, pVtcConfig->IonBufhdl[0], ret, eRPCError);
 
                             ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, nFrmWidth/2, nFrmHeight/2, TILER_PIXEL_FMT_16BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_UV);
                             if (ret != 0) {
                                 DOMX_ERROR("Tiler 2D buffer allocation (UV) for slice-based processing failed. Hence exiting!!!\n");
-                                if (pCamPrv->pRegBuff[i][0] != NULL) {
-                                    eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->pRegBuff[i][0], NULL , IONPointers);
+                                if (pCamPrv->sInternalBuffers[i][0].pRegBufferHandle != NULL) {
+                                    eRPCError = RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pCamPrv->sInternalBuffers[i][0].pRegBufferHandle, NULL , IONPointers);
                                     PROXY_checkRpcError();
                                 }
 
-                                ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->gCamIonHdl[i][0]);
+                                ion_free(pCompPrv->nMemmgrClientDesc, pCamPrv->sInternalBuffers[i][0].pBufferHandle);
                                 eError = OMX_ErrorInsufficientResources;
                                 goto EXIT;
                             }
@@ -337,10 +331,10 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
                             }
 
                             eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fd2,-1,
-                                                           &pCamPrv->pRegBuff[i][1], NULL, IONPointers);
+                                                           &pCamPrv->sInternalBuffers[i][1].pRegBufferHandle, NULL, IONPointers);
                             PROXY_checkRpcError();
-                            pVtcConfig->IonBufhdl[1] = (OMX_PTR)pCamPrv->pRegBuff[i][1];
-                            pCamPrv->gCamIonHdl[i][1] = handle;
+                            pVtcConfig->IonBufhdl[1] = pCamPrv->sInternalBuffers[i][1].pRegBufferHandle;
+                            pCamPrv->sInternalBuffers[i][1].pBufferHandle = handle;
                             close (fd2);
                             DOMX_DEBUG("DOMX: ION Buffer#%d: UV: 0x%x, eRPCError: 0x%x\n", i, pVtcConfig->IonBufhdl[1], eRPCError);
 
@@ -787,7 +781,6 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	MEMPLUGIN_BUFFER_PARAMS sDccBuff_params;
 	MEMPLUGIN_BUFFER_PROPERTIES sDccBuff_prop;
 	MEMPLUGIN_ERRORTYPE eMemError = MEMPLUGIN_ERROR_NONE;
-
 	OMX_S32 status = 0;
 	OMX_STRING dcc_dir[200];
 	OMX_U16 i;
@@ -863,10 +856,10 @@ OMX_ERRORTYPE DCC_Init(OMX_HANDLETYPE hComponent)
 	sDccBuff_params.nWidth = dccbuf_size;
 	sDccBuff_params.bMap = pComponentPrivate->bMapBuffers;
 	eMemError = MemPlugin_Alloc(pComponentPrivate->pMemPluginHandle,pComponentPrivate->nMemmgrClientDesc,&sDccBuff_params,&sDccBuff_prop);
-	DCC_Buff = sDccBuff_prop.sBuffer_accessor.pBufferHandle;
-	DCC_Buff_ptr = sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress;
-	mmap_fd = sDccBuff_prop.sBuffer_accessor.bufferFd;
-	ptempbuf = DCC_Buff_ptr;
+	sDccBuffer.pBufferHandle = sDccBuff_prop.sBuffer_accessor.pBufferHandle;
+	sDccBuffer.pBufferMappedAddress = sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress;
+	sDccBuffer.bufferFd = sDccBuff_prop.sBuffer_accessor.bufferFd;
+	ptempbuf = sDccBuffer.pBufferMappedAddress;
 	dccbuf_size = read_DCCdir(ptempbuf, dcc_dir, nIndex);
 	PROXY_assert(dccbuf_size > 0, OMX_ErrorInsufficientResources,
 		"ERROR in copy DCC files into buffer");
@@ -906,9 +899,9 @@ OMX_ERRORTYPE send_DCCBufPtr(OMX_HANDLETYPE hComponent)
 	pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)pHandle->pComponentPrivate;
 	uribufparam.nSharedBuffSize = dccbuf_size;
 if(pComponentPrivate->bMapBuffers)
-	uribufparam.pSharedBuff = (OMX_PTR) mmap_fd;
+	uribufparam.pSharedBuff = (OMX_PTR) sDccBuffer.bufferFd;
 else
-	uribufparam.pSharedBuff = (OMX_PTR) DCC_Buff;
+	uribufparam.pSharedBuff = sDccBuffer.pBufferHandle;
 
 	DOMX_DEBUG("SYSLINK MAPPED ADDR:  0x%x sizeof buffer %d",
 		uribufparam.pSharedBuff, uribufparam.nSharedBuffSize);
@@ -1031,20 +1024,21 @@ void DCC_DeInit(OMX_HANDLETYPE hComponent)
 	MEMPLUGIN_BUFFER_PROPERTIES sDccBuff_prop;
 	PROXY_COMPONENT_PRIVATE *pComponentPrivate;
 	OMX_COMPONENTTYPE *pHandle = NULL;
+
 	DOMX_ENTER("ENTER");
 	pHandle = (OMX_COMPONENTTYPE *) hComponent;
 	pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)pHandle->pComponentPrivate;
-	if (DCC_Buff)
+	if (sDccBuffer.pBufferHandle)
 	{
 		MEMPLUGIN_BUFFER_PARAMS_INIT(sDccBuff_params);
-		sDccBuff_prop.sBuffer_accessor.pBufferHandle = DCC_Buff;
-		sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress = DCC_Buff_ptr;
-		sDccBuff_prop.sBuffer_accessor.bufferFd = mmap_fd;
+		sDccBuff_prop.sBuffer_accessor.pBufferHandle = sDccBuffer.pBufferHandle;
+		sDccBuff_prop.sBuffer_accessor.pBufferMappedAddress = sDccBuffer.pBufferMappedAddress;
+		sDccBuff_prop.sBuffer_accessor.pRegBufferHandle = sDccBuffer.pRegBufferHandle;
 		sDccBuff_params.nWidth = dccbuf_size;
 		MemPlugin_Free(pComponentPrivate->pMemPluginHandle,pComponentPrivate->nMemmgrClientDesc,&sDccBuff_params,&sDccBuff_prop);
-		DCC_Buff = NULL;
-		mmap_fd = -1;
-		DCC_Buff_ptr = NULL;
+		sDccBuffer.pBufferHandle = NULL;
+		sDccBuffer.bufferFd = -1;
+		sDccBuffer.pBufferMappedAddress = NULL;
 	}
 
 	DOMX_EXIT("EXIT");
