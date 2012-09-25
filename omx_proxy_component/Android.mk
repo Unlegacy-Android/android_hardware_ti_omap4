@@ -106,7 +106,9 @@ LOCAL_CFLAGS += -D_Android -DSET_STRIDE_PADDING_FROM_PROXY -DANDROID_QUIRK_CHANG
 LOCAL_CFLAGS += -DANDROID_QUIRK_LOCK_BUFFER -DUSE_ION
 LOCAL_MODULE_TAGS:= optional
 
-LOCAL_SRC_FILES:= omx_camera/src/omx_proxy_camera.c
+LOCAL_SRC_FILES:= omx_camera/src/omx_proxy_camera.c \
+                  omx_camera/src/proxy_camera_android_glue.c
+
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.CAMERA
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
