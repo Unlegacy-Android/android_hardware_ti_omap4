@@ -4161,6 +4161,8 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
 
 #endif
 
+    mPreviewPortInitialized = false;
+
     LOG_FUNCTION_NAME_EXIT;
 }
 
