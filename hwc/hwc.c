@@ -210,7 +210,7 @@ struct omap4_hwc_device {
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
     struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
 
-    counts_t stats;
+    counts_t counts;
 
     int ion_fd;
     struct ion_handle *ion_handles[2];
@@ -1102,9 +1102,14 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, uint32_t xr
     return 0;
 }
 
-static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *num, hwc_layer_list_t *list)
+static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list)
 {
     uint32_t i;
+    counts_t *num = &hwc_dev->counts;
+
+    memset(num, 0, sizeof(*num));
+
+    num->composited_layers = list ? list->numHwLayers : 0;
 
     /* Figure out how many layers we can support via DSS */
     for (i = 0; list && i < list->numHwLayers; i++) {
@@ -1154,12 +1159,12 @@ static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *
             num->mem += mem1d(handle);
         }
     }
-    hwc_dev->stats = *num;
 }
 
-static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev, struct counts *num)
+static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev)
 {
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
+    counts_t *num = &hwc_dev->counts;
     int nonscaling_ovls = NUM_NONSCALING_OVERLAYS;
     num->max_hw_overlays = MAX_HW_OVERLAYS;
 
@@ -1223,9 +1228,10 @@ static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev, struct counts 
         num->max_scaling_overlays = num->max_hw_overlays - nonscaling_ovls;
 }
 
-static bool can_dss_render_all(omap4_hwc_device_t *hwc_dev, struct counts *num)
+static bool can_dss_render_all(omap4_hwc_device_t *hwc_dev)
 {
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
+    counts_t *num = &hwc_dev->counts;
     bool on_tv = hwc_dev->on_tv || (ext->on_tv && ext->current.enabled);
     bool tform = ext->current.enabled && (ext->current.rotation || ext->current.hflip);
 
@@ -1697,22 +1703,22 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
 {
     omap4_hwc_device_t *hwc_dev = (omap4_hwc_device_t *)dev;
     struct dsscomp_setup_dispc_data *dsscomp = &hwc_dev->comp_data.dsscomp_data;
-    struct counts num = { .composited_layers = list ? list->numHwLayers : 0 };
+    counts_t *num = &hwc_dev->counts;
     uint32_t i, ix;
 
     pthread_mutex_lock(&hwc_dev->lock);
     memset(dsscomp, 0x0, sizeof(*dsscomp));
     dsscomp->sync_id = sync_id++;
 
-    gather_layer_statistics(hwc_dev, &num, list);
+    gather_layer_statistics(hwc_dev, list);
 
-    decide_supported_cloning(hwc_dev, &num);
+    decide_supported_cloning(hwc_dev);
 
     /* phase 3 logic */
-    if (can_dss_render_all(hwc_dev, &num)) {
+    if (can_dss_render_all(hwc_dev)) {
         /* All layers can be handled by the DSS -- don't use SGX for composition */
         hwc_dev->use_sgx = 0;
-        hwc_dev->swap_rb = num.BGR != 0;
+        hwc_dev->swap_rb = num->BGR != 0;
     } else {
         /* Use SGX for composition plus first 3 layers that are DSS renderable */
         hwc_dev->use_sgx = 1;
@@ -1755,7 +1761,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         hwc_layer_t *layer = &list->hwLayers[i];
         IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
 
-        if (dsscomp->num_ovls < num.max_hw_overlays &&
+        if (dsscomp->num_ovls < num->max_hw_overlays &&
             can_dss_render_layer(hwc_dev, layer) &&
             (!hwc_dev->force_sgx ||
              /* render protected and dockable layers via DSS */
@@ -1854,7 +1860,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     if (needs_fb) {
         /* assign a z-layer for fb */
         if (fb_z < 0) {
-            if (!hwc_dev->blt_policy != BLTPOLICY_DISABLED && num.composited_layers)
+            if (!hwc_dev->blt_policy != BLTPOLICY_DISABLED && num->composited_layers)
                 ALOGE("**** should have assigned z-layer for fb");
             fb_z = z++;
         }
@@ -1880,7 +1886,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     hwc_dev->post2_layers = dsscomp->num_ovls;
 
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
-    if (ext->current.enabled && ((!num.protected && hwc_dev->ext_ovls) ||
+    if (ext->current.enabled && ((!num->protected && hwc_dev->ext_ovls) ||
               (hwc_dev->ext_ovls_wanted && hwc_dev->ext_ovls >= hwc_dev->ext_ovls_wanted))) {
         if (ext->current.docking && ix_s3d >= 0) {
             if (clone_s3d_external_layer(hwc_dev, ix_s3d) == 0) {
@@ -1981,14 +1987,14 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         ALOGD("prepare (%d) - %s (comp=%d, poss=%d/%d scaled, RGB=%d,BGR=%d,NV12=%d) (ext=%s%s%ddeg%s %dex/%dmx (last %dex,%din)\n",
              dsscomp->sync_id,
              hwc_dev->use_sgx ? "SGX+OVL" : "all-OVL",
-             num.composited_layers,
-             num.possible_overlay_layers, num.scaled_layers,
-             num.RGB, num.BGR, num.NV12,
+             num->composited_layers,
+             num->possible_overlay_layers, num->scaled_layers,
+             num->RGB, num->BGR, num->NV12,
              ext->on_tv ? "tv+" : "",
              ext->current.enabled ? ext->current.docking ? "dock+" : "mirror+" : "OFF+",
              ext->current.rotation * 90,
              ext->current.hflip ? "+hflip" : "",
-             hwc_dev->ext_ovls, num.max_hw_overlays, hwc_dev->last_ext_ovls, hwc_dev->last_int_ovls);
+             hwc_dev->ext_ovls, num->max_hw_overlays, hwc_dev->last_ext_ovls, hwc_dev->last_int_ovls);
     }
 
     pthread_mutex_unlock(&hwc_dev->lock);
@@ -2036,7 +2042,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
     omap4_hwc_reset_screen(hwc_dev);
 
     invalidate = hwc_dev->ext_ovls_wanted && (hwc_dev->ext_ovls < hwc_dev->ext_ovls_wanted) &&
-                                              (hwc_dev->stats.protected || !hwc_dev->ext_ovls);
+                                              (hwc_dev->counts.protected || !hwc_dev->ext_ovls);
 
     if (debug)
         dump_set_info(hwc_dev, list);
