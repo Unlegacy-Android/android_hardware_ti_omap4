@@ -2297,7 +2297,7 @@ status_t OMXCameraAdapter::startPreview()
             }
         mFramesWithDucati++;
 #ifdef CAMERAHAL_DEBUG
-        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pAppPrivate,1);
+        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pBuffer,1);
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
