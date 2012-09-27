@@ -323,10 +323,9 @@ static bool is_RGB(IMG_native_handle_t *handle)
         return false;
     }
 }
-static uint32_t get_rgb_bpp(IMG_native_handle_t *handle)
+static uint32_t get_format_bpp(uint32_t format)
 {
-    switch(handle->iFormat)
-    {
+    switch(format) {
     case HAL_PIXEL_FORMAT_BGRA_8888:
     case HAL_PIXEL_FORMAT_BGRX_8888:
     case HAL_PIXEL_FORMAT_RGBX_8888:
@@ -334,6 +333,9 @@ static uint32_t get_rgb_bpp(IMG_native_handle_t *handle)
         return 32;
     case HAL_PIXEL_FORMAT_RGB_565:
         return 16;
+    case HAL_PIXEL_FORMAT_TI_NV12:
+    case HAL_PIXEL_FORMAT_TI_NV12_1D:
+        return 8;
     default:
         return 0;
     }
@@ -403,11 +405,9 @@ static uint32_t mem1d(IMG_native_handle_t *handle)
     return stride * handle->iHeight;
 }
 
-static void omap4_hwc_setup_layer_base(struct dss2_ovl_cfg *oc, int index, int format,
+static void omap4_hwc_setup_layer_base(struct dss2_ovl_cfg *oc, int index, uint32_t format,
                                        bool blended, int width, int height)
 {
-    uint32_t bits_per_pixel;
-
     /* YUV2RGB conversion */
     const struct omap_dss_cconv_coefs ctbl_bt601_5 = {
         298,  409,    0,  298, -208, -100,  298,    0,  517, 0,
@@ -418,25 +418,21 @@ static void omap4_hwc_setup_layer_base(struct dss2_ovl_cfg *oc, int index, int f
     case HAL_PIXEL_FORMAT_RGBA_8888:
     case HAL_PIXEL_FORMAT_BGRA_8888:
         oc->color_mode = OMAP_DSS_COLOR_ARGB32;
-        bits_per_pixel = 32;
         if (blended)
                 break;
 
     case HAL_PIXEL_FORMAT_RGBX_8888:
     case HAL_PIXEL_FORMAT_BGRX_8888:
         oc->color_mode = OMAP_DSS_COLOR_RGB24U;
-        bits_per_pixel = 32;
         break;
 
     case HAL_PIXEL_FORMAT_RGB_565:
         oc->color_mode = OMAP_DSS_COLOR_RGB16;
-        bits_per_pixel = 16;
         break;
 
     case HAL_PIXEL_FORMAT_TI_NV12:
     case HAL_PIXEL_FORMAT_TI_NV12_1D:
         oc->color_mode = OMAP_DSS_COLOR_NV12;
-        bits_per_pixel = 8;
         oc->cconv = ctbl_bt601_5;
         break;
 
@@ -448,7 +444,7 @@ static void omap4_hwc_setup_layer_base(struct dss2_ovl_cfg *oc, int index, int f
 
     oc->width = width;
     oc->height = height;
-    oc->stride = ALIGN(width, HW_ALIGN) * bits_per_pixel / 8;
+    oc->stride = ALIGN(width, HW_ALIGN) * get_format_bpp(format) / 8;
 
     oc->enabled = 1;
     oc->global_alpha = 255;
@@ -729,7 +725,7 @@ static void omap4_hwc_adjust_primary_display_layer(omap4_hwc_device_t *hwc_dev, 
 
 static bool omap4_hwc_can_scale(uint32_t src_w, uint32_t src_h, uint32_t dst_w, uint32_t dst_h, bool is_2d,
                                 struct dsscomp_display_info *dis, struct dsscomp_platform_info *limits,
-                                uint32_t pclk, void *handle)
+                                uint32_t pclk, IMG_native_handle_t *handle)
 {
     uint32_t fclk = limits->fclk / 1000;
     uint32_t min_src_w = DIV_ROUND_UP(src_w, is_2d ? limits->max_xdecim_2d : limits->max_xdecim_1d);
@@ -759,7 +755,7 @@ static bool omap4_hwc_can_scale(uint32_t src_w, uint32_t src_h, uint32_t dst_w, 
         return false;
 
     if (handle)
-        if (get_rgb_bpp(handle) == 32 && src_w > 1280 && dst_w * 3 < src_w)
+        if (get_format_bpp(handle->iFormat) == 32 && src_w > 1280 && dst_w * 3 < src_w)
             return false;
 
     /* max horizontal downscale is 4, or the fclk/pixclk */
