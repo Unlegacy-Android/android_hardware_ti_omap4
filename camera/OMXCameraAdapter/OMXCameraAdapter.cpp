@@ -2289,7 +2289,10 @@ status_t OMXCameraAdapter::startPreview()
             }
         mFramesWithDucati++;
 #ifdef CAMERAHAL_DEBUG
+        {
+        android::AutoMutex locker(mBuffersWithDucatiLock);
         mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pAppPrivate,1);
+        }
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
@@ -3524,12 +3527,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         mFramesWithDucati--;
 
 #ifdef CAMERAHAL_DEBUG
+        {
+        android::AutoMutex locker(mBuffersWithDucatiLock);
         if(mBuffersWithDucati.indexOfKey((uint32_t)pBuffHeader->pBuffer)<0)
             {
             CAMHAL_LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
             for(unsigned int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
             }
         mBuffersWithDucati.removeItem((int)pBuffHeader->pBuffer);
+        }
 #endif
 
         if(mDebugFcs)

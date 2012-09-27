@@ -292,6 +292,7 @@ protected:
     uint32_t mFramesWithEncoder;
 
 #ifdef CAMERAHAL_DEBUG
+    android::Mutex mBuffersWithDucatiLock;
     android::KeyedVector<int, bool> mBuffersWithDucati;
 #endif
 

@@ -390,6 +390,8 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
         if ( 0 == refCount )
             {
 #ifdef CAMERAHAL_DEBUG
+            {
+            android::AutoMutex locker(mBuffersWithDucatiLock);
             if((mBuffersWithDucati.indexOfKey((int)camera_buffer_get_omx_ptr(frameBuf)) >= 0) &&
                ((CameraFrame::PREVIEW_FRAME_SYNC == frameType) ||
                  (CameraFrame::SNAPSHOT_FRAME == frameType)))
@@ -398,6 +400,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
                 for(int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
                 }
             mBuffersWithDucati.add((int)camera_buffer_get_omx_ptr(frameBuf),1);
+            }
 #endif
             res = fillThisBuffer(frameBuf, frameType);
             }
