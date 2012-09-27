@@ -623,6 +623,15 @@ static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
     int src1_orientation = rgz_get_orientation(hwc_src1->transform);
     int dst_orientation = 0;
 
+    if (rgz_is_layer_nv12(hwc_src1)) {
+        /*
+         * Leave NV12 as 0 degree and rotate destination instead, this is done
+         * because of a GC limitation. Rotate destination CW.
+         */
+        dst_orientation = 360 - src1_orientation;
+        src1_orientation = 0;
+    }
+
     rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
     rgz_set_dst_data(params, &tmp_rect, e, dst_orientation);
@@ -660,6 +669,15 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
 
     int src1_orientation = rgz_get_orientation(hwc_src1->transform);
     int dst_orientation = 0;
+
+    if (rgz_is_layer_nv12(hwc_src1)) {
+        /*
+         * Leave NV12 as 0 degree and rotate destination instead, this is done
+         * because of a GC limitation. Rotate destination CW.
+         */
+        dst_orientation = 360 - src1_orientation;
+        src1_orientation = 0;
+    }
 
     rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
