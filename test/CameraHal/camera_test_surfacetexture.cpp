@@ -704,6 +704,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
+    size_t tapInMinUndequeued = 0;
 
     int aligned_width, aligned_height;
     aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
@@ -720,7 +721,10 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
 
     native_window_set_usage(mWindowTapIn.get(),
                             getUsageFromANW(pixformat));
-    native_window_set_buffer_count(mWindowTapIn.get(), 1);
+    mWindowTapIn->perform(mWindowTapIn.get(),
+                          NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
+                          &tapInMinUndequeued);;
+    native_window_set_buffer_count(mWindowTapIn.get(), tapInMinUndequeued);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
 
