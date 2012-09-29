@@ -1303,7 +1303,11 @@ int startPreview() {
              params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
         }
 
-        params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
+        if ((cameraInfo.orientation == 90 || cameraInfo.orientation == 270) && recordingMode) {
+            params.setPreviewSize(previewHeight, previewWidth);
+        } else {
+            params.setPreviewSize(previewWidth, previewHeight);
+        }
         params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
 
         // calculate display orientation from sensor orientation
