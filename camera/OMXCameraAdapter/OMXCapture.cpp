@@ -1469,6 +1469,10 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
 
+    mCapturedFrames = 0;
+    mBurstFramesAccum = 0;
+    mBurstFramesQueued = 0;
+
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
