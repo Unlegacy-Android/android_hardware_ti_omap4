@@ -3711,7 +3711,7 @@ int functional_menu() {
             stopPreview();
             deleteAllocatedMemory();
 
-            return -1;
+            return 0;
 
         case '/':
         {
@@ -3785,7 +3785,7 @@ int functional_menu() {
       break;
     }
 
-    return 0;
+    return 1;
 }
 
 void print_usage() {
@@ -4248,10 +4248,12 @@ int startTest() {
 int runRegressionTest(cmd_args_t *cmd_args) {
     char *cmd;
     int pid;
+    int res = 0;
+    int restartTestCount = 0;
 
     platformID = cmd_args->platform_id;
 
-    int res = startTest();
+    res = startTest();
     if (res != 0) {
         return res;
     }
@@ -4263,7 +4265,8 @@ int runRegressionTest(cmd_args_t *cmd_args) {
         stressTest = true;
 
         while (1) {
-            if (execute_functional_script(cmd) == 0) {
+            res = execute_functional_script(cmd);
+            if (res >= 0) {
                 break;
             }
 
@@ -4272,6 +4275,10 @@ int runRegressionTest(cmd_args_t *cmd_args) {
             free(cmd);
             cmd = NULL;
 
+            restartTestCount ++;
+            if(restartTestCount > 3) {
+                return res;
+            }
             if ( (restartCamera() != 0)  || ((cmd = load_script(cmd_args->script_file_name)) == NULL) ) {
                 printf("ERROR::CameraTest Restarting Camera...\n");
                 res = -1;
@@ -4288,11 +4295,12 @@ int runRegressionTest(cmd_args_t *cmd_args) {
         stop_logging(cmd_args->logging, pid);
     }
 
-    return 0;
+    return res;
 }
 
 int runFunctionalTest() {
-    int res = startTest();
+    int res = 0;
+    res = startTest();
     if (res != 0) {
         return res;
     }
@@ -4300,12 +4308,13 @@ int runFunctionalTest() {
     print_menu = 1;
 
     while (1) {
-        if (functional_menu() < 0) {
+        res = functional_menu();
+        if (res <= 0) {
             break;
         }
     }
 
-    return 0;
+    return res;
 }
 
 int runApiTest() {
