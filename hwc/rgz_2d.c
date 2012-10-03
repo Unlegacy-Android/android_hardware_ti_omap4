@@ -1510,9 +1510,11 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
             params->data.bvc.out_nhndls++;
         }
 
-        /* Last blit is made sync to act like a fence for the previous async blits */
-        struct rgz_blt_entry* e = &blts.bvcmds[blts.idx-1];
-        rgz_set_async(e, 0);
+        if (blts.idx > 0) {
+            /* Last blit is made sync to act like a fence for the previous async blits */
+            struct rgz_blt_entry* e = &blts.bvcmds[blts.idx-1];
+            rgz_set_async(e, 0);
+        }
 
         /* FIXME: we want to be able to call rgz_blts_free and populate the actual
          * composition data structure ourselves */
