@@ -707,16 +707,20 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     size_t tapInMinUndequeued = 0;
 
     int aligned_width, aligned_height;
-    aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
+
+    pixformat = bufinfo.format;
+
+    // Aligning is not needed for Bayer
+    if ( pixformat == HAL_PIXEL_FORMAT_TI_Y16 ) {
+        aligned_width = bufinfo.crop.right - bufinfo.crop.left;
+    } else {
+        aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
+    }
     aligned_height = bufinfo.crop.bottom - bufinfo.crop.top;
     printf("aligned width: %d height: %d \n", aligned_width, aligned_height);
 
     if (mWindowTapIn.get() == 0) {
         return;
-    }
-
-    if ( NULL != format ) {
-        pixformat = getHalPixFormat(format);
     }
 
     native_window_set_usage(mWindowTapIn.get(),
@@ -732,7 +736,8 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     // queue the buffer directly to tapin surface. if the dimensions are different
     // then the aligned ones, then we have to copy the buffer into our own buffer
     // to make sure the stride of the buffer is correct
-    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
+    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height) ||
+        (pixformat == HAL_PIXEL_FORMAT_TI_Y16)) {
         void *dest[3] = { 0 };
         void *src[3] = { 0 };
         Rect bounds(aligned_width, aligned_height);
