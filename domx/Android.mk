@@ -32,7 +32,7 @@ LOCAL_SHARED_LIBRARIES := \
     libmm_osal \
     libc \
     liblog \
-    libion \
+    libion_ti \
     libcutils
 
 LOCAL_MODULE:= libdomx

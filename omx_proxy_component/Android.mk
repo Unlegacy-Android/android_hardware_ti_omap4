@@ -98,7 +98,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libc \
 	libOMX_Core \
 	liblog \
-	libion \
+	libion_ti \
 	libdomx
 
 LOCAL_CFLAGS += -DTMS32060 -D_DB_TIOMAP -DSYSLINK_USE_SYSMGR -DSYSLINK_USE_LOADER
