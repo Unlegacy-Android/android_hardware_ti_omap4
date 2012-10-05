@@ -37,6 +37,10 @@ class BufferSourceAdapter : public DisplayAdapter
 {
 // private types
 private:
+    ///Constant declarations
+    static const int NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+
+
     // helper class to return frame in different thread context
     class ReturnFrame : public android::Thread {
     public:
@@ -164,6 +168,10 @@ public:
     virtual int maxQueueableBuffers(unsigned int& queueable);
     virtual int minUndequeueableBuffers(int& unqueueable);
     virtual bool match(const char * str);
+
+    virtual CameraBuffer * getBuffers(bool reset = false);
+    virtual unsigned int getSize();
+    virtual int getBufferCount();
 
     static void frameCallback(CameraFrame* caFrame);
     void addFrame(CameraFrame* caFrame);
