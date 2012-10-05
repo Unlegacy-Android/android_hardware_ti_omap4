@@ -127,7 +127,8 @@ LOCAL_C_INCLUDES += \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	$(FRAMEWORKS_MEDIA_BASE) \
-	$(LOCAL_PATH)/../domx/plugins/inc/
+	$(LOCAL_PATH)/../domx/plugins/inc/ \
+        $(LOCAL_PATH)/omx_video_enc/inc
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -144,7 +145,7 @@ LOCAL_CFLAGS += -DUSE_ENHANCED_PORTRECONFIG -DENABLE_GRALLOC_BUFFER -DANDROID_QU
 LOCAL_CFLAGS += -DANDROID_CUSTOM_OPAQUECOLORFORMAT
 LOCAL_MODULE_TAGS:= optional
 
-LOCAL_SRC_FILES:= omx_h264_enc/src/omx_proxy_h264enc.c
+LOCAL_SRC_FILES:= omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.H264E
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
@@ -163,7 +164,8 @@ LOCAL_C_INCLUDES += \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	$(FRAMEWORKS_MEDIA_BASE) \
-	$(LOCAL_PATH)/../domx/plugins/inc/
+	$(LOCAL_PATH)/../domx/plugins/inc/ \
+        $(LOCAL_PATH)/omx_video_enc/inc
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -180,7 +182,7 @@ LOCAL_CFLAGS += -DUSE_ENHANCED_PORTRECONFIG -DENABLE_GRALLOC_BUFFER -DANDROID_QU
 LOCAL_CFLAGS += -DANDROID_CUSTOM_OPAQUECOLORFORMAT
 LOCAL_MODULE_TAGS:= optional
 
-LOCAL_SRC_FILES:= omx_vc1_enc/src/omx_proxy_vc1enc.c
+LOCAL_SRC_FILES:= omx_video_enc/src/omx_vc1_enc/src/omx_proxy_vc1enc.c
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.VC1E
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
@@ -199,7 +201,8 @@ LOCAL_C_INCLUDES += \
 	$(HARDWARE_TI_OMAP4_BASE)/hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	$(FRAMEWORKS_MEDIA_BASE) \
-	$(LOCAL_PATH)/../domx/plugins/inc/
+	$(LOCAL_PATH)/../domx/plugins/inc/ \
+        $(LOCAL_PATH)/omx_video_enc/inc
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -216,7 +219,7 @@ LOCAL_CFLAGS += -DUSE_ENHANCED_PORTRECONFIG -DENABLE_GRALLOC_BUFFER -DANDROID_QU
 LOCAL_CFLAGS += -DANDROID_CUSTOM_OPAQUECOLORFORMAT
 LOCAL_MODULE_TAGS:= optional
 
-LOCAL_SRC_FILES:= omx_mpeg4_enc/src/omx_proxy_mpeg4enc.c
+LOCAL_SRC_FILES:= omx_video_enc/src/omx_mpeg4_enc/src/omx_proxy_mpeg4enc.c
 LOCAL_MODULE:= libOMX.TI.DUCATI1.VIDEO.MPEG4E
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
