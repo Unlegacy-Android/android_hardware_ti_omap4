@@ -518,13 +518,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
         pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pComponentPrivate->pCompProxyPrv;
         TIMM_OSAL_Memset(pComponentPrivate->pCompProxyPrv, 0,
                 sizeof(OMX_PROXY_CAM_PRIVATE));
-	eMemError = MemPlugin_Init("MEMPLUGIN_ION",&(pComponentPrivate->pMemPluginHandle));
-	if(eMemError != MEMPLUGIN_ERROR_NONE)
-	{
-		DOMX_ERROR("MEMPLUGIN configure step failed");
-		eError = OMX_ErrorUndefined;
-		goto EXIT;
-	}
+
 	pComponentPrivate->bMapBuffers = OMX_TRUE;
 	/*Calling Proxy Common Init() */
 	eError = OMX_ProxyCommonInit(hComponent);
