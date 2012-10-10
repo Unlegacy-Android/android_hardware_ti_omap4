@@ -705,6 +705,15 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         }
     }
 
+    if (i >= mBufferCount) {
+        CAMHAL_LOGD("Can't find frame in buffer list");
+        if (frame->mFrameType != CameraFrame::REPROCESS_INPUT_FRAME) {
+            mFrameProvider->returnFrame(frame->mBuffer,
+                    static_cast<CameraFrame::FrameType>(frame->mFrameType));
+        }
+        return;
+    }
+
     handle = (buffer_handle_t *) mBuffers[i].opaque;
 
     // Handle input buffers
