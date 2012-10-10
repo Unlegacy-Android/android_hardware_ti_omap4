@@ -1453,8 +1453,6 @@ status_t OMXCameraAdapter::stopImageCapture()
     // Workaround when doing many consecutive shots, CAF wasn't getting restarted.
     mPending3Asettings |= SetFocus;
 
-    flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
-
     mCapturedFrames = 0;
     mBurstFramesAccum = 0;
     mBurstFramesQueued = 0;
