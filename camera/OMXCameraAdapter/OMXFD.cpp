@@ -24,13 +24,6 @@
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-// constants used for face smooth filtering
-static const int HorizontalFilterThreshold = 40;
-static const int VerticalFilterThreshold = 40;
-static const int HorizontalFaceSizeThreshold = 30;
-static const int VerticalFaceSizeThreshold = 30;
-
-
 namespace Ti {
 namespace Camera {
 
@@ -463,23 +456,14 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
                 int tempSizeY = (faceDetectionLastOutput[j].rect[trans_bot] -
                                 faceDetectionLastOutput[j].rect[trans_top] ) ;
 
-                if ( (abs(tempCenterX - centerX) < HorizontalFilterThreshold) &&
-                     (abs(tempCenterY - centerY) < VerticalFilterThreshold) )
-                {
-                    // Found Face. It did not move too far.
-                    // Now check size of rectangle compare to last output
-                    if ( (abs (tempSizeX -sizeX) < HorizontalFaceSizeThreshold) &&
-                         (abs (tempSizeY -sizeY) < VerticalFaceSizeThreshold) )
-                    {
-                        // Rectangle is almost same as last time
-                        // Output exactly what was done for this face last time.
-                        faces[i] = faceDetectionLastOutput[j];
+                if ( ( tempCenterX == centerX) &&
+                     ( tempCenterY == centerY) ) {
+                    // Found Face.
+                    // Now check size of rectangle
+                    // compare to last output.
+                    if ( ( tempSizeX == sizeX ) &&
+                         ( tempSizeY == sizeY ) ) {
                         faceChanged = false;
-                    }
-                    else
-                    {
-                        // TODO(XXX): Rectangle size changed but position is same.
-                        // Possibly we can apply just positional correctness.
                     }
                 }
             }

@@ -23,6 +23,7 @@
 
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
+#include "OMXDCC.h"
 #include "ErrorUtils.h"
 #include "TICameraParameters.h"
 #include <signal.h>
@@ -1841,6 +1842,46 @@ status_t OMXCameraAdapter::switchToLoaded(bool bPortEnableRequired) {
         }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
+    if ( !bPortEnableRequired ) {
+        OMXCameraPortParameters *mCaptureData , *mPreviewData, *measurementData;
+        mCaptureData = mPreviewData = measurementData = NULL;
+
+        mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
+        mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+        measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
+
+        ///Free the OMX Buffers
+        for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ ) {
+            eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                    mCameraAdapterParameters.mPrevPortIndex,
+                    mPreviewData->mBufferHeader[i]);
+
+            if(eError!=OMX_ErrorNone) {
+                CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+            }
+            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+        }
+
+        if ( mMeasurementEnabled ) {
+
+            for ( int i = 0 ; i < measurementData->mNumBufs ; i++ ) {
+                eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                        mCameraAdapterParameters.mMeasurementPortIndex,
+                        measurementData->mBufferHeader[i]);
+                if(eError!=OMX_ErrorNone) {
+                    CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+                }
+                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+            }
+
+            {
+                android::AutoMutex lock(mPreviewDataBufferLock);
+                mPreviewDataBuffersAvailable.clear();
+            }
+
+        }
+    }
+
     CAMHAL_LOGDA("Switching IDLE->LOADED state");
     ret = mSwitchToLoadedSem.WaitTimeout(OMX_CMD_TIMEOUT);
 
@@ -1875,6 +1916,11 @@ status_t OMXCameraAdapter::switchToLoaded(bool bPortEnableRequired) {
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    {
+        android::AutoMutex lock(mPreviewBufferLock);
+        ///Clear all the available preview buffers
+        mPreviewBuffersAvailable.clear();
+    }
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
@@ -2439,43 +2485,6 @@ status_t OMXCameraAdapter::stopPreview() {
     }
 
     mTunnelDestroyed = false;
-    OMXCameraPortParameters *mCaptureData , *mPreviewData, *measurementData;
-    mCaptureData = mPreviewData = measurementData = NULL;
-
-    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
-    mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
-    measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
-
-    ///Free the OMX Buffers
-    for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ ) {
-        eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                mCameraAdapterParameters.mPrevPortIndex,
-                mPreviewData->mBufferHeader[i]);
-
-        if(eError!=OMX_ErrorNone) {
-            CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-        }
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-    }
-
-    if ( mMeasurementEnabled ) {
-
-        for ( int i = 0 ; i < measurementData->mNumBufs ; i++ ) {
-            eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                    mCameraAdapterParameters.mMeasurementPortIndex,
-                    measurementData->mBufferHeader[i]);
-            if(eError!=OMX_ErrorNone) {
-                CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-            }
-            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-        }
-
-        {
-            android::AutoMutex lock(mPreviewDataBufferLock);
-            mPreviewDataBuffersAvailable.clear();
-        }
-
-    }
 
     {
         android::AutoMutex lock(mPreviewBufferLock);
@@ -2484,7 +2493,6 @@ status_t OMXCameraAdapter::stopPreview() {
     }
 
     switchToLoaded();
-
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
@@ -2495,18 +2503,6 @@ status_t OMXCameraAdapter::stopPreview() {
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
-
-EXIT:
-    CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
-    {
-        android::AutoMutex lock(mPreviewBufferLock);
-        ///Clear all the available preview buffers
-        mPreviewBuffersAvailable.clear();
-    }
-    performCleanupAfterError();
-    LOG_FUNCTION_NAME_EXIT;
-    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
-
 }
 
 status_t OMXCameraAdapter::setSensorOverclock(bool enable)
@@ -3341,7 +3337,7 @@ static void debugShowFPS()
         mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-        CAMHAL_LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+        CAMHAL_LOGI("Camera %d Frames, %f FPS", mFrameCount, mFps);
     }
     // XXX: mFPS has the value we want
 }
@@ -4165,6 +4161,8 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
 
 #endif
 
+    mPreviewPortInitialized = false;
+
     LOG_FUNCTION_NAME_EXIT;
 }
 
@@ -4292,7 +4290,6 @@ public:
     CapabilitiesHandler()
     {
         mComponent = 0;
-        mIsAborted = true;
     }
 
     const OMX_HANDLETYPE & component() const
@@ -4303,94 +4300,6 @@ public:
     OMX_HANDLETYPE & componentRef()
     {
         return mComponent;
-    }
-
-    status_t disableAllPorts()
-    {
-        android::AutoMutex locker(mLock);
-        CAMHAL_UNUSED(locker);
-
-        mPortsLeftToDisable = OMX_CAMERA_NUM_PORTS;
-        mIsOk = false;
-        mIsAborted = false;
-
-        CAMHAL_LOGD("Disabling ports...");
-        const OMX_ERRORTYPE sendCommandError = OMX_SendCommand(component(),
-                OMX_CommandPortDisable, OMX_ALL, 0);
-        CAMHAL_LOGD("Disabling ports... DONE");
-
-        if ( sendCommandError != OMX_ErrorNone )
-        {
-            CAMHAL_LOGE("Failed disabling all ports, error: 0x%x", sendCommandError);
-            return Utils::ErrorUtils::omxToAndroidError(sendCommandError);
-        }
-
-        CAMHAL_LOGD("Waiting for disabling all ports will be finished...");
-        const status_t waitStatus = mCondition.waitRelative(mLock, seconds_to_nanoseconds(3));
-        CAMHAL_LOGD("Waiting for disabling all ports will be finished... DONE");
-
-        if ( waitStatus != NO_ERROR )
-        {
-            CAMHAL_LOGE("Timeout triggered while waiting for all ports to be disabled");
-            return TIMED_OUT;
-        }
-
-        if ( !mIsOk )
-        {
-            CAMHAL_LOGE("Failed to disable all ports");
-            return UNKNOWN_ERROR;
-        }
-
-        // all ports have been disabled
-        mIsAborted = true;
-
-        return NO_ERROR;
-    }
-
-    status_t switchToState(OMX_STATETYPE state)
-    {
-        CAMHAL_LOGD(".");
-        android::AutoMutex locker(mLock);
-        CAMHAL_UNUSED(locker);
-        CAMHAL_LOGD(".");
-
-        mState = state;
-        mIsOk = false;
-        mIsAborted = false;
-
-        CAMHAL_LOGD("Switching to state 0x%x...", mState);
-        const OMX_ERRORTYPE switchError = OMX_SendCommand(mComponent,
-                OMX_CommandStateSet, mState, 0);
-        CAMHAL_LOGD("Switching to state 0x%x... DONE", mState);
-
-        if ( switchError != OMX_ErrorNone )
-        {
-            CAMHAL_LOGE("Failed switching to state 0x%x, error: 0x%x", mState, switchError);
-            return Utils::ErrorUtils::omxToAndroidError(switchError);
-        }
-
-        // wait for the event for 3 seconds
-        CAMHAL_LOGD("Waiting...");
-        const status_t waitStatus = mCondition.waitRelative(mLock, seconds_to_nanoseconds(3));
-        CAMHAL_LOGD("Waiting... DONE");
-
-        // disable following events
-        mIsAborted = true;
-
-        if ( waitStatus != NO_ERROR )
-        {
-            CAMHAL_LOGE("Timeout triggered while switching to state 0x%x", mState);
-            return TIMED_OUT;
-        }
-
-        // state has been switched, check whether is was Idle
-        if ( !mIsOk )
-        {
-            CAMHAL_LOGE("Switching to state 0x%x has failed", mState);
-            return UNKNOWN_ERROR;
-        }
-
-        return NO_ERROR;
     }
 
     status_t fetchCapabiltiesForMode(OMX_CAMOPERATINGMODETYPE mode,
@@ -4411,20 +4320,8 @@ public:
             return BAD_VALUE;
         }
 
-        const status_t idleSwitchError = switchToState(OMX_StateIdle);
-        if ( idleSwitchError != NO_ERROR ) {
-            CAMHAL_LOGE("Failed to switch to Idle state, error: %d", idleSwitchError);
-            return UNKNOWN_ERROR;
-        }
-
         // get and fill capabilities
         OMXCameraAdapter::getCaps(sensorId, properties, component());
-
-        const status_t loadedSwitchError = switchToState(OMX_StateLoaded);
-        if ( loadedSwitchError != NO_ERROR ) {
-            CAMHAL_LOGE("Failed to switch to Loaded state, error: %d", loadedSwitchError);
-            return UNKNOWN_ERROR;
-        }
 
         return NO_ERROR;
     }
@@ -4432,16 +4329,6 @@ public:
     status_t fetchCapabilitiesForSensor(int sensorId,
                                         CameraProperties::Properties * properties)
     {
-        CAMHAL_LOGD("Disabling all ports...");
-        const status_t disableAllPortsError = disableAllPorts();
-        CAMHAL_LOGD("Disabling all ports... DONE");
-
-        if ( disableAllPortsError != NO_ERROR ) {
-            CAMHAL_LOGE("Failed to disable all ports, error: %d",
-                        disableAllPortsError);
-            return UNKNOWN_ERROR;
-        }
-
         // sensor select
         OMX_CONFIG_SENSORSELECTTYPE sensorSelect;
         OMX_INIT_STRUCT_PTR (&sensorSelect, OMX_CONFIG_SENSORSELECTTYPE);
@@ -4530,102 +4417,9 @@ public:
         return err;
     }
 
-public:
-    static OMX_ERRORTYPE eventCallback(const OMX_HANDLETYPE component,
-            const OMX_PTR cookie, const OMX_EVENTTYPE event, const OMX_U32 data1, const OMX_U32 data2,
-            const OMX_PTR pEventData)
-    {
-        LOG_FUNCTION_NAME;
-
-        CAMHAL_UNUSED(pEventData);
-
-        CAMHAL_LOGD("event = 0x%x", event);
-        CAMHAL_LOGD("data1 = 0x%x", data1);
-        CAMHAL_LOGD("data2 = 0x%x", data2);
-
-        CapabilitiesHandler * handler = reinterpret_cast<CapabilitiesHandler*>(cookie);
-
-        // ensure this is out component
-        if ( handler->component() != component )
-        {
-            CAMHAL_LOGE("Wrong component handle received: %p, expecting: %p",
-                        component, handler->component());
-            return OMX_ErrorBadParameter;
-        }
-
-        return handler->processEvent(event, data1, data2);
-    }
-
-    OMX_ERRORTYPE processEvent(const OMX_EVENTTYPE event, const OMX_U32 data1, const OMX_U32 data2)
-    {
-        android::AutoMutex locker(mLock);
-        CAMHAL_UNUSED(locker);
-
-        if ( mIsAborted )
-        {
-            CAMHAL_LOGE("Waiting for state switch has been aborted");
-            return OMX_ErrorNone;
-        }
-
-        switch ( event )
-        {
-        case OMX_EventCmdComplete:
-            switch ( data1 )
-            {
-            case OMX_CommandStateSet:
-                // this is our state switch command we are waiting for
-                mIsOk = static_cast<OMX_STATETYPE>(data2) == mState;
-
-                // wake up the caller
-                CAMHAL_LOGD("Waking the condition...");
-                mCondition.signal();
-                CAMHAL_LOGD("Waking the condition... DONE");
-                break;
-
-            case OMX_CommandPortDisable:
-                CAMHAL_LOGD("Decreasing disabled port count: %d", mPortsLeftToDisable);
-                mPortsLeftToDisable--;
-                if ( mPortsLeftToDisable == 0 )
-                {
-                    CAMHAL_LOGD("All ports have been disabled, waking the caller...");
-                    mIsOk = true;
-                    mCondition.signal();
-                    CAMHAL_LOGD("All ports have been disabled, waking the caller... DONE");
-                }
-                break;
-
-            default:
-                // ignore rest of the commands
-                break;
-            }
-            break;
-
-        case OMX_EventError:
-            CAMHAL_LOGE("Error event received, data1 = 0x%8x, data2 = 0x%8x", data1, data2);
-
-            // keep mIsOk in false state, indicating that request has failed
-
-            CAMHAL_LOGD("Waking the condition...");
-            mCondition.signal();
-            CAMHAL_LOGD("Waking the condition... DONE");
-            break;
-
-        default:
-            // ignore rest of the event types
-            break;
-        }
-
-        return OMX_ErrorNone;
-    }
-
 private:
-    android::Mutex mLock;
-    android::Condition mCondition;
     OMX_HANDLETYPE mComponent;
     OMX_STATETYPE mState;
-    bool mIsAborted;
-    bool mIsOk;
-    int mPortsLeftToDisable;
 };
 
 extern "C" status_t OMXCameraAdapter_Capabilities(
@@ -4653,42 +4447,44 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
       return Utils::ErrorUtils::omxToAndroidError(eError);
     }
 
+    CapabilitiesHandler handler;
+    OMX_CALLBACKTYPE callbacks;
+    callbacks.EventHandler = 0;
+    callbacks.EmptyBufferDone = 0;
+    callbacks.FillBufferDone = 0;
+
+    eError = OMXCameraAdapter::OMXCameraGetHandle(&handler.componentRef(), &handler, callbacks);
+    if (eError != OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_GetHandle -0x%x", eError);
+        goto EXIT;
+    }
+
+    DCCHandler dcc_handler;
+    dcc_handler.loadDCC(handler.componentRef());
+
     // Continue selecting sensor and then querying OMX Camera for it's capabilities
     // When sensor select returns an error, we know to break and stop
     while (eError == OMX_ErrorNone &&
            (starting_camera + num_cameras_supported) < max_camera) {
 
-        CapabilitiesHandler handler;
-
-        OMX_CALLBACKTYPE callbacks;
-        callbacks.EventHandler = CapabilitiesHandler::eventCallback;
-        callbacks.EmptyBufferDone = 0;
-        callbacks.FillBufferDone = 0;
-
-        eError = OMXCameraAdapter::OMXCameraGetHandle(&handler.componentRef(), &handler, callbacks);
-        if (eError != OMX_ErrorNone) {
-            CAMHAL_LOGEB("OMX_GetHandle -0x%x", eError);
-            goto EXIT;
-        }
-
         const int sensorId = num_cameras_supported;
         CameraProperties::Properties * properties = properties_array + starting_camera + sensorId;
         const status_t err = handler.fetchCapabilitiesForSensor(sensorId, properties);
-
-        // clean up
-        if(handler.component()) {
-            CAMHAL_LOGD("Freeing the component...");
-            OMX_FreeHandle(handler.component());
-            CAMHAL_LOGD("Freeing the component... DONE");
-            handler.componentRef() = NULL;
-        }
 
         if ( err != NO_ERROR )
             break;
 
         num_cameras_supported++;
-        CAMHAL_LOGDB("Number of OMX Cameras detected = %d \n",num_cameras_supported);
+        CAMHAL_LOGEB("Number of OMX Cameras detected = %d \n",num_cameras_supported);
     }
+
+     // clean up
+     if(handler.component()) {
+         CAMHAL_LOGD("Freeing the component...");
+         OMX_FreeHandle(handler.component());
+         CAMHAL_LOGD("Freeing the component... DONE");
+         handler.componentRef() = NULL;
+     }
 
  EXIT:
     CAMHAL_LOGD("Deinit...");

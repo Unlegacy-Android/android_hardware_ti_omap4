@@ -52,6 +52,9 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
         } else if (strcmp(valstr, (const char *) TICameraParameters::EXPOSURE_BRACKETING) == 0) {
             capMode = OMXCameraAdapter::HIGH_SPEED;
             mCapabilitiesOpMode = MODE_HIGH_SPEED;
+        } else if (strcmp(valstr, (const char *) TICameraParameters::ZOOM_BRACKETING) == 0) {
+            capMode = OMXCameraAdapter::HIGH_SPEED;
+            mCapabilitiesOpMode = MODE_HIGH_SPEED;
         } else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_MODE) == 0) {
             capMode = OMXCameraAdapter::HIGH_QUALITY;
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
@@ -1102,6 +1105,15 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
 
         mPreviewData->mWidth = tmpWidth;
         mPreviewData->mHeight = tmpHeight;
+        mPreviewPortInitialized = true;
+    }
+    else if (!mPreviewPortInitialized) {
+        ret = setFormat(OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error while configuring format 0x%x", ret);
+            return ret;
+        }
+        mPreviewPortInitialized = true;
     }
 
     /* Now set Required Orientation*/
