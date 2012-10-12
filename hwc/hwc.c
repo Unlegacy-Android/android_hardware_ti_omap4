@@ -1521,16 +1521,12 @@ static int setup_mirroring(omap4_hwc_device_t *hwc_dev)
     return 0;
 }
 
-static void blit_reset(omap4_hwc_device_t *hwc_dev, int flags)
+static void blit_reset(omap4_hwc_device_t *hwc_dev)
 {
     hwc_dev->blit_flags = 0;
     hwc_dev->blit_num = 0;
     hwc_dev->post2_blit_buffers = 0;
     hwc_dev->comp_data.blit_data.rgz_items = 0;
-
-    /* We want to maintain the rgz dirty region data if there are no geometry changes */
-    if (flags & HWC_GEOMETRY_CHANGED)
-        rgz_release(&grgz);
 }
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
@@ -1743,7 +1739,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     int ix_s3d = -1;
 
     int blit_all = 0;
-    blit_reset(hwc_dev, list ? list->flags : 0);
+    blit_reset(hwc_dev);
 
     /* If the SGX is used or we are going to blit something we need a framebuffer
      * and a DSS pipe
@@ -1850,11 +1846,17 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         dsscomp->ovls[0].cfg.ix = dsscomp->num_ovls;
 
     if (hwc_dev->blt_policy == BLTPOLICY_DEFAULT) {
+        /*
+         * As long as we keep blitting on consecutive frames keep the regionizer
+         * state, if this is not possible the regionizer state is unreliable and
+         * we need to reset its state.
+         */
         if (hwc_dev->use_sgx) {
             if (blit_layers(hwc_dev, list, dsscomp->num_ovls == 1 ? 0 : dsscomp->num_ovls)) {
                 hwc_dev->use_sgx = 0;
             }
-        }
+        } else
+            rgz_release(&grgz);
     }
 
     /* If the SGX is not used and there is blit data we need a framebuffer and
