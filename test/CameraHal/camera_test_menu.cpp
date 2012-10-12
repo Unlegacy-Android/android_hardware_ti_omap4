@@ -1293,6 +1293,7 @@ int openCamera() {
     }
     getParametersFromCapabilities();
     getSizeParametersFromCapabilities();
+    initDefaults();
     camera->setParameters(params.flatten());
     camera->setListener(new CameraHandler());
 
