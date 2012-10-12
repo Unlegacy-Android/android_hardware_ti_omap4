@@ -1162,6 +1162,9 @@ int configureRecorder() {
     recording_counter++;
 
     if (cameraInfo.orientation == 90 || cameraInfo.orientation == 270 ) {
+        if (Vcapture_Array[VcaptureSizeIDX]->height == 1080) {
+            Vcapture_Array[VcaptureSizeIDX]->height = 1088;
+        }
         if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->width) < 0 ) {
             printf("error while configuring video size\n");
             return -1;
