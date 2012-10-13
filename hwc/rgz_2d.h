@@ -268,6 +268,11 @@ typedef struct rgz_layer {
     void* dirty_hndl;
 } rgz_layer_t;
 
+typedef struct rgz_fb_state {
+    int rgz_layerno;
+    rgz_layer_t rgz_layers[RGZ_MAXLAYERS];
+} rgz_fb_state_t;
+
 typedef struct blit_hregion {
     blit_rect_t rect;
     rgz_layer_t *rgz_layers[RGZ_MAXLAYERS];
@@ -283,8 +288,7 @@ struct rgz {
     blit_hregion_t *hregions;
     int nhregions;
     int state;
-    unsigned int rgz_layerno;
-    rgz_layer_t rgz_layers[RGZ_MAXLAYERS];
+    rgz_fb_state_t cur_fb_state;
 };
 
 #endif /* __RGZ_2D__ */
