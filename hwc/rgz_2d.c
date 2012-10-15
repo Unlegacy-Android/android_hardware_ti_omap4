@@ -834,31 +834,21 @@ static float getscaleh(hwc_layer_t *layer)
     return ((float)HEIGHT(layer->displayFrame)) / (float)h;
 }
 
-static int rgz_bswap(int *a, int *b)
-{
-    if (*a > *b) {
-        int tmp = *b;
-        *b = *a;
-        *a = tmp;
-        return 1;
-    }
-    return 0;
-}
-
 /*
- * Simple bubble sort on an array
+ * Simple bubble sort on an array, ascending order
  */
 static void rgz_bsort(int *a, int len)
 {
-    int i, s;
-
-    do {
-        s=0;
-        for (i=0; i+1<len; i++) {
-            if (rgz_bswap(&a[i], &a[i+1]))
-                s = 1;
+    int i, j;
+    for (i = 0; i < len; i++) {
+        for (j = 0; j < i; j++) {
+            if (a[i] < a[j]) {
+                int temp = a[i];
+                a[i] = a[j];
+                a[j] = temp;
+            }
         }
-    } while (s);
+    }
 }
 
 /*
