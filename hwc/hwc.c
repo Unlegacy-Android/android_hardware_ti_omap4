@@ -237,6 +237,7 @@ static int debug = 0;
 static int debugpost2 = 0;
 static int debugblt = 0;
 static rgz_t grgz;
+static rgz_ext_layer_list_t grgz_ext_layer_list;
 static struct bvsurfgeom gscrngeom;
 
 static void showfps(void)
@@ -1553,12 +1554,34 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
             break;
     }
 
+    /*
+     * Request the layer identities to SurfaceFlinger, first figure out if the
+     * operation is supported
+     */
+    if (!(list->flags & HWC_EXTENDED_API) || !hwc_dev->procs ||
+        hwc_dev->procs->extension_cb(hwc_dev->procs, HWC_EXTENDED_OP_LAYERDATA, NULL, -1) != 0)
+        goto err_out;
+
+    /* Check if we have enough space in the extended layer list */
+    if ((sizeof(hwc_layer_extended_t) * list->numHwLayers) > sizeof(grgz_ext_layer_list))
+        goto err_out;
+
+    unsigned int i;
+    for (i = 0; i < list->numHwLayers; i++) {
+        hwc_layer_extended_t *ext_layer = &grgz_ext_layer_list.layers[i];
+        ext_layer->idx = i;
+        if (hwc_dev->procs->extension_cb(hwc_dev->procs, HWC_EXTENDED_OP_LAYERDATA,
+            (void **) &ext_layer, sizeof(hwc_layer_extended_t)) != 0)
+            goto err_out;
+    }
+
     rgz_in_params_t in = {
         .op = rgz_in_op,
         .data = {
             .hwc = {
                 .dstgeom = &gscrngeom,
                 .layers = list->hwLayers,
+                .extlayers = grgz_ext_layer_list.layers,
                 .layerno = list->numHwLayers
             }
         }
@@ -1571,7 +1594,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     if (rgz_in(&in, &grgz) != RGZ_ALL)
         goto err_out;
 
-    unsigned int i, count = 0;
+    unsigned int count = 0;
     for (i = 0; i < list->numHwLayers; i++) {
         if (list->hwLayers[i].compositionType != HWC_OVERLAY) {
             count++;

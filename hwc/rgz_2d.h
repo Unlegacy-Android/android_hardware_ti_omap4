@@ -26,9 +26,13 @@
 
 /*
  * Maximum number of layers the regionizer will accept as input. Account for an
- * additional 'background layer' to generate empty subregion rectangles.
+ * additional 'background layer' to generate empty subregion rectangles and
+ * a damage region as well.
  */
-#define RGZ_INPUT_MAXLAYERS (RGZ_MAXLAYERS - 1)
+#define RGZ_INPUT_MAXLAYERS (RGZ_MAXLAYERS - 2)
+
+/* Number of framebuffers to track */
+#define RGZ_NUM_FB 2
 
 /*
  * Regionizer data
@@ -51,6 +55,7 @@ struct rgz_in_hwc {
     int flags;
     int layerno;
     hwc_layer_t *layers;
+    hwc_layer_extended_t *extlayers;
     struct bvsurfgeom *dstgeom;
 };
 
@@ -60,6 +65,10 @@ typedef struct rgz_in_params {
         struct rgz_in_hwc hwc;
     } data;
 } rgz_in_params_t;
+
+typedef struct rgz_ext_layer_list {
+    hwc_layer_extended_t layers[RGZ_INPUT_MAXLAYERS];
+} rgz_ext_layer_list_t;
 
 /*
  * Validate whether the HWC layers can be rendered
@@ -263,9 +272,9 @@ typedef struct blit_rect {
 
 typedef struct rgz_layer {
     hwc_layer_t hwc_layer;
+    uint32_t identity;
     int buffidx;
     int dirty_count;
-    void* dirty_hndl;
 } rgz_layer_t;
 
 typedef struct rgz_fb_state {
@@ -289,6 +298,9 @@ struct rgz {
     int nhregions;
     int state;
     rgz_fb_state_t cur_fb_state;
+    int fb_state_idx; /* Target framebuffer index. Points to the fb where the blits will be applied to */
+    rgz_fb_state_t fb_states[RGZ_NUM_FB]; /* Storage for previous framebuffer geometry states */
+    blit_rect_t damaged_area; /* Area of the screen which will be redrawn unconditionally */
 };
 
 #endif /* __RGZ_2D__ */

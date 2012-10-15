@@ -86,8 +86,7 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 
 #define IS_BVCMD(params) (params->op == RGZ_OUT_BVCMD_REGION || params->op == RGZ_OUT_BVCMD_PAINT)
 
-/* Number of framebuffers to track */
-#define RGZ_NUM_FB 2
+#define RECT_INTERSECTS(a, b) (((a).bottom > (b).top) && ((a).top < (b).bottom) && ((a).right > (b).left) && ((a).left < (b).right))
 
 /* Buffer indexes used to distinguish background and layers with the clear fb hint */
 #define RGZ_BACKGROUND_BUFFIDX -2
@@ -886,32 +885,7 @@ static int rgz_bunique(int *a, int len)
     return unique;
 }
 
-static int rgz_hwc_layer_sortbyy(rgz_layer_t *ra, int rsz, int *out, int *width, int screen_height)
-{
-    int outsz = 0;
-    int i;
-    *width = 0;
-    for (i = 0; i < rsz; i++) {
-        hwc_layer_t *layer = &ra[i].hwc_layer;
-        /* Maintain regions inside display boundaries */
-        int top = layer->displayFrame.top;
-        int bottom = layer->displayFrame.bottom;
-        out[outsz++] = max(0, top);
-        out[outsz++] = min(bottom, screen_height);
-        int right = layer->displayFrame.right;
-        *width = *width > right ? *width : right;
-    }
-    rgz_bsort(out, outsz);
-    return outsz;
-}
-
-static int rgz_hwc_intersects(blit_rect_t *a, hwc_rect_t *b)
-{
-    return ((a->bottom > b->top) && (a->top < b->bottom) &&
-            (a->right > b->left) && (a->left < b->right));
-}
-
-static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
+static void rgz_gen_blitregions(rgz_t *rgz, blit_hregion_t *hregion, int screen_width)
 {
 /*
  * 1. Get the offsets (left/right positions) of each layer within the
@@ -924,13 +898,19 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
     int offsets[RGZ_SUBREGIONMAX];
     int noffsets=0;
     int l, r;
+
+    /*
+     * Add damaged region, then all layers. We are guaranteed to not go outside
+     * of offsets array boundaries at this point.
+     */
+    offsets[noffsets++] = rgz->damaged_area.left;
+    offsets[noffsets++] = rgz->damaged_area.right;
+
     for (l = 0; l < hregion->nlayers; l++) {
         hwc_layer_t *layer = &hregion->rgz_layers[l]->hwc_layer;
         /* Make sure the subregion is not outside the boundaries of the screen */
-        int left = layer->displayFrame.left;
-        int right = layer->displayFrame.right;
-        offsets[noffsets++] = max(0, left);
-        offsets[noffsets++] = min(right, screen_width);
+        offsets[noffsets++] = max(0, layer->displayFrame.left);
+        offsets[noffsets++] = min(layer->displayFrame.right, screen_width);
     }
     rgz_bsort(offsets, noffsets);
     noffsets = rgz_bunique(offsets, noffsets);
@@ -947,7 +927,7 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
             subregion.left, subregion.right);
         for (l = 0; l < hregion->nlayers; l++) {
             hwc_layer_t *layer = &hregion->rgz_layers[l]->hwc_layer;
-            if (rgz_hwc_intersects(&subregion, &layer->displayFrame)) {
+            if (RECT_INTERSECTS(subregion, layer->displayFrame)) {
 
                 hregion->blitrects[l][r] = subregion;
 
@@ -1017,31 +997,210 @@ static void rgz_delete_region_data(rgz_t *rgz){
     rgz->state &= ~RGZ_REGION_DATA;
 }
 
-static void rgz_handle_dirty_region(rgz_t *rgz, int reset_counters)
+static rgz_fb_state_t* get_prev_fb_state(rgz_t *rgz)
+{
+    return &rgz->fb_states[rgz->fb_state_idx];
+}
+
+static rgz_fb_state_t* get_next_fb_state(rgz_t *rgz)
+{
+    rgz->fb_state_idx = (rgz->fb_state_idx + 1) % RGZ_NUM_FB;
+    return &rgz->fb_states[rgz->fb_state_idx];
+}
+
+static void rgz_add_to_damaged_area(rgz_in_params_t *params, rgz_layer_t *rgz_layer,
+    blit_rect_t *damaged_area)
+{
+    struct bvsurfgeom *screen_geom = params->data.hwc.dstgeom;
+    hwc_layer_t *layer = &rgz_layer->hwc_layer;
+
+    blit_rect_t screen_rect;
+    screen_rect.left = screen_rect.top = 0;
+    screen_rect.right = screen_geom->width;
+    screen_rect.bottom = screen_geom->height;
+
+    /* Ignore the layer rectangle if it doesn't intersect the screen */
+    if (!RECT_INTERSECTS(screen_rect, layer->displayFrame))
+        return;
+
+    /* Clip the layer rectangle to the screen geometry */
+    blit_rect_t layer_rect;
+    rgz_get_displayframe_rect(layer, &layer_rect);
+    layer_rect.left = max(0, layer_rect.left);
+    layer_rect.top = max(0, layer_rect.top);
+    layer_rect.right = min(screen_rect.right, layer_rect.right);
+    layer_rect.bottom = min(screen_rect.bottom, layer_rect.bottom);
+
+    /* Then add the rectangle to the damage area */
+    if (empty_rect(damaged_area)) {
+        /* Adding for the first time */
+        damaged_area->left = layer_rect.left;
+        damaged_area->top = layer_rect.top;
+        damaged_area->right = layer_rect.right;
+        damaged_area->bottom = layer_rect.bottom;
+    } else {
+        /* Grow current damaged area */
+        damaged_area->left = min(damaged_area->left, layer_rect.left);
+        damaged_area->top = min(damaged_area->top, layer_rect.top);
+        damaged_area->right = max(damaged_area->right, layer_rect.right);
+        damaged_area->bottom = max(damaged_area->bottom, layer_rect.bottom);
+    }
+}
+
+/* Search a layer with the specified identity in the passed array */
+static rgz_layer_t* rgz_find_layer(rgz_layer_t *rgz_layers, int rgz_layerno,
+    uint32_t layer_identity)
 {
     int i;
+    for (i = 0; i < rgz_layerno; i++) {
+        rgz_layer_t *rgz_layer = &rgz_layers[i];
+        /* Ignore background layer, it has no identity */
+        if (rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX)
+            continue;
+        if (rgz_layer->identity == layer_identity)
+            return rgz_layer;
+    }
+    return NULL;
+}
+
+/* Determines if two layers with the same identity have changed its own window content */
+static int rgz_has_layer_content_changed(rgz_layer_t *cur_rgz_layer, rgz_layer_t *prev_rgz_layer)
+{
+    hwc_layer_t *cur_hwc_layer = &cur_rgz_layer->hwc_layer;
+    hwc_layer_t *prev_hwc_layer = &prev_rgz_layer->hwc_layer;
+
+    /* The background has no identity and never changes */
+    if (cur_rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX &&
+        prev_rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX)
+        return 0;
+
+    if (cur_rgz_layer->identity != prev_rgz_layer->identity) {
+        OUTE("%s: Invalid input, layer identities differ (current=%d, prev=%d)",
+            __func__, cur_rgz_layer->identity, prev_rgz_layer->identity);
+        return 1;
+    }
+
+    /* If the layer has the clear fb hint we don't care about the content */
+    if (cur_rgz_layer->buffidx == RGZ_CLEARHINT_BUFFIDX &&
+        prev_rgz_layer->buffidx == RGZ_CLEARHINT_BUFFIDX)
+        return 0;
+
+    /* Check if the layer content has changed */
+    if (cur_hwc_layer->handle != prev_hwc_layer->handle ||
+        cur_hwc_layer->transform != prev_hwc_layer->transform ||
+        cur_hwc_layer->sourceCrop.top != prev_hwc_layer->sourceCrop.top ||
+        cur_hwc_layer->sourceCrop.left != prev_hwc_layer->sourceCrop.left ||
+        cur_hwc_layer->sourceCrop.bottom != prev_hwc_layer->sourceCrop.bottom ||
+        cur_hwc_layer->sourceCrop.right != prev_hwc_layer->sourceCrop.right)
+        return 1;
+
+    return 0;
+}
+
+/* Determines if two layers with the same identity have changed their screen position */
+static int rgz_has_layer_frame_moved(rgz_layer_t *cur_rgz_layer, rgz_layer_t *target_rgz_layer)
+{
+    hwc_layer_t *cur_hwc_layer = &cur_rgz_layer->hwc_layer;
+    hwc_layer_t *target_hwc_layer = &target_rgz_layer->hwc_layer;
+
+    if (cur_rgz_layer->identity != target_rgz_layer->identity) {
+        OUTE("%s: Invalid input, layer identities differ (current=%d, target=%d)",
+            __func__, cur_rgz_layer->identity, target_rgz_layer->identity);
+        return 1;
+    }
+
+    if (cur_hwc_layer->displayFrame.top != target_hwc_layer->displayFrame.top ||
+        cur_hwc_layer->displayFrame.left != target_hwc_layer->displayFrame.left ||
+        cur_hwc_layer->displayFrame.bottom != target_hwc_layer->displayFrame.bottom ||
+        cur_hwc_layer->displayFrame.right != target_hwc_layer->displayFrame.right)
+        return 1;
+
+    return 0;
+}
+
+static void rgz_handle_dirty_region(rgz_t *rgz, rgz_in_params_t *params,
+    rgz_fb_state_t* prev_fb_state, rgz_fb_state_t* target_fb_state)
+{
+    /* Reset damaged area */
+    bzero(&rgz->damaged_area, sizeof(rgz->damaged_area));
+
+    int i;
     rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
+
     for (i = 0; i < cur_fb_state->rgz_layerno; i++) {
-        rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[i];
-        void *new_handle;
+        rgz_layer_t *cur_rgz_layer = &cur_fb_state->rgz_layers[i];
+        rgz_layer_t *prev_rgz_layer = NULL;
+        int layer_changed = 0;
 
-        /*
-         * We don't care about the handle for background and layers with the
-         * clear fb hint, but we want to maintain a layer state for dirty
-         * region handling.
-         */
-        if (rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX ||
-            rgz_layer->buffidx == RGZ_CLEARHINT_BUFFIDX)
-            new_handle = (void*)0x1;
-        else
-            new_handle = (void*)rgz_layer->hwc_layer.handle;
+        if (i == 0) {
+            /*
+             * Background is always zero, no need to search for it. If the previous state
+             * is empty reset the dirty count for the background layer.
+             */
+            if (prev_fb_state->rgz_layerno)
+                prev_rgz_layer = &prev_fb_state->rgz_layers[0];
+        } else {
+            /* Find out if this layer was present in the previous frame */
+            prev_rgz_layer = rgz_find_layer(prev_fb_state->rgz_layers,
+                prev_fb_state->rgz_layerno, cur_rgz_layer->identity);
+        }
 
-        if (reset_counters || new_handle != rgz_layer->dirty_hndl) {
-            rgz_layer->dirty_count = RGZ_NUM_FB;
-            rgz_layer->dirty_hndl = new_handle;
+        /* Check if the layer is new or if the content changed from the previous frame */
+        if (prev_rgz_layer && !rgz_has_layer_content_changed(cur_rgz_layer, prev_rgz_layer)) {
+            /* Copy previous dirty count */
+            cur_rgz_layer->dirty_count = prev_rgz_layer->dirty_count;
+            cur_rgz_layer->dirty_count -= cur_rgz_layer->dirty_count ? 1 : 0;
         } else
-            rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
+            cur_rgz_layer->dirty_count = RGZ_NUM_FB;
 
+        /* If the layer is new, redraw the layer area */
+        if (!prev_rgz_layer) {
+            rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+            continue;
+        }
+
+        /* Nothing more to do with the background layer */
+        if (i == 0)
+            continue;
+
+        /* Find out if the layer is present in the target frame */
+        rgz_layer_t *target_rgz_layer = rgz_find_layer(target_fb_state->rgz_layers,
+                target_fb_state->rgz_layerno, cur_rgz_layer->identity);
+
+        if (target_rgz_layer) {
+            /* Find out if the window size and position are different from the target frame */
+            if (rgz_has_layer_frame_moved(cur_rgz_layer, target_rgz_layer)) {
+                /*
+                 * Redraw both layer areas. This will effectively clear the area where
+                 * this layer was in the target frame and force to draw the new layer
+                 * location.
+                 */
+                rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+                rgz_add_to_damaged_area(params, target_rgz_layer, &rgz->damaged_area);
+                cur_rgz_layer->dirty_count = RGZ_NUM_FB;
+            }
+        } else {
+            /* If the layer is not in the target just draw it's new location */
+            rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+        }
+    }
+
+    /*
+     * Add to damage area layers missing from the target frame to the current frame
+     * ignoring the background
+     */
+    for (i = 1; i < target_fb_state->rgz_layerno; i++) {
+        rgz_layer_t *target_rgz_layer = &target_fb_state->rgz_layers[i];
+
+        rgz_layer_t *cur_rgz_layer = rgz_find_layer(cur_fb_state->rgz_layers,
+            cur_fb_state->rgz_layerno, target_rgz_layer->identity);
+
+        /* Layers present in the target have been handled already in the loop above */
+        if (cur_rgz_layer)
+            continue;
+
+        /* The target layer is not present in the current frame, redraw its area */
+        rgz_add_to_damaged_area(params, target_rgz_layer, &rgz->damaged_area);
     }
 }
 
@@ -1051,11 +1210,14 @@ static void rgz_add_background_layer(rgz_fb_state_t *fb_state)
     rgz_layer_t *rgz_layer = &fb_state->rgz_layers[0];
     rgz_layer->hwc_layer = bg_layer;
     rgz_layer->buffidx = RGZ_BACKGROUND_BUFFIDX;
+    /* Set dummy handle to maintain dirty region state */
+    rgz_layer->hwc_layer.handle = (void*) 0x1;
 }
 
 static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 {
     hwc_layer_t *layers = p->data.hwc.layers;
+    hwc_layer_extended_t *extlayers = p->data.hwc.extlayers;
     int layerno = p->data.hwc.layerno;
 
     rgz->state &= ~RGZ_STATE_INIT;
@@ -1101,6 +1263,7 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                     possible_blit < RGZ_INPUT_MAXLAYERS) {
                 rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
                 rgz_layer->hwc_layer = layers[l];
+                rgz_layer->identity = extlayers[l].identity;
                 rgz_layer->buffidx = memidx++;
                 possible_blit++;
             }
@@ -1115,8 +1278,11 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                  * fb hint is present, mark this layer to identify it.
                  */
                 rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
-                rgz_layer->buffidx = RGZ_CLEARHINT_BUFFIDX;
                 rgz_layer->hwc_layer = layers[l];
+                rgz_layer->identity = extlayers[l].identity;
+                rgz_layer->buffidx = RGZ_CLEARHINT_BUFFIDX;
+                /* Set dummy handle to maintain dirty region state */
+                rgz_layer->hwc_layer.handle = (void*) 0x1;
                 possible_blit++;
             }
         }
@@ -1126,25 +1292,26 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-    int blit_layers = possible_blit + 1; /* Account for background layer */
-    int reset_dirty_counters = cur_fb_state->rgz_layerno != blit_layers ? 1 : 0;
-    /*
-     * The layers we are going to blit differ in number from the previous frame,
-     * we can't trust anymore the region data, calculate it again
-     */
-    if (reset_dirty_counters)
-        rgz_delete_region_data(rgz);
-
     rgz->state |= RGZ_STATE_INIT;
-    cur_fb_state->rgz_layerno = blit_layers;
+    cur_fb_state->rgz_layerno = possible_blit + 1; /* Account for background layer */
 
-    rgz_handle_dirty_region(rgz, reset_dirty_counters);
+    /* Get the target and previous frame geometries */
+    rgz_fb_state_t* prev_fb_state = get_prev_fb_state(rgz);
+    rgz_fb_state_t* target_fb_state = get_next_fb_state(rgz);
+
+    /* Modifiy dirty counters and create the damaged region */
+    rgz_handle_dirty_region(rgz, p, prev_fb_state, target_fb_state);
+
+    /* Copy the current geometry to use it in the next frame */
+    memcpy(target_fb_state->rgz_layers, cur_fb_state->rgz_layers, sizeof(rgz_layer_t) * cur_fb_state->rgz_layerno);
+    target_fb_state->rgz_layerno = cur_fb_state->rgz_layerno;
 
     return RGZ_ALL;
 }
 
 static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 {
+    int i, j;
     int yentries[RGZ_SUBREGIONMAX];
     int dispw;  /* widest layer */
     int screen_width = p->data.hwc.dstgeom->width;
@@ -1156,15 +1323,37 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-    /* If there is already region data avoid parsing it again */
-    if (rgz->state & RGZ_REGION_DATA) {
-        return 0;
+    /*
+     * Figure out if there is enough space to store the top-bottom coordinates
+     * of each layer including the damaged area
+     */
+    if (((cur_fb_state->rgz_layerno + 1) * 2) > RGZ_SUBREGIONMAX) {
+        OUTE("%s: Not enough space to store top-bottom coordinates of each layer (max %d, needed %d*2)",
+            __func__, RGZ_SUBREGIONMAX, cur_fb_state->rgz_layerno + 1);
+        return -1;
     }
 
-    /* Find the horizontal regions */
-    int ylen = rgz_hwc_layer_sortbyy(cur_fb_state->rgz_layers, cur_fb_state->rgz_layerno,
-        yentries, &dispw, screen_height);
+    /* Delete the previous region data */
+    rgz_delete_region_data(rgz);
 
+    /*
+     * Find the horizontal regions, add damaged area first which is already
+     * inside display boundaries
+     */
+    int ylen = 0;
+    yentries[ylen++] = rgz->damaged_area.top;
+    yentries[ylen++] = rgz->damaged_area.bottom;
+    dispw = rgz->damaged_area.right;
+
+    /* Add the top and bottom coordinates of each layer */
+    for (i = 0; i < cur_fb_state->rgz_layerno; i++) {
+        hwc_layer_t *layer = &cur_fb_state->rgz_layers[i].hwc_layer;
+        /* Maintain regions inside display boundaries */
+        yentries[ylen++] = max(0, layer->displayFrame.top);
+        yentries[ylen++] = min(layer->displayFrame.bottom, screen_height);
+        dispw = dispw > layer->displayFrame.right ? dispw : layer->displayFrame.right;
+    }
+    rgz_bsort(yentries, ylen);
     ylen = rgz_bunique(yentries, ylen);
 
     /* at this point we have an array of horizontal regions */
@@ -1180,7 +1369,6 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     ALOGD_IF(debug, "Allocated %d regions (sz = %d), layerno = %d", rgz->nhregions,
         rgz->nhregions * sizeof(blit_hregion_t), cur_fb_state->rgz_layerno);
 
-    int i, j;
     for (i = 0; i < rgz->nhregions; i++) {
         hregions[i].rect.top = yentries[i];
         hregions[i].rect.bottom = yentries[i+1];
@@ -1190,7 +1378,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         hregions[i].nlayers = 0;
         for (j = 0; j < cur_fb_state->rgz_layerno; j++) {
             hwc_layer_t *layer = &cur_fb_state->rgz_layers[j].hwc_layer;
-            if (rgz_hwc_intersects(&hregions[i].rect, &layer->displayFrame)) {
+            if (RECT_INTERSECTS(hregions[i].rect, layer->displayFrame)) {
                 int l = hregions[i].nlayers++;
                 hregions[i].rgz_layers[l] = &cur_fb_state->rgz_layers[j];
             }
@@ -1199,7 +1387,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 
     /* Calculate blit regions */
     for (i = 0; i < rgz->nhregions; i++) {
-        rgz_gen_blitregions(&hregions[i], screen_width);
+        rgz_gen_blitregions(rgz, &hregions[i], screen_width);
         ALOGD_IF(debug, "hregion %3d: nsubregions %d", i, hregions[i].nsubregions);
         ALOGD_IF(debug, "           : %d to %d: ",
             hregions[i].rect.top, hregions[i].rect.bottom);
@@ -1470,7 +1658,8 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
     e->bp.batchflags |= set;
 }
 
-static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
+static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params,
+    blit_rect_t *damaged_area)
 {
     static int loaded = 0;
     if (!loaded)
@@ -1487,17 +1676,23 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
     }
 
     /* Determine if this region is dirty */
-    int dirty = 0, dirtylix = lix;
-    while (dirtylix != -1) {
-        rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
-        if (rgz_layer->dirty_count){
-            /* One of the layers is dirty, we need to generate blits for this subregion */
-            dirty = 1;
-            break;
+    int dirty = 0;
+    blit_rect_t *subregion_rect = &hregion->blitrects[lix][sidx];
+    if (RECT_INTERSECTS(*damaged_area, *subregion_rect)) {
+        /* The subregion intersects the damaged area, draw unconditionally */
+        dirty = 1;
+    } else {
+        int dirtylix = lix;
+        while (dirtylix != -1) {
+            rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
+            if (rgz_layer->dirty_count){
+                /* One of the layers is dirty, we need to generate blits for this subregion */
+                dirty = 1;
+                break;
+            }
+            dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
         }
-        dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
     }
-
     if (!dirty)
         return 0;
 
@@ -1664,7 +1859,7 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
         }
         for (s = 0; s < hregion->nsubregions; s++) {
             ALOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            if (rgz_hwc_subregion_blit(hregion, s, params))
+            if (rgz_hwc_subregion_blit(hregion, s, params, &rgz->damaged_area))
                 return -1;
         }
     }
