@@ -26,8 +26,6 @@
 #include <gui/BufferQueue.h>
 #include <gui/SurfaceTextureClient.h>
 
-#include <android_runtime/AndroidRuntime.h>
-
 #include <utils/Log.h>
 #include <utils/misc.h>
 
@@ -39,6 +37,9 @@
 
 // ----------------------------------------------------------------------------
 using namespace android;
+
+extern JavaVM * getJavaVM();
+extern JNIEnv * getJniEnv();
 
 static const char* const OutOfResourcesException =
     "com/ti/omap/android/cpcam/CPCamBufferQueue$OutOfResourcesException";
@@ -126,11 +127,10 @@ JNICPCamBufferQueueContext::JNICPCamBufferQueueContext(JNIEnv* env,
 
 JNIEnv* JNICPCamBufferQueueContext::getJNIEnv(bool* needsDetach) {
     *needsDetach = false;
-    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    JNIEnv* env = getJniEnv();
     if (env == NULL) {
         JavaVMAttachArgs args = {JNI_VERSION_1_4, NULL, NULL};
-        JavaVM* vm = AndroidRuntime::getJavaVM();
-        int result = vm->AttachCurrentThread(&env, (void*) &args);
+        int result = getJavaVM()->AttachCurrentThread(&env, (void*) &args);
         if (result != JNI_OK) {
             ALOGE("thread attach failed: %#x", result);
             return NULL;
@@ -141,8 +141,7 @@ JNIEnv* JNICPCamBufferQueueContext::getJNIEnv(bool* needsDetach) {
 }
 
 void JNICPCamBufferQueueContext::detachJNI() {
-    JavaVM* vm = AndroidRuntime::getJavaVM();
-    int result = vm->DetachCurrentThread();
+    int result = getJavaVM()->DetachCurrentThread();
     if (result != JNI_OK) {
         ALOGE("thread detach failed: %#x", result);
     }

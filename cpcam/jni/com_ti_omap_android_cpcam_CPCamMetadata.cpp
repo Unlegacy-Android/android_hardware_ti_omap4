@@ -17,7 +17,6 @@
 
 #include "jni.h"
 #include "JNIHelp.h"
-#include "android_runtime/AndroidRuntime.h"
 
 #include <gui/SurfaceTexture.h>
 #include <camera/CameraMetadata.h>
@@ -622,7 +621,7 @@ static JNINativeMethod gMetadataMethods[] = {
 int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env)
 {
     int err = 0;
-    err = AndroidRuntime::registerNativeMethods(env,
+    err = jniRegisterNativeMethods(env,
                                                 kMetadataClassPathName,
                                                 gMetadataMethods,
                                                 NELEM(gMetadataMethods));

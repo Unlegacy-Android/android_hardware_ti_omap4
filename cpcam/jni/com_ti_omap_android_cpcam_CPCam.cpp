@@ -36,7 +36,6 @@
 
 #include "jni.h"
 #include "JNIHelp.h"
-#include "android_runtime/AndroidRuntime.h"
 
 #include <utils/Vector.h>
 
@@ -58,6 +57,21 @@
 #endif
 
 using namespace android;
+
+static JavaVM * sJvm = 0;
+
+extern JavaVM * getJavaVM() {
+    return sJvm;
+}
+
+extern JNIEnv * getJniEnv() {
+    assert(sJvm);
+    JNIEnv * env;
+    if (sJvm->GetEnv((void**)&env, JNI_VERSION_1_4) != JNI_OK) {
+        return 0;
+    }
+    return env;
+}
 
 extern int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env);
 extern int register_android_graphics_CPCamBufferQueue(JNIEnv* env);
@@ -183,7 +197,7 @@ void JNICPCamContext::release()
 {
     CAMHAL_LOGV("release");
     Mutex::Autolock _l(mLock);
-    JNIEnv *env = AndroidRuntime::getJNIEnv();
+    JNIEnv *env = getJniEnv();
 
     if (mCameraJObjectWeak != NULL) {
         env->DeleteGlobalRef(mCameraJObjectWeak);
@@ -219,7 +233,7 @@ void JNICPCamContext::notify(int32_t msgType, int32_t ext1, int32_t ext2)
         CAMHAL_LOGE("callback on dead camera object");
         return;
     }
-    JNIEnv *env = AndroidRuntime::getJNIEnv();
+    JNIEnv *env = getJniEnv();
 
     /*
      * If the notification or msgType is CAMERA_MSG_RAW_IMAGE_NOTIFY, change it
@@ -320,7 +334,7 @@ void JNICPCamContext::postData(int32_t msgType, const sp<IMemory>& dataPtr,
 {
     // VM pointer will be NULL if object is released
     Mutex::Autolock _l(mLock);
-    JNIEnv *env = AndroidRuntime::getJNIEnv();
+    JNIEnv *env = getJniEnv();
     if (mCameraJObjectWeak == NULL) {
         CAMHAL_LOGE("callback on dead camera object");
         return;
@@ -1166,6 +1180,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     }
 
     /* success -- return valid version number */
+    sJvm = vm;
     result = JNI_VERSION_1_4;
 
 bail:
