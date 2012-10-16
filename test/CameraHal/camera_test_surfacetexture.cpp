@@ -119,9 +119,15 @@ void GLSurface::initialize(int display) {
     if (display) {
         mComposerClient = new SurfaceComposerClient;
         ASSERT(NO_ERROR == mComposerClient->initCheck());
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        mSurfaceControl = mComposerClient->createSurface(
+                String8("Test Surface"),
+                800, 480, HAL_PIXEL_FORMAT_YCrCb_420_SP, 0);
+#else
         mSurfaceControl = mComposerClient->createSurface(
                 String8("Test Surface"), 0,
                 800, 480, HAL_PIXEL_FORMAT_YCrCb_420_SP, 0);
+#endif
 
         ASSERT(mSurfaceControl != NULL);
         ASSERT(mSurfaceControl->isValid());
@@ -483,7 +489,11 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     native_window_set_buffer_count(mWindowTapIn.get(), 1);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    mWindowTapIn->dequeueBuffer_DEPRECATED(mWindowTapIn.get(), &anb);
+#else
     mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
+#endif
     mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
     // copy buffer to input buffer if available
     if (bufinfo.buf.get()) {
@@ -521,7 +531,12 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     }
 
     mapper.unlock(anb->handle);
+
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    mWindowTapIn->queueBuffer_DEPRECATED(mWindowTapIn.get(), anb);
+#else
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
+#endif
 }
 
 void BufferSourceThread::showMetadata(sp<IMemory> data) {

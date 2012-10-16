@@ -721,7 +721,11 @@ status_t OMXDecoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr) {
     if (mDebugFlags & FPS_DECODER) PrintDecoderFPS();
 
     ANativeWindowBuffer* buf;
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    err = mNativeWindow->dequeueBuffer_DEPRECATED(mNativeWindow.get(), &buf);
+#else
     err = mNativeWindow->dequeueBuffer(mNativeWindow.get(), &buf);
+#endif
     if (err != 0) {
         VTC_LOGE("dequeueBuffer failed w/ error 0x%08x", err);
         return -1;
@@ -983,7 +987,11 @@ status_t OMXDecoder::allocateOutputBuffersFromNativeWindow() {
     // Dequeue buffers and send them to OMX
     for (i = 0; i < nBufferCnt; i++) {
         ANativeWindowBuffer* buf;
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        err = mNativeWindow->dequeueBuffer_DEPRECATED(mNativeWindow.get(), &buf);
+#else
         err = mNativeWindow->dequeueBuffer(mNativeWindow.get(), &buf);
+#endif
         if (err != 0) {
             VTC_LOGE("dequeueBuffer failed: %s (%d)", strerror(-err), -err);
             break;

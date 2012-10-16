@@ -51,7 +51,12 @@ public:
 class BQ_BufferSourceThread : public BufferSourceThread {
 public:
     BQ_BufferSourceThread(int tex_id, sp<Camera> camera) : BufferSourceThread(camera) {
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        mBufferQueue = new BufferQueue(true);
+        mBufferQueue->setMaxAcquiredBufferCount(1);
+#else
         mBufferQueue = new BufferQueue(true, 1);
+#endif
         mFW = new FrameConsumer();
         mBufferQueue->setSynchronousMode(true);
         mBufferQueue->consumerConnect(mFW);
@@ -101,7 +106,11 @@ public:
     }
 
     virtual void onHandled(sp<GraphicBuffer> &gbuf, unsigned int slot) {
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        mBufferQueue->releaseBuffer(slot, EGL_NO_DISPLAY, EGL_NO_SYNC_KHR, Fence::NO_FENCE);
+#else
         mBufferQueue->releaseBuffer(slot, EGL_NO_DISPLAY, EGL_NO_SYNC_KHR);
+#endif
     }
 
 private:
@@ -114,7 +123,12 @@ class BQ_BufferSourceInput : public BufferSourceInput {
 public:
     BQ_BufferSourceInput(int tex_id, sp<Camera> camera) :
                   BufferSourceInput(camera), mTexId(tex_id) {
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        mBufferQueue = new BufferQueue(true);
+        mBufferQueue->setMaxAcquiredBufferCount(1);
+#else
         mBufferQueue = new BufferQueue(true, 1);
+#endif
     }
     virtual ~BQ_BufferSourceInput() {
     }

@@ -145,7 +145,11 @@ test_format (int format, int page_mode, int width, int height)
         Rect bounds(width, height);
 
         anb[i] = NULL;
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        anw->dequeueBuffer_DEPRECATED(anw.get(), &anb[i]);
+#else
         anw->dequeueBuffer(anw.get(), &anb[i]);
+#endif
         printf("%d: %p\n", i, anb[i]);
         if (anb[i] == NULL) {
             printf ("FAILED: buffer should be non-NULL\n");

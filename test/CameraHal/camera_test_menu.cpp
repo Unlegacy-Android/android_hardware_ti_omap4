@@ -879,10 +879,13 @@ int createPreviewSurface(unsigned int width, unsigned int height, int32_t pixFor
         return -1;
     }
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
     surfaceControl = client->createSurface(String8("camera_test_menu"),
-                                           previewWidth,
-                                           previewHeight,
-                                           pixFormat, 0);
+            previewWidth, previewHeight, pixFormat, 0);
+#else
+    surfaceControl = client->createSurface(0,
+            previewWidth, previewHeight, pixFormat, 0);
+#endif
 
     previewSurface = surfaceControl->getSurface();
 
