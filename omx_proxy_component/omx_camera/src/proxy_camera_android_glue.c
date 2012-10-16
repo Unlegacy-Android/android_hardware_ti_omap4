@@ -96,7 +96,15 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
 		{
 			pIonParams = TIMM_OSAL_MallocExtn(sizeof(MEMPLUGIN_ION_PARAMS), TIMM_OSAL_TRUE,
                                       0, TIMMOSAL_MEM_SEGMENT_EXT, NULL);
+			if(pIonParams == NULL)
+			{
+				DOMX_ERROR("%s:Error allocating pPluginExtendedInfo",__FUNCTION__);
+				goto EXIT;
+			}
+                        pMemPluginHdl->pPluginExtendedInfo = pIonParams;
 		}
+		MEMPLUGIN_ION_PARAMS_INIT(pIonParams);
+                //override alloc_flags for tiler 1d non secure
 		pIonParams->alloc_flags = OMAP_ION_HEAP_TILER_MASK;
 
 		eMemError = MemPlugin_Alloc(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc,&newBuffer_params,&newBuffer_prop);
@@ -169,10 +177,17 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
 		{
 			pIonParams = TIMM_OSAL_MallocExtn(sizeof(MEMPLUGIN_ION_PARAMS), TIMM_OSAL_TRUE,
                                       0, TIMMOSAL_MEM_SEGMENT_EXT, NULL);
+			if(pIonParams == NULL)
+			{
+				DOMX_ERROR("%s:Error allocating pPluginExtendedInfo",__FUNCTION__);
+				goto EXIT;
+			}
+                        pMemPluginHdl->pPluginExtendedInfo = pIonParams;
 		}
+		MEMPLUGIN_ION_PARAMS_INIT(pIonParams);
+                //override alloc_flags for tiler 1d non secure
 		pIonParams->alloc_flags = OMAP_ION_HEAP_TILER_MASK;
 		eMemError = MemPlugin_Alloc(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc,&newBuffer_params,&newBuffer_prop);
-//		ret = ion_alloc_tiler(pCompPrv->nMemmgrClientDesc, nFrmWidth, nFrmHeight, TILER_PIXEL_FMT_8BIT, OMAP_ION_HEAP_TILER_MASK, &handle, (size_t *)&stride_Y);
 		if(eMemError != MEMPLUGIN_ERROR_NONE)
 		{
 			DOMX_ERROR("%s:allocation failed size: %d",newBuffer_params.nWidth*newBuffer_params.nHeight);

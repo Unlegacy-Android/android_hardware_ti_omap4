@@ -40,18 +40,9 @@
 #include <timm_osal_trace.h>
 #include "omx_rpc_utils.h"
 
-
 /******************************************************************
  *   MACROS DEFINITION
  ******************************************************************/
-#define MEMPLUGIN_ION_PARAMS_INIT(buffer_ion_params) do {\
-        buffer_ion_params.alloc_flags = 1 << ION_HEAP_TYPE_CARVEOUT;\
-        buffer_ion_params.map_flags = MAP_SHARED;\
-        buffer_ion_params.nAlign = 0x1000;\
-        buffer_ion_params.prot = PROT_READ | PROT_WRITE;\
-        buffer_ion_params.nOffset = 0;\
-}while(0)
-
 #define MEMPLUGIN_ION_PARAMS_COPY(ion_params_src, ion_params_dest) do {\
         ion_params_dest.alloc_flags = ion_params_src->alloc_flags;\
         ion_params_dest.map_flags = ion_params_src->map_flags;\
@@ -160,7 +151,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
 
     if(pMemPluginHdl->pPluginExtendedInfo == NULL)
     {
-        MEMPLUGIN_ION_PARAMS_INIT(sIonParams);
+        MEMPLUGIN_ION_PARAMS_INIT(&sIonParams);
     }
     else
     {
