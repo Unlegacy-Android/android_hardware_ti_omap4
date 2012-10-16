@@ -82,6 +82,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mPending3Asettings = 0;//E3AsettingsAll;
     mPendingCaptureSettings = 0;
     mPendingPreviewSettings = 0;
+    mPendingReprocessSettings = 0;
 
     ret = mMemMgr.initialize();
     if ( ret != OK ) {
@@ -219,8 +220,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mVstabEnabled = false;
     mVnfEnabled = false;
     mBurstFrames = 1;
-    mBurstFramesAccum = 0;
-    mCapturedFrames = 0;
     mFlushShotConfigQueue = false;
     mPictureQuality = 100;
     mCurrentZoomIdx = 0;
@@ -259,6 +258,10 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mGPSData.mTimeStampValid = false;
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
+
+    mCapturedFrames = 0;
+    mBurstFramesAccum = 0;
+    mBurstFramesQueued = 0;
 
     //update the mDeviceOrientation with the sensor mount orientation.
     //So that the face detect will work before onOrientationEvent()
@@ -1384,9 +1387,9 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, CameraBuffer * bufArr, in
             break;
 
         case CAMERA_IMAGE_CAPTURE:
-            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mMaxQueueable = queueable;
             ret = UseBuffersCapture(bufArr, num);
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             break;
 
         case CAMERA_VIDEO:
@@ -2297,7 +2300,7 @@ status_t OMXCameraAdapter::startPreview()
             }
         mFramesWithDucati++;
 #ifdef CAMERAHAL_DEBUG
-        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pAppPrivate,1);
+        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pBuffer,1);
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
@@ -2496,6 +2499,7 @@ status_t OMXCameraAdapter::stopPreview() {
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
+    mPendingReprocessSettings = 0;
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;

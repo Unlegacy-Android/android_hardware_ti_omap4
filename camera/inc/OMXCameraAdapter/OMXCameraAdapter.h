@@ -264,7 +264,9 @@ public:
         SetRotation             = 1 << 4,
         SetBurst                = 1 << 5,
         ECaptureSettingMax,
-        ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ) /// all possible flags raised
+        ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ), /// all possible flags raised
+        ECaptureParamSettings = SetFormat | SetThumb | SetQuality, // Settings set with SetParam
+        ECaptureConfigSettings = (ECapturesettingsAll & ~ECaptureParamSettings)
     };
 
     enum PreviewSettingsFlags {
@@ -351,6 +353,7 @@ public:
             OMX_U32                         mMaxFrameRate;
             CameraFrame::FrameType          mImageType;
             OMX_TI_STEREOFRAMELAYOUTTYPE    mFrameLayoutType;
+            CameraBufferType                mBufferType;
 
             CameraBuffer * lookup_omx_buffer (OMX_BUFFERHEADERTYPE *pBufHeader);
             enum {
@@ -1097,6 +1100,7 @@ private:
     bool mCaptureConfigured;
     unsigned int mPendingCaptureSettings;
     unsigned int mPendingPreviewSettings;
+    unsigned int mPendingReprocessSettings;
     OMX_TI_ANCILLARYDATATYPE* mCaptureAncillaryData;
     OMX_TI_WHITEBALANCERESULTTYPE* mWhiteBalanceData;
     bool mReprocConfigured;

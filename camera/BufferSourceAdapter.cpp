@@ -689,6 +689,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     status_t ret = NO_ERROR;
     buffer_handle_t *handle = NULL;
     int i;
+    uint32_t x, y;
     android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
 
     android::AutoMutex lock(mLock);
@@ -713,6 +714,14 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         CAMHAL_LOGD("Unlock %p (buffer #%d)", handle, i);
         mapper.unlock(*handle);
         return;
+    }
+
+    CameraHal::getXYFromOffset(&x, &y, frame->mOffset, frame->mAlignment, mPixelFormat);
+    CAMHAL_LOGVB("offset = %u left = %d top = %d right = %d bottom = %d",
+                  frame->mOffset, x, y, x + frame->mWidth, y + frame->mHeight);
+    ret = mBufferSource->set_crop(mBufferSource, x, y, x + frame->mWidth, y + frame->mHeight);
+    if (NO_ERROR != ret) {
+        CAMHAL_LOGE("mBufferSource->set_crop returned error %d", ret);
     }
 
     if ( NULL != frame->mMetaData.get() ) {

@@ -201,10 +201,14 @@ void SensorListener::enableSensor(sensor_type_t type) {
 
     if ((type & SENSOR_ORIENTATION) && !(sensorsEnabled & SENSOR_ORIENTATION)) {
         sensor = mgr.getDefaultSensor(android::Sensor::TYPE_ACCELEROMETER);
-        CAMHAL_LOGDB("orientation = %p (%s)", sensor, sensor->getName().string());
-        mSensorEventQueue->enableSensor(sensor);
-        mSensorEventQueue->setEventRate(sensor, ms2ns(100));
-        sensorsEnabled |= SENSOR_ORIENTATION;
+        if(sensor) {
+            CAMHAL_LOGDB("orientation = %p (%s)", sensor, sensor->getName().string());
+            mSensorEventQueue->enableSensor(sensor);
+            mSensorEventQueue->setEventRate(sensor, ms2ns(100));
+            sensorsEnabled |= SENSOR_ORIENTATION;
+        } else {
+            CAMHAL_LOGDB("not enabling absent orientation sensor");
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;

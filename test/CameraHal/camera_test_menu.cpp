@@ -266,7 +266,7 @@ param_NamedExpBracketList_t expBracketing[] = {
   },
 };
 
-const char *tempBracketing[] = {"disable", "enable"};
+const char *tempBracketing[] = {"false", "true"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *afTimeout[] = {"enable", "disable" };
 
@@ -1010,6 +1010,8 @@ int configureRecorder() {
 
     char videoFile[384],vbit_string[50];
     videoFd = -1;
+    struct CameraInfo cameraInfo;
+    camera->getCameraInfo(camera_index, &cameraInfo);
 
     if ( ( NULL == recorder.get() ) || ( NULL == camera.get() ) ) {
         printf("invalid recorder and/or camera references\n");
@@ -1072,10 +1074,16 @@ int configureRecorder() {
 
     recording_counter++;
 
-    if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
-        printf("error while configuring video size\n");
-
-        return -1;
+    if (cameraInfo.orientation == 90 || cameraInfo.orientation == 270 ) {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->width) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
+    } else {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
     }
 
     if ( recorder->setVideoEncoder(videoCodecs[videoCodecIDX].type) < 0 ) {
@@ -1295,7 +1303,11 @@ int startPreview() {
              params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
         }
 
-        params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
+        if ((cameraInfo.orientation == 90 || cameraInfo.orientation == 270) && recordingMode) {
+            params.setPreviewSize(previewHeight, previewWidth);
+        } else {
+            params.setPreviewSize(previewWidth, previewHeight);
+        }
         params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
 
         // calculate display orientation from sensor orientation
@@ -1306,6 +1318,11 @@ int startPreview() {
         } else {  // back-facing
             orientation = (cameraInfo.orientation - dinfo.orientation + 360) % 360;
         }
+
+        if(!strcmp(params.get(KEY_MODE), "video-mode") ) {
+            orientation = 0;
+        }
+
         camera->sendCommand(CAMERA_CMD_SET_DISPLAY_ORIENTATION, orientation, 0);
 
         camera->setParameters(params.flatten());
@@ -2055,6 +2072,15 @@ void stopPreview() {
 
 void initDefaults() {
 
+    struct CameraInfo cameraInfo;
+
+    camera->getCameraInfo(camera_index, &cameraInfo);
+    if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+        rotation = cameraInfo.orientation;
+    } else {  // back-facing
+        rotation = cameraInfo.orientation;
+    }
+
     antibanding_mode = getDefaultParameter("off", numAntibanding, antiband);
     focus_mode = getDefaultParameter("auto", numfocus, focus);
     fpsRangeIdx = getDefaultParameter("5000,30000", rangeCnt, fps_range_str);
@@ -2080,7 +2106,6 @@ void initDefaults() {
     metaDataToggle = false;
     expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
-    rotation = 0;
     previewRotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
@@ -2474,6 +2499,7 @@ int functional_menu() {
     int j = 0;
     int k = 0;
     const char *valstr = NULL;
+    struct CameraInfo cameraInfo;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -3069,19 +3095,40 @@ int functional_menu() {
                 ippIDX = 3;
                 params.set(KEY_IPP, ipp_mode[ippIDX]);
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             } else if ( !strcmp(modevalues[capture_mode], "video-mode") ) {
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::TRUE);
+                camera->getCameraInfo(camera_index, &cameraInfo);
+                previewRotation = ((360-cameraInfo.orientation)%360);
+                if (previewRotation >= 0 || previewRotation <=360) {
+                    params.set(KEY_SENSOR_ORIENTATION, previewRotation);
+                }
             } else {
                 ippIDX = ippIDX_old;
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             }
 
             params.set(KEY_MODE, (modevalues[capture_mode]));
 
             if ( hardwareActive ) {
+                if (previewRunning) {
+                    stopPreview();
+                }
                 camera->setParameters(params.flatten());
+                // Get parameters from capabilities for the new capture mode
                 params = camera->getParameters();
                 getSizeParametersFromCapabilities();
+                getParametersFromCapabilities();
+                // Set framerate 30fps and 12MP capture resolution if available for the new capture mode.
+                // If not available set framerate and capture mode under index 0 from fps_const_str and capture_Array.
+                frameRateIDX = getDefaultParameter("30000,30000", constCnt, fps_const_str);
+                captureSizeIDX = getDefaultParameterResol("12MP", numcaptureSize, capture_Array);
+                params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRateIDX]);
+                params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
+                camera->setParameters(params.flatten());
             }
 
             break;
@@ -3968,6 +4015,7 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             const char *config = cmd_args->script_file_name;
             char dir_name[40];
             size_t count = 0;
+            char *p;
 
             // remove just the '.txt' part of the config
             while ((config[count] != '.') && ((count + 1) < sizeof(dir_name))) {
@@ -3977,6 +4025,15 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             strncpy(dir_name, config, count);
 
             dir_name[count] = NULL;
+            p = dir_name;
+            while (*p != '\0') {
+                if (*p == '/') {
+                    printf("SDCARD_PATH is not added to the output directory.\n");
+                    // Needed when camera_test script is executed using the OTC
+                    strcpy(output_dir_path, "");
+                    break;
+                }
+            }
 
             strcat(output_dir_path, dir_name);
             if (camera_index == 1) {

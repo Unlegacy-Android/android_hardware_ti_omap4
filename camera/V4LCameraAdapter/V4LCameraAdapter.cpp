@@ -303,7 +303,7 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
         goto EXIT;
     }
 
-    if ((mCameraHandle = open(device, O_RDWR) ) == -1) {
+    if ((mCameraHandle = open(device, O_RDWR | O_NONBLOCK) ) == -1) {
         CAMHAL_LOGEB("Error while opening handle to V4L2 Camera: %s", strerror(errno));
         ret = BAD_VALUE;
         goto EXIT;
@@ -764,7 +764,20 @@ char * V4LCameraAdapter::GetFrame(int &index)
     mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
 
     /* DQ */
-    ret = v4lIoctl(mCameraHandle, VIDIOC_DQBUF, &mVideoInfo->buf);
+    // Some V4L drivers, notably uvc, protect each incoming call with
+    // a driver-wide mutex.  If we use poll() or blocking VIDIOC_DQBUF ioctl
+    // here then we sometimes would run into a deadlock on VIDIO_QBUF ioctl.
+    while(true) {
+      if(!mVideoInfo->isStreaming) {
+        return NULL;
+      }
+
+      ret = v4lIoctl(mCameraHandle, VIDIOC_DQBUF, &mVideoInfo->buf);
+      if((ret == 0) || (errno != EAGAIN)) {
+        break;
+      }
+    }
+
     if (ret < 0) {
         CAMHAL_LOGEA("GetFrame: VIDIOC_DQBUF Failed");
         return NULL;
@@ -799,7 +812,7 @@ status_t V4LCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t buffer
     return NO_ERROR;
 }
 
-status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t bufferCount)
+status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     int width = 0;
     int height = 0;
@@ -807,18 +820,14 @@ status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t buffe
 
     LOG_FUNCTION_NAME;
 
-    if (frame == NULL) {
-       return BAD_VALUE;
-    }
-
     mParams.getPictureSize( &width, &height );
-    frame->mLength = width * height * bytesPerPixel;
-    frame->mWidth = width;
-    frame->mHeight = height;
-    frame->mAlignment = width * bytesPerPixel;
+    frame.mLength = width * height * bytesPerPixel;
+    frame.mWidth = width;
+    frame.mHeight = height;
+    frame.mAlignment = width * bytesPerPixel;
 
     CAMHAL_LOGDB("Picture size: W x H = %u x %u (size=%u bytes, alignment=%u bytes)",
-                 frame->mWidth, frame->mHeight, frame->mLength, frame->mAlignment);
+                 frame.mWidth, frame.mHeight, frame.mLength, frame.mAlignment);
     LOG_FUNCTION_NAME_EXIT;
     return NO_ERROR;
 }

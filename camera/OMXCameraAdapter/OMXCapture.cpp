@@ -340,26 +340,6 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         mPendingCaptureSettings = ECapturesettingsAll;
     }
 
-    // we are already capturing and in cpcam mode...just need to enqueue
-    // shots
-    inCaptureState = (CAPTURE_ACTIVE & mAdapterState) && (CAPTURE_ACTIVE & mNextState);
-    if ((mPendingCaptureSettings & ~SetExpBracket) && !inCaptureState) {
-        disableReprocess();
-        disableImagePort();
-        if ( NULL != mReleaseImageBuffersCallback ) {
-            mReleaseImageBuffersCallback(mReleaseData);
-        }
-        if (mPendingCaptureSettings & SetFormat) {
-            mPendingCaptureSettings &= ~SetFormat;
-            ret = setFormat(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE, *cap);
-            if ( ret != NO_ERROR ) {
-                CAMHAL_LOGEB("setFormat() failed %d", ret);
-                LOG_FUNCTION_NAME_EXIT;
-                return ret;
-            }
-        }
-    }
-
     cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
     cap->mWidth = params.getInt(TICameraParameters::RAW_WIDTH);
     cap->mHeight = params.getInt(TICameraParameters::RAW_HEIGHT);
@@ -381,11 +361,17 @@ status_t OMXCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t buffe
         {
         imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
 
-        imgCaptureData->mNumBufs = bufferCount;
 
-        // check if image port is already configured...
-        // if it already configured then we don't have to query again
-        if (!mCaptureConfigured) {
+        // If any settings have changed that need to be set with SetParam,
+        // we will need to disable the port to set them
+        if ((mPendingCaptureSettings & ECaptureParamSettings)) {
+            disableImagePort();
+            if ( NULL != mReleaseImageBuffersCallback ) {
+                mReleaseImageBuffersCallback(mReleaseData);
+            }
+        }
+
+        if (mPendingCaptureSettings & SetFormat) {
             ret = setFormat(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE, *imgCaptureData);
         }
 
@@ -1467,6 +1453,10 @@ status_t OMXCameraAdapter::stopImageCapture()
     // Workaround when doing many consecutive shots, CAF wasn't getting restarted.
     mPending3Asettings |= SetFocus;
 
+    mCapturedFrames = 0;
+    mBurstFramesAccum = 0;
+    mBurstFramesQueued = 0;
+
     return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
@@ -1500,8 +1490,6 @@ status_t OMXCameraAdapter::disableImagePort(){
     mCaptureConfigured = false;
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
     imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex]; // for RAW capture
-
-    flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
 
     ///Register for Image port Disable event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -1553,7 +1541,11 @@ status_t OMXCameraAdapter::disableImagePort(){
 
     deinitInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
 
+    // since port settings are not persistent after port is disabled...
+    mPendingCaptureSettings |= SetFormat;
+
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+
     if (mRawCapture) {
         ///Register for Video port Disable event
         ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -1715,153 +1707,149 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         return BAD_VALUE;
         }
 
-    // capture is already configured...we can skip this step
-    if (mCaptureConfigured) {
-        if ( NO_ERROR == ret )
-            {
-            ret = setupEXIF();
-            if ( NO_ERROR != ret )
-                {
-                CAMHAL_LOGEB("Error configuring EXIF Buffer %x", ret);
-                }
+    CAMHAL_ASSERT(num > 0);
+
+    // if some setting that requires a SetParameter (including
+    // changing buffer types) then we need to disable the port
+    // before being allowed to apply the settings
+    if ((mPendingCaptureSettings & ECaptureParamSettings) ||
+            bufArr[0].type != imgCaptureData->mBufferType ||
+            imgCaptureData->mNumBufs != num) {
+        if (mCaptureConfigured) {
+            disableImagePort();
+            if ( NULL != mReleaseImageBuffersCallback ) {
+                mReleaseImageBuffersCallback(mReleaseData);
+            }
+        }
+
+        imgCaptureData->mBufferType = bufArr[0].type;
+        imgCaptureData->mNumBufs = num;
+
+        CAMHAL_LOGDB("Params Width = %d", (int)imgCaptureData->mWidth);
+        CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mHeight);
+
+        if (mPendingCaptureSettings & SetFormat) {
+            mPendingCaptureSettings &= ~SetFormat;
+            ret = setFormat(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE, *imgCaptureData);
+            if ( ret != NO_ERROR ) {
+                CAMHAL_LOGEB("setFormat() failed %d", ret);
+                LOG_FUNCTION_NAME_EXIT;
+                return ret;
+            }
+        }
+
+        if (mPendingCaptureSettings & SetThumb) {
+            mPendingCaptureSettings &= ~SetThumb;
+            ret = setThumbnailParams(mThumbWidth, mThumbHeight, mThumbQuality);
+            if ( NO_ERROR != ret) {
+                CAMHAL_LOGEB("Error configuring thumbnail size %x", ret);
+                return ret;
+            }
+        }
+
+        if (mPendingCaptureSettings & SetQuality) {
+            mPendingCaptureSettings &= ~SetQuality;
+            ret = setImageQuality(mPictureQuality);
+            if ( NO_ERROR != ret) {
+                CAMHAL_LOGEB("Error configuring image quality %x", ret);
+                goto EXIT;
+            }
+        }
+
+        // Configure DOMX to use either gralloc handles or vptrs
+        {
+            OMX_TI_PARAMUSENATIVEBUFFER domxUseGrallocHandles;
+            OMX_INIT_STRUCT_PTR (&domxUseGrallocHandles, OMX_TI_PARAMUSENATIVEBUFFER);
+
+            domxUseGrallocHandles.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+            if (bufArr[0].type == CAMERA_BUFFER_ANW) {
+                CAMHAL_LOGD ("Using ANW Buffers");
+                initInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
+                domxUseGrallocHandles.bEnable = OMX_TRUE;
+            } else {
+                CAMHAL_LOGD ("Using ION Buffers");
+                domxUseGrallocHandles.bEnable = OMX_FALSE;
             }
 
-        mCapturedFrames = mBurstFrames;
-        mBurstFramesQueued = 0;
-        return NO_ERROR;
-    }
-
-    imgCaptureData->mNumBufs = num;
-
-    //TODO: Support more pixelformats
-
-    CAMHAL_LOGDB("Params Width = %d", (int)imgCaptureData->mWidth);
-    CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mHeight);
-
-    if (mPendingCaptureSettings & SetFormat) {
-        mPendingCaptureSettings &= ~SetFormat;
-        ret = setFormat(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE, *imgCaptureData);
-        if ( ret != NO_ERROR ) {
-            CAMHAL_LOGEB("setFormat() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            return ret;
-        }
-    }
-
-    if (mPendingCaptureSettings & SetThumb) {
-        mPendingCaptureSettings &= ~SetThumb;
-        ret = setThumbnailParams(mThumbWidth, mThumbHeight, mThumbQuality);
-        if ( NO_ERROR != ret) {
-            CAMHAL_LOGEB("Error configuring thumbnail size %x", ret);
-            return ret;
-        }
-    }
-
-    if (mPendingCaptureSettings & SetQuality) {
-        mPendingCaptureSettings &= ~SetQuality;
-        ret = setImageQuality(mPictureQuality);
-        if ( NO_ERROR != ret) {
-            CAMHAL_LOGEB("Error configuring image quality %x", ret);
-            goto EXIT;
-        }
-    }
-
-    // assuming if buffers are from ANW that they will be pagelist buffers
-    // and need a tiler reservation
-    if (bufArr[0].type == CAMERA_BUFFER_ANW) {
-        initInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
-    }
-
-    ///Register for Image port ENABLE event
-    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortEnable,
-                           mCameraAdapterParameters.mImagePortIndex,
-                           mUseCaptureSem);
-
-    ///Enable Capture Port
-    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
-                             OMX_CommandPortEnable,
-                             mCameraAdapterParameters.mImagePortIndex,
-                             NULL);
-
-    CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
-    GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
-
-    // Configure DOMX to use either gralloc handles or vptrs
-    if ((imgCaptureData->mNumBufs > 0)) {
-        OMX_TI_PARAMUSENATIVEBUFFER domxUseGrallocHandles;
-        OMX_INIT_STRUCT_PTR (&domxUseGrallocHandles, OMX_TI_PARAMUSENATIVEBUFFER);
-
-        domxUseGrallocHandles.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
-        if (bufArr[0].type == CAMERA_BUFFER_ANW) {
-            CAMHAL_LOGD ("Using ANW Buffers");
-            domxUseGrallocHandles.bEnable = OMX_TRUE;
-        } else {
-            CAMHAL_LOGD ("Using ION Buffers");
-            domxUseGrallocHandles.bEnable = OMX_FALSE;
+            eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+                                    (OMX_INDEXTYPE)OMX_TI_IndexUseNativeBuffers, &domxUseGrallocHandles);
+            if (eError!=OMX_ErrorNone) {
+                CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+            }
+            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
-        eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
-                                (OMX_INDEXTYPE)OMX_TI_IndexUseNativeBuffers, &domxUseGrallocHandles);
-        if (eError!=OMX_ErrorNone) {
-            CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
-        }
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-    }
-
-    for ( int index = 0 ; index < imgCaptureData->mNumBufs ; index++ )
-    {
-        OMX_BUFFERHEADERTYPE *pBufferHdr;
-        CAMHAL_LOGDB("OMX_UseBuffer Capture address: 0x%x, size = %d",
-                     (unsigned int)bufArr[index].opaque,
-                     (int)imgCaptureData->mBufSize);
-
-        eError = OMX_UseBuffer(mCameraAdapterParameters.mHandleComp,
-                               &pBufferHdr,
+        // Register for Image port ENABLE event
+        ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+                               OMX_EventCmdComplete,
+                               OMX_CommandPortEnable,
                                mCameraAdapterParameters.mImagePortIndex,
-                               0,
-                               imgCaptureData->mBufSize,
-                               (OMX_U8*)camera_buffer_get_omx_ptr(&bufArr[index]));
+                               mUseCaptureSem);
+
+        // Enable Capture Port
+        eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+                                 OMX_CommandPortEnable,
+                                 mCameraAdapterParameters.mImagePortIndex,
+                                 NULL);
 
         CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
         GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
 
-        pBufferHdr->pAppPrivate = (OMX_PTR) &bufArr[index];
-        bufArr[index].index = index;
-        pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
-        pBufferHdr->nVersion.s.nVersionMajor = 1 ;
-        pBufferHdr->nVersion.s.nVersionMinor = 1 ;
-        pBufferHdr->nVersion.s.nRevision = 0;
-        pBufferHdr->nVersion.s.nStep =  0;
-        imgCaptureData->mBufferHeader[index] = pBufferHdr;
-    }
+        for (int index = 0 ; index < imgCaptureData->mNumBufs ; index++) {
+            OMX_BUFFERHEADERTYPE *pBufferHdr;
+            CAMHAL_LOGDB("OMX_UseBuffer Capture address: 0x%x, size = %d",
+                         (unsigned int)bufArr[index].opaque,
+                         (int)imgCaptureData->mBufSize);
 
-    //Wait for the image port enable event
-    CAMHAL_LOGDA("Waiting for port enable");
-    ret = mUseCaptureSem.WaitTimeout(OMX_CMD_TIMEOUT);
+            eError = OMX_UseBuffer(mCameraAdapterParameters.mHandleComp,
+                                   &pBufferHdr,
+                                   mCameraAdapterParameters.mImagePortIndex,
+                                   0,
+                                   imgCaptureData->mBufSize,
+                                   (OMX_U8*)camera_buffer_get_omx_ptr(&bufArr[index]));
 
-    //If somethiing bad happened while we wait
-    if (mComponentState == OMX_StateInvalid)
-      {
-        CAMHAL_LOGEA("Invalid State after Enable Image Port Exitting!!!");
-        goto EXIT;
-      }
+            CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
+            GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
 
-    if ( ret == NO_ERROR )
-        {
+            pBufferHdr->pAppPrivate = (OMX_PTR) &bufArr[index];
+            bufArr[index].index = index;
+            pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
+            pBufferHdr->nVersion.s.nVersionMajor = 1 ;
+            pBufferHdr->nVersion.s.nVersionMinor = 1 ;
+            pBufferHdr->nVersion.s.nRevision = 0;
+            pBufferHdr->nVersion.s.nStep =  0;
+            imgCaptureData->mBufferHeader[index] = pBufferHdr;
+        }
+
+        // Wait for the image port enable event
+        CAMHAL_LOGDA("Waiting for port enable");
+        ret = mUseCaptureSem.WaitTimeout(OMX_CMD_TIMEOUT);
+
+        // If somethiing bad happened while we wait
+        if (mComponentState == OMX_StateInvalid) {
+            CAMHAL_LOGEA("Invalid State after Enable Image Port Exitting!!!");
+            goto EXIT;
+          }
+
+        if (ret != NO_ERROR) {
+            ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
+                               OMX_EventCmdComplete,
+                               OMX_CommandPortEnable,
+                               mCameraAdapterParameters.mImagePortIndex,
+                               NULL);
+            CAMHAL_LOGDA("Timeout expired on port enable");
+            goto EXIT;
+        }
         CAMHAL_LOGDA("Port enabled");
-        }
-    else
-        {
-        ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortEnable,
-                           mCameraAdapterParameters.mImagePortIndex,
-                           NULL);
-        CAMHAL_LOGDA("Timeout expired on port enable");
-        goto EXIT;
-        }
+
+        // Enable WB and vector shot extra data for metadata
+        ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
+        ret = setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
+
+        // CPCam mode only supports vector shot
+        // Regular capture is not supported
+        if (mCapMode == CP_CAM) initVectorShot();
+    }
 
     if ( NO_ERROR == ret )
         {
@@ -1872,18 +1860,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             }
         }
 
-    // Enable WB and vector shot extra data for metadata
-    setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-    // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
-    // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
-    // setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
-    setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
-
-    // CPCam mode only supports vector shot
-    // Regular capture is not supported
-    if (mCapMode == CP_CAM) initVectorShot();
-
-    // Choose proper single preview mode for cpcapture capture (reproc or hs)
+    // Choose proper single preview mode for cp capture (reproc or hs)
     if (( NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mCapMode)) {
         OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE singlePrevMode;
         OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);

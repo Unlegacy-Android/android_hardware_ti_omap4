@@ -1048,8 +1048,9 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
     {
-        uint32_t xOff = (dispFrame.mOffset% PAGE_SIZE);
-        uint32_t yOff = (dispFrame.mOffset / PAGE_SIZE);
+        uint32_t xOff, yOff;
+
+        CameraHal::getXYFromOffset(&xOff, &yOff, dispFrame.mOffset, PAGE_SIZE, mPixelFormat);
 
         // Set crop only if current x and y offsets do not match with frame offsets
         if ((mXOff != xOff) || (mYOff != yOff)) {
