@@ -711,7 +711,11 @@ status_t OMXDecoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr) {
     PortBufferInfo *info = &mOutputBuffers.editItemAt(i);
     info->mStatus = OWNED_BY_US;
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    err = mNativeWindow->queueBuffer_DEPRECATED(mNativeWindow.get(), mOutputBuffers[i].gb.get());
+#else
     err = mNativeWindow->queueBuffer(mNativeWindow.get(), mOutputBuffers[i].gb.get());
+#endif
     if (err != 0) {
         VTC_LOGE("queueBuffer failed with error %s (%d)", strerror(-err), -err);
         return -1;
@@ -831,8 +835,13 @@ status_t OMXDecoder::createPlaybackSurface() {
     mSurfaceComposerClient = new SurfaceComposerClient();
     CHECK_EQ(mSurfaceComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    mSurfaceControl = mSurfaceComposerClient->createSurface(String8(),
+                                           320, 320, HAL_PIXEL_FORMAT_RGB_565);
+#else
     mSurfaceControl = mSurfaceComposerClient->createSurface(0,
                                            320, 320, HAL_PIXEL_FORMAT_RGB_565);
+#endif
 
     mNativeWindow = mSurfaceControl->getSurface();
 
@@ -1035,8 +1044,13 @@ status_t OMXDecoder::allocateOutputBuffersFromNativeWindow() {
 
     for (OMX_U32 i = cancelStart; i < cancelEnd; i++) {
         PortBufferInfo *info = &mOutputBuffers.editItemAt(i);
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        err = mNativeWindow->cancelBuffer_DEPRECATED(
+                mNativeWindow.get(), info->gb.get());
+#else
         err = mNativeWindow->cancelBuffer(
                 mNativeWindow.get(), info->gb.get());
+#endif
         if (err != 0) {
           VTC_LOGE("cancelBuffer failed w/ error 0x%08x", err);
           return err;
@@ -1071,7 +1085,11 @@ status_t OMXDecoder::freeOutputBuffers() {
 
         // Cancel the buffer if it belongs to an ANativeWindow.
         if (mOutputBuffers[i].mStatus == OWNED_BY_US && mOutputBuffers[i].gb != 0) {
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+            err = mNativeWindow->cancelBuffer_DEPRECATED(mNativeWindow.get(), mOutputBuffers[i].gb.get());
+#else
             err = mNativeWindow->cancelBuffer(mNativeWindow.get(), mOutputBuffers[i].gb.get());
+#endif
             if (err != 0)VTC_LOGE("\n\n\nCancel Buffer for Output Port buffer:%d failed:%d\n\n\n",i,err);
         }
 

@@ -19,6 +19,10 @@
 
 #include <cutils/log.h>
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+#include <ui/DisplayInfo.h>
+#endif
+
 
 
 

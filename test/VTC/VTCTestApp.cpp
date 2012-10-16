@@ -268,8 +268,11 @@ int my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int
 }
 
 int startPlayback() {
-
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    playbackSurfaceControl = playbackComposerClient->createSurface(String8(), playbackSurfaceWidth, playbackSurfaceHeight, PIXEL_FORMAT_RGB_565);
+#else
     playbackSurfaceControl = playbackComposerClient->createSurface(0, playbackSurfaceWidth, playbackSurfaceHeight, PIXEL_FORMAT_RGB_565);
+#endif
     CHECK(playbackSurfaceControl != NULL);
     CHECK(playbackSurfaceControl->isValid());
 
@@ -325,8 +328,15 @@ int verfiyByPlayback() {
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    DisplayInfo displayInfo;
+    playbackComposerClient->getDisplayInfo(0, &displayInfo);
+    playbackSurfaceWidth = displayInfo.w;
+    playbackSurfaceHeight = displayInfo.h;
+#else
     playbackSurfaceWidth = playbackComposerClient->getDisplayWidth(0);
     playbackSurfaceHeight = playbackComposerClient->getDisplayHeight(0);
+#endif
     VTC_LOGD("Panel WxH = %d x %d", playbackSurfaceWidth, playbackSurfaceHeight);
 
     startPlayback();
@@ -345,14 +355,28 @@ int createPreviewSurface() {
     CHECK_EQ(client->initCheck(), (status_t)OK);
 
     if ((cameraSurfaceWidth == 0) || (cameraSurfaceHeight == 0)){
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+        DisplayInfo displayInfo;
+        client->getDisplayInfo(0, &displayInfo);
+        cameraSurfaceWidth = displayInfo.w;
+        cameraSurfaceHeight = displayInfo.h;
+#else
         cameraSurfaceWidth = client->getDisplayWidth(0);
         cameraSurfaceHeight = client->getDisplayHeight(0);
+#endif
     }
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    surfaceControl = client->createSurface(String8(),
+            cameraSurfaceWidth,
+            cameraSurfaceHeight,
+            HAL_PIXEL_FORMAT_RGB_565);
+#else
     surfaceControl = client->createSurface(0,
             cameraSurfaceWidth,
             cameraSurfaceHeight,
             HAL_PIXEL_FORMAT_RGB_565);
+#endif
 
     previewSurface = surfaceControl->getSurface();
 
@@ -708,8 +732,15 @@ int test_PlaybackAndRecord_sidebyside() {
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    DisplayInfo displayInfo;
+    playbackComposerClient->getDisplayInfo(0, &displayInfo);
+    int panelwidth = displayInfo.w;
+    int panelheight = displayInfo.h;
+#else
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
+#endif
     VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
         VTC_LOGD("\nPortrait Device\n");
@@ -762,8 +793,15 @@ int test_PlaybackAndRecord_PIP() {
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    DisplayInfo displayInfo;
+    playbackComposerClient->getDisplayInfo(0, &displayInfo);
+    uint32_t panelwidth = displayInfo.w;
+    uint32_t panelheight = displayInfo.h;
+#else
     uint32_t panelwidth = playbackComposerClient->getDisplayWidth(0);
     uint32_t panelheight = playbackComposerClient->getDisplayHeight(0);
+#endif
     VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
         VTC_LOGD("\nPortrait Device\n");
@@ -838,8 +876,15 @@ int test_PlaybackOnly()
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    DisplayInfo displayInfo;
+    playbackComposerClient->getDisplayInfo(0, &displayInfo);
+    int panelwidth = displayInfo.w;
+    int panelheight = displayInfo.h;
+#else
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
+#endif
     VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
         VTC_LOGD("\nPortrait Device\n");

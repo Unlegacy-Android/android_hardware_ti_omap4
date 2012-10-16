@@ -113,9 +113,15 @@ void surfaceInit() {
         return;
     }
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    mSurfaceControl = mComposerClient->createSurface(String8("NativeSurface"),
+            mWidth, mHeight,
+            PIXEL_FORMAT_OPAQUE, ISurfaceComposerClient::eFXSurfaceNormal);
+#else
     mSurfaceControl = mComposerClient->createSurface(String8("NativeSurface"),
             0, mWidth, mHeight,
             PIXEL_FORMAT_OPAQUE, ISurfaceComposer::eFXSurfaceNormal);
+#endif
 
     if (mSurfaceControl == NULL) {
         VTC_LOGE("mComposerClient->createSurface failed");

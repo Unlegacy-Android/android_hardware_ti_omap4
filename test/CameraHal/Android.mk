@@ -67,15 +67,22 @@ LOCAL_SHARED_LIBRARIES:= \
 	libgui \
 	libcamera_client \
 	libEGL \
-	libGLESv2 \
-	libion
+    libGLESv2
+
+ifdef ANDROID_API_JB_MR1_OR_LATER
+LOCAL_SHARED_LIBRARIES += \
+    libion_ti
+else
+LOCAL_SHARED_LIBRARIES += \
+    libion
+endif
 
 LOCAL_C_INCLUDES += \
+    hardware/ti/omap4xxx/include \
 	frameworks/base/include/ui \
 	frameworks/base/include/surfaceflinger \
 	frameworks/base/include/camera \
-	frameworks/base/include/media \
-	hardware/ti/omap4xxx/ion
+    frameworks/base/include/media
 
 LOCAL_MODULE:= surfacetexture_test
 LOCAL_MODULE_TAGS:= tests

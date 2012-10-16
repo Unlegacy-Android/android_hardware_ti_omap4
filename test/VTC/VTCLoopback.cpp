@@ -220,13 +220,27 @@ int createPreviewSurface() {
     gSurfaceComposerClient = new SurfaceComposerClient();
     CHECK_EQ(gSurfaceComposerClient->initCheck(), (status_t)OK);
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    DisplayInfo displayInfo;
+    gSurfaceComposerClient->getDisplayInfo(0, &displayInfo);
+    int gCameraSurfaceWidth = displayInfo.w;
+    int gCameraSurfaceHeight = displayInfo.h;
+#else
     gCameraSurfaceWidth = gSurfaceComposerClient->getDisplayWidth(0);
     gCameraSurfaceHeight = gSurfaceComposerClient->getDisplayHeight(0);
+#endif
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    gSurfaceControl = gSurfaceComposerClient->createSurface(String8(),
+            gCameraSurfaceWidth,
+            gCameraSurfaceHeight,
+            HAL_PIXEL_FORMAT_RGB_565);
+#else
     gSurfaceControl = gSurfaceComposerClient->createSurface(0,
             gCameraSurfaceWidth,
             gCameraSurfaceHeight,
             HAL_PIXEL_FORMAT_RGB_565);
+#endif
 
     gPreviewSurface = gSurfaceControl->getSurface();
 

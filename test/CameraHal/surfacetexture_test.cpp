@@ -73,7 +73,11 @@
 #include <gui/ISurfaceComposer.h>
 #include <gui/ISurfaceComposerClient.h>
 #include <gui/SurfaceComposerClient.h>
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+#include <ion_ti/ion.h>
+#else
 #include <ion/ion.h>
+#endif
 #else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
@@ -167,7 +171,11 @@ test_format (int format, int page_mode, int width, int height)
     }
     for(i=0;i<N_BUFFERS;i++) {
         if (anb[i]) {
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+            anw->cancelBuffer_DEPRECATED (anw.get(), anb[i]);
+#else
             anw->cancelBuffer (anw.get(), anb[i]);
+#endif
         }
     }
 
