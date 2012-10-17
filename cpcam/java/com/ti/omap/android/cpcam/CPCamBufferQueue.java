@@ -143,6 +143,16 @@ public class CPCamBufferQueue {
     }
 
     /**
+     * Gets the unique ID of the Buffer Queue
+     *
+     * @param slot indicates the slot index of the buffer to be released
+     *
+     */
+    public String getId() {
+        return nativeGetId();
+    }
+
+    /**
      * Retrieve the timestamp associated with the texture image set by the most recent call to
      * updateTexImage.
      *
@@ -224,6 +234,7 @@ public class CPCamBufferQueue {
     private native void nativeReleaseBuffer(int slot);
     private native int nativeGetQueuedCount();
     private native void nativeRelease();
+    private native final String nativeGetId();
 
     /*
      * We use a class initializer to allow the native code to cache some

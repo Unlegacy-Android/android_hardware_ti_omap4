@@ -94,6 +94,8 @@
 #define LOCK_BUFFER_TRIES 5
 #define HAL_PIXEL_FORMAT_NV12 0x100
 
+#define OP_STR_SIZE 100
+
 #define NONNEG_ASSIGN(x,y) \
     if(x > -1) \
         y = x
@@ -613,6 +615,9 @@ public:
     //additional methods used for memory mapping
     virtual uint32_t * getOffsets() = 0;
     virtual int getFd() = 0;
+    virtual CameraBuffer * getBuffers(bool reset = false) { return NULL; }
+    virtual unsigned int getSize() {return 0; }
+    virtual int getBufferCount() {return -1; }
 
     virtual int freeBufferList(CameraBuffer * buf) = 0;
 
@@ -1030,6 +1035,9 @@ public:
     // Get min buffers display needs at any given time
     virtual status_t minUndequeueableBuffers(int& unqueueable) = 0;
 
+    // Given a vector of DisplayAdapters find the one corresponding to str
+    virtual bool match(const char * str) { return false; }
+
 private:
 #ifdef OMAP_ENHANCEMENT
     preview_stream_extended_ops_t * mExtendedOps;
@@ -1121,6 +1129,11 @@ public:
      */
     int setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout);
 #endif
+
+    /**
+     * Release a tap-in or tap-out point.
+     */
+    int releaseBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout);
 
     /**
      * Stop a previously started preview.
@@ -1349,7 +1362,10 @@ private:
     int   __takePicture(const char* params);
     //@}
 
-
+    status_t setTapoutLocked(struct preview_stream_ops *out);
+    status_t releaseTapoutLocked(struct preview_stream_ops *out);
+    status_t setTapinLocked(struct preview_stream_ops *in);
+    status_t releaseTapinLocked(struct preview_stream_ops *in);
 /*----------Member variables - Public ---------------------*/
 public:
     int32_t mMsgEnabled;
@@ -1370,8 +1386,12 @@ public:
     android::sp<AppCallbackNotifier> mAppCallbackNotifier;
     android::sp<DisplayAdapter> mDisplayAdapter;
     android::sp<MemoryManager> mMemoryManager;
-    // TODO(XXX): May need to keep this as a vector in the future
-    // when we can have multiple tap-in/tap-out points
+
+    android::Vector< android::sp<DisplayAdapter> > mOutAdapters;
+    android::Vector< android::sp<DisplayAdapter> > mInAdapters;
+
+    // TODO(XXX): Even though we support user setting multiple BufferSourceAdapters now
+    // only one tap in surface and one tap out surface is supported at a time.
     android::sp<DisplayAdapter> mBufferSourceAdapter_In;
     android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
 

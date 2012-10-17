@@ -416,6 +416,17 @@ public class CPCam {
     public native final void setBufferSource(CPCamBufferQueue tapIn, CPCamBufferQueue tapOut) throws IOException;
 
     /**
+     * Releases the {@link SurfaceTexture}s used for tap-out and tap-in.
+     * This is used in conjuntion with cp-cam mode.
+     *
+     * @param tapIn surfaceTexture the {@link SurfaceTexture} to be cleared
+     * @param tapOut surfaceTexture the {@link SurfaceTexture} to be cleared
+     * @throws IOException if the method fails (for example, if the surface
+     *     texture is unavailable or unsuitable).
+     */
+    public native final void releaseBufferSource(CPCamBufferQueue tapIn, CPCamBufferQueue tapOut) throws IOException;
+
+    /**
      * Sets the {@link SurfaceTexture} to be used for tap-out.
      * This is used in conjuntion with cp-cam mode.
      *

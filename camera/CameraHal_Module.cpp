@@ -140,6 +140,25 @@ int camera_set_buffer_source(struct camera_device * device,
 
     return rv;
 }
+
+int camera_release_buffer_source(struct camera_device * device,
+                                 struct preview_stream_ops *tapin,
+                                 struct preview_stream_ops *tapout)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->releaseBufferSource(tapin, tapout);
+
+    return rv;
+}
 #endif
 
 void camera_set_callbacks(struct camera_device * device,
@@ -513,6 +532,7 @@ int camera_send_command(struct camera_device * device,
 #ifdef OMAP_ENHANCEMENT_CPCAM
         ops->set_extended_preview_ops = camera_set_extended_preview_ops;
         ops->set_buffer_source = camera_set_buffer_source;
+        ops->release_buffer_source = camera_release_buffer_source;
         ops->take_picture_with_parameters = camera_take_picture_with_parameters;
         ops->reprocess = camera_reprocess;
         ops->cancel_reprocess = camera_cancel_reprocess;

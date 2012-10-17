@@ -112,6 +112,11 @@ static int getHeightFromFormat(const char* format, int stride, int size) {
 /*--------------------BufferSourceAdapter Class STARTS here-----------------------------*/
 
 
+///Constant definitions
+// TODO(XXX): Temporarily increase number of buffers we can allocate from ANW
+// until faux-NPA mode is implemented
+const int BufferSourceAdapter::NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP = 15;
+
 /**
  * Display Adapter class STARTS here..
  */
@@ -195,12 +200,33 @@ int BufferSourceAdapter::setPreviewWindow(preview_stream_ops_t *source)
         return BAD_VALUE;
     }
 
-    if ( source == mBufferSource ) {
-        return ALREADY_EXISTS;
-    }
+    if (mBufferSource) {
+        char id1[OP_STR_SIZE], id2[OP_STR_SIZE];
+        status_t ret;
 
-    // Destroy the existing source, if it exists
-    destroy();
+        ret = extendedOps()->get_id(mBufferSource, id1, sizeof(id1));
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::getId returned error %d", ret);
+            return ret;
+        }
+
+        ret = extendedOps()->get_id(source, id2, sizeof(id2));
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::getId returned error %d", ret);
+            return ret;
+        }
+        if ((0 >= strlen(id1)) || (0 >= strlen(id2))) {
+            CAMHAL_LOGE("Cannot set ST without name: id1:\"%s\" id2:\"%s\"",
+                        id1, id2);
+            return NOT_ENOUGH_DATA;
+        }
+        if (0 == strcmp(id1, id2)) {
+            return ALREADY_EXISTS;
+        }
+
+        // client has to unset mBufferSource before being able to set a new one
+        return BAD_VALUE;
+    }
 
     // Move to new source obj
     mBufferSource = source;
@@ -208,6 +234,19 @@ int BufferSourceAdapter::setPreviewWindow(preview_stream_ops_t *source)
     LOG_FUNCTION_NAME_EXIT;
 
     return NO_ERROR;
+}
+
+bool BufferSourceAdapter::match(const char * str) {
+    char id1[OP_STR_SIZE];
+    status_t ret;
+
+    ret = extendedOps()->get_id(mBufferSource, id1, sizeof(id1));
+
+    if (ret != 0) {
+        CAMHAL_LOGE("Surface::getId returned error %d", ret);
+    }
+
+    return strcmp(id1, str) == 0;
 }
 
 int BufferSourceAdapter::setFrameProvider(FrameNotifier *frameProvider)
@@ -341,7 +380,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int dummyHeight
         return NULL;
     }
 
-    CAMHAL_LOGDB("Number of buffers set to ANativeWindow %d", numBufs);
+    CAMHAL_LOGDB("Number of buffers set to BufferSourceAdapter %d", numBufs);
     // Set the number of buffers needed for this buffer source
     err = mBufferSource->set_buffer_count(mBufferSource, numBufs);
     if (err != 0) {
@@ -469,6 +508,117 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int dummyHeight
     LOG_FUNCTION_NAME_EXIT;
     return NULL;
 
+}
+
+CameraBuffer *BufferSourceAdapter::getBuffers(bool reset) {
+    int undequeued = 0;
+    status_t err;
+    android::Mutex::Autolock lock(mLock);
+
+    if (!mBufferSource || !mBuffers) {
+        CAMHAL_LOGE("Adapter is not set up properly: "
+                    "mBufferSource:%p mBuffers:%p",
+                     mBufferSource, mBuffers);
+        goto fail;
+    }
+
+    // CameraHal is indicating to us that the state of the mBuffer
+    // might have changed. We might need to check the state of the
+    // buffer list and pass a new one depending on the state of our
+    // surface
+    if (reset) {
+        const int lnumBufs = mBufferCount;
+        android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+        android::Rect bounds(mFrameWidth, mFrameHeight);
+        void *y_uv[2];
+        CameraBuffer * newBuffers = NULL;
+        unsigned int index = 0;
+        android::KeyedVector<void*, int> missingIndices;
+
+        newBuffers = new CameraBuffer [lnumBufs];
+        memset (newBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
+
+        // Use this vector to figure out missing indices
+        for (int i = 0; i < mBufferCount; i++) {
+            missingIndices.add(mBuffers[i].opaque, i);
+        }
+
+        // assign buffers that we have already dequeued
+        for (index = 0; index < mFramesWithCameraAdapterMap.size(); index++) {
+            int value = mFramesWithCameraAdapterMap.valueAt(index);
+            newBuffers[index].opaque = mBuffers[value].opaque;
+            newBuffers[index].type = mBuffers[value].type;
+            newBuffers[index].format = mBuffers[value].format;
+            newBuffers[index].mapped = mBuffers[value].mapped;
+            mFramesWithCameraAdapterMap.replaceValueAt(index, index);
+            missingIndices.removeItem(newBuffers[index].opaque);
+        }
+
+        mBufferSource->get_min_undequeued_buffer_count(mBufferSource, &undequeued);
+
+        // dequeue the rest of the buffers
+        for (index; index < (unsigned int)(mBufferCount-undequeued); index++) {
+            buffer_handle_t *handle;
+            int stride;  // dummy variable to get stride
+
+            err = mBufferSource->dequeue_buffer(mBufferSource, &handle, &stride);
+            if (err != 0) {
+                CAMHAL_LOGEB("dequeueBuffer failed: %s (%d)", strerror(-err), -err);
+                if ( ENODEV == err ) {
+                    CAMHAL_LOGEA("Preview surface abandoned!");
+                    mBufferSource = NULL;
+                }
+                goto fail;
+            }
+            newBuffers[index].opaque = (void *)handle;
+            newBuffers[index].type = CAMERA_BUFFER_ANW;
+            newBuffers[index].format = mPixelFormat;
+            mFramesWithCameraAdapterMap.add(handle, index);
+
+            mBufferSource->lock_buffer(mBufferSource, handle);
+            mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+            newBuffers[index].mapped = y_uv[0];
+            CAMHAL_LOGDB("got handle %p", handle);
+
+            missingIndices.removeItem(newBuffers[index].opaque);
+        }
+
+        // now we need to figure out which buffers aren't dequeued
+        // which are in mBuffers but not newBuffers yet
+        if ((mBufferCount - index) != missingIndices.size()) {
+            CAMHAL_LOGD("Hrmm somethings gone awry. We are missing a different number"
+                        " of buffers than we can fill");
+        }
+        for (unsigned int i = 0; i < missingIndices.size(); i++) {
+            int j = missingIndices.valueAt(i);
+
+            CAMHAL_LOGD("Filling at %d", j);
+            newBuffers[index].opaque = mBuffers[j].opaque;
+            newBuffers[index].type = mBuffers[j].type;
+            newBuffers[index].format = mBuffers[j].format;
+            newBuffers[index].mapped = mBuffers[j].mapped;
+        }
+
+        delete [] mBuffers;
+        mBuffers = newBuffers;
+    }
+
+    return mBuffers;
+
+ fail:
+    return NULL;
+}
+
+unsigned int BufferSourceAdapter::getSize() {
+    android::Mutex::Autolock lock(mLock);
+    return CameraHal::calculateBufferSize(mPixelFormat, mFrameWidth, mFrameHeight);
+}
+
+int BufferSourceAdapter::getBufferCount() {
+    int count = -1;
+
+    android::Mutex::Autolock lock(mLock);
+    return NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
 }
 
 CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
@@ -703,6 +853,15 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         if (frame->mBuffer == &mBuffers[i]) {
             break;
         }
+    }
+
+    if (i >= mBufferCount) {
+        CAMHAL_LOGD("Can't find frame in buffer list");
+        if (frame->mFrameType != CameraFrame::REPROCESS_INPUT_FRAME) {
+            mFrameProvider->returnFrame(frame->mBuffer,
+                    static_cast<CameraFrame::FrameType>(frame->mFrameType));
+        }
+        return;
     }
 
     handle = (buffer_handle_t *) mBuffers[i].opaque;

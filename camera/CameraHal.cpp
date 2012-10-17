@@ -83,6 +83,10 @@ static int dummy_get_buffer_format(preview_stream_ops_t*, int*) {
 static int dummy_set_metadata(preview_stream_ops_t*, const camera_memory_t*) {
     return INVALID_OPERATION;
 }
+
+static int dummy_get_id(preview_stream_ops_t*, char *data, unsigned int dataSize) {
+    return INVALID_OPERATION;
+}
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -92,6 +96,7 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
     dummy_get_buffer_dimension,
     dummy_get_buffer_format,
     dummy_set_metadata,
+    dummy_get_id,
 #endif
 };
 #endif
@@ -2097,6 +2102,263 @@ void CameraHal::setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops)
 }
 
 /**
+   @brief Sets Tapout Surfaces.
+
+   Buffers provided to CameraHal via this object for tap-out
+   functionality.
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::setTapoutLocked(struct preview_stream_ops *tapout)
+{
+    status_t ret = NO_ERROR;
+    int index = -1;
+
+    LOG_FUNCTION_NAME;
+
+    if (!tapout) {
+        CAMHAL_LOGD("Missing argument");
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_ERROR;
+    }
+
+    // Set tapout point
+    // 1. Check name of tap-out
+    // 2. If not already set, then create a new one
+    // 3. Allocate buffers. If user is re-setting the surface, free buffers first and re-allocate
+    //    in case dimensions have changed
+
+    for (unsigned int i = 0; i < mOutAdapters.size(); i++) {
+        android::sp<DisplayAdapter> out;
+        out = mOutAdapters.itemAt(i);
+        ret = out->setPreviewWindow(tapout);
+        if (ret == ALREADY_EXISTS) {
+            CAMHAL_LOGD("Tap Out already set at index = %d", i);
+            index = i;
+            ret = NO_ERROR;
+        }
+    }
+
+    if (index < 0) {
+        android::sp<DisplayAdapter> out  = new BufferSourceAdapter();
+
+        ret = out->initialize();
+        if (ret != NO_ERROR) {
+            out.clear();
+            CAMHAL_LOGEA("DisplayAdapter initialize failed");
+            goto exit;
+        }
+
+        // BufferSourceAdapter will be handler of the extended OPS
+        out->setExtendedOps(mExtendedPreviewStreamOps);
+
+        // CameraAdapter will be the frame provider for BufferSourceAdapter
+        out->setFrameProvider(mCameraAdapter);
+
+        // BufferSourceAdapter will use ErrorHandler to send errors back to
+        // the application
+        out->setErrorHandler(mAppCallbackNotifier.get());
+
+        // Update the display adapter with the new window that is passed from CameraService
+        ret  = out->setPreviewWindow(tapout);
+        if(ret != NO_ERROR) {
+            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
+            goto exit;
+        }
+
+        mOutAdapters.add(out);
+    }
+
+exit:
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+/**
+   @brief Releases Tapout Surfaces.
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::releaseTapoutLocked(struct preview_stream_ops *tapout)
+{
+    status_t ret = NO_ERROR;
+    char id[OP_STR_SIZE];
+
+    LOG_FUNCTION_NAME;
+
+    if (!tapout) {
+        CAMHAL_LOGD("Missing argument");
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_ERROR;
+    }
+
+    // Get the name of tapout
+    ret = mExtendedPreviewStreamOps->get_id(tapout, id, sizeof(id));
+    if (NO_ERROR != ret) {
+        CAMHAL_LOGEB("get_id OPS returned error %d", ret);
+        return ret;
+    }
+
+    // 1. Check name of tap-out
+    // 2. If exist, then free buffers and then remove it
+    if (mBufferSourceAdapter_Out.get() && mBufferSourceAdapter_Out->match(id)) {
+        CAMHAL_LOGD("REMOVE tap out %p previously set as current", tapout);
+        mBufferSourceAdapter_Out.clear();
+    }
+    for (unsigned int i = 0; i < mOutAdapters.size(); i++) {
+        android::sp<DisplayAdapter> out;
+        out = mOutAdapters.itemAt(i);
+        if (out->match(id)) {
+            CAMHAL_LOGD("REMOVE tap out %p \"%s\" at position %d", tapout, id, i);
+            out->freeBufferList(out->getBuffers());
+            mOutAdapters.removeAt(i);
+            break;
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+/**
+   @brief Sets Tapin Surfaces.
+
+   Buffers provided to CameraHal via this object for tap-in
+   functionality.
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::setTapinLocked(struct preview_stream_ops *tapin)
+{
+    status_t ret = NO_ERROR;
+    int index = -1;
+
+    LOG_FUNCTION_NAME;
+
+    if (!tapin) {
+        CAMHAL_LOGD("Missing argument");
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_ERROR;
+    }
+
+    // 1. Set tapin point
+    // 1. Check name of tap-in
+    // 2. If not already set, then create a new one
+    // 3. Allocate buffers. If user is re-setting the surface, free buffers first and re-allocate
+    //    in case dimensions have changed
+    for (unsigned int i = 0; i < mInAdapters.size(); i++) {
+        android::sp<DisplayAdapter> in;
+        in = mInAdapters.itemAt(i);
+        ret = in->setPreviewWindow(tapin);
+        if (ret == ALREADY_EXISTS) {
+            CAMHAL_LOGD("Tap In already set at index = %d", i);
+            index = i;
+            ret = NO_ERROR;
+        }
+    }
+
+    if (index < 0) {
+        android::sp<DisplayAdapter> in  = new BufferSourceAdapter();
+
+        ret = in->initialize();
+        if (ret != NO_ERROR) {
+            in.clear();
+            CAMHAL_LOGEA("DisplayAdapter initialize failed");
+            goto exit;
+        }
+
+        // BufferSourceAdapter will be handler of the extended OPS
+        in->setExtendedOps(mExtendedPreviewStreamOps);
+
+        // CameraAdapter will be the frame provider for BufferSourceAdapter
+        in->setFrameProvider(mCameraAdapter);
+
+        // BufferSourceAdapter will use ErrorHandler to send errors back to
+        // the application
+        in->setErrorHandler(mAppCallbackNotifier.get());
+
+        // Update the display adapter with the new window that is passed from CameraService
+        ret  = in->setPreviewWindow(tapin);
+        if(ret != NO_ERROR) {
+            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
+            goto exit;
+        }
+
+        mInAdapters.add(in);
+    }
+
+exit:
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+
+/**
+   @brief Releases Tapin Surfaces.
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::releaseTapinLocked(struct preview_stream_ops *tapin)
+{
+    status_t ret = NO_ERROR;
+    char id[OP_STR_SIZE];
+
+    LOG_FUNCTION_NAME;
+
+    if (!tapin) {
+        CAMHAL_LOGD("Missing argument");
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_ERROR;
+    }
+
+    // Get the name of tapin
+    ret = mExtendedPreviewStreamOps->get_id(tapin, id, sizeof(id));
+    if (NO_ERROR != ret) {
+        CAMHAL_LOGEB("get_id OPS returned error %d", ret);
+        return ret;
+    }
+
+    // 1. Check name of tap-in
+    // 2. If exist, then free buffers and then remove it
+    if (mBufferSourceAdapter_In.get() && mBufferSourceAdapter_In->match(id)) {
+        CAMHAL_LOGD("REMOVE tap in %p previously set as current", tapin);
+        mBufferSourceAdapter_In.clear();
+    }
+    for (unsigned int i = 0; i < mInAdapters.size(); i++) {
+        android::sp<DisplayAdapter> in;
+        in = mInAdapters.itemAt(i);
+        if (in->match(id)) {
+            CAMHAL_LOGD("REMOVE tap in %p \"%s\" at position %d", tapin, id, i);
+            in->freeBufferList(in->getBuffers());
+            mInAdapters.removeAt(i);
+            break;
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+
+/**
    @brief Sets ANativeWindow object.
 
    Buffers provided to CameraHal via this object for tap-in/tap-out
@@ -2113,120 +2375,73 @@ void CameraHal::setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops)
 status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout)
 {
     status_t ret = NO_ERROR;
+    int index = -1;
 
     LOG_FUNCTION_NAME;
 
-   // If either a tapin or tapout was previously set
-   // we need to clean up and clear capturing
-   if ((!tapout && mBufferSourceAdapter_Out.get()) ||
-       (!tapin && mBufferSourceAdapter_In.get())) {
-       signalEndImageCapture();
-   }
+    android::AutoMutex lock(mLock);
 
-   // Set tapout point
-   // destroy current buffer tapout if NULL tapout is passed
-    if (!tapout) {
-        if (mBufferSourceAdapter_Out.get() != NULL) {
-            CAMHAL_LOGD("NULL tapout passed, destroying buffer tapout adapter");
-            mBufferSourceAdapter_Out.clear();
-            mBufferSourceAdapter_Out = 0;
-        }
-        ret = NO_ERROR;
-    } else if (mBufferSourceAdapter_Out.get() == NULL) {
-        mBufferSourceAdapter_Out = new BufferSourceAdapter();
-        mBufferSourceAdapter_Out->setExtendedOps(mExtendedPreviewStreamOps);
-        if(!mBufferSourceAdapter_Out.get()) {
-            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
-            ret = NO_MEMORY;
-            goto exit;
-        }
+    CAMHAL_LOGD ("setBufferSource(%p, %p)", tapin, tapout);
 
-        ret = mBufferSourceAdapter_Out->initialize();
-        if (ret != NO_ERROR)
-        {
-            mBufferSourceAdapter_Out.clear();
-            mBufferSourceAdapter_Out = 0;
-            CAMHAL_LOGEA("DisplayAdapter initialize failed");
-            goto exit;
-        }
-
-        // CameraAdapter will be the frame provider for BufferSourceAdapter
-        mBufferSourceAdapter_Out->setFrameProvider(mCameraAdapter);
-
-        // BufferSourceAdapter will use ErrorHandler to send errors back to
-        // the application
-        mBufferSourceAdapter_Out->setErrorHandler(mAppCallbackNotifier.get());
-
-        // Update the display adapter with the new window that is passed from CameraService
-        ret  = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
-        if(ret != NO_ERROR) {
-            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
-            goto exit;
-        }
-    } else {
-        // Update the display adapter with the new window that is passed from CameraService
-        freeImageBufs();
-        ret = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
-        if (ret == ALREADY_EXISTS) {
-            // ALREADY_EXISTS should be treated as a noop in this case
-            ret = NO_ERROR;
-        }
-    }
-
+    ret = setTapoutLocked(tapout);
     if (ret != NO_ERROR) {
-       CAMHAL_LOGE("Error while trying to set tapout point");
-       goto exit;
+        CAMHAL_LOGE("setTapoutLocked returned error 0x%x", ret);
+        goto exit;
     }
 
-   // 1. Set tapin point
-    if (!tapin) {
-        if (mBufferSourceAdapter_In.get() != NULL) {
-            CAMHAL_LOGD("NULL tapin passed, destroying buffer tapin adapter");
-            mBufferSourceAdapter_In.clear();
-            mBufferSourceAdapter_In = 0;
-        }
-        ret = NO_ERROR;
-    } else if (mBufferSourceAdapter_In.get() == NULL) {
-        mBufferSourceAdapter_In = new BufferSourceAdapter();
-        mBufferSourceAdapter_In->setExtendedOps(mExtendedPreviewStreamOps);
-        if(!mBufferSourceAdapter_In.get()) {
-            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
-            ret = NO_MEMORY;
-            goto exit;
-        }
+    ret = setTapinLocked(tapin);
+    if (ret != NO_ERROR) {
+        CAMHAL_LOGE("setTapinLocked returned error 0x%x", ret);
+        goto exit;
+    }
 
-        ret = mBufferSourceAdapter_In->initialize();
-        if (ret != NO_ERROR)
-        {
-            mBufferSourceAdapter_In.clear();
-            mBufferSourceAdapter_In = 0;
-            CAMHAL_LOGEA("DisplayAdapter initialize failed");
-            goto exit;
-        }
+exit:
+    LOG_FUNCTION_NAME_EXIT;
 
-        // We need to set a frame provider so camera adapter can return the frame back to us
-        mBufferSourceAdapter_In->setFrameProvider(mCameraAdapter);
+    return ret;
+}
 
-        // BufferSourceAdapter will use ErrorHandler to send errors back to
-        // the application
-        mBufferSourceAdapter_In->setErrorHandler(mAppCallbackNotifier.get());
 
-        // Update the display adapter with the new window that is passed from CameraService
-        ret  = mBufferSourceAdapter_In->setPreviewWindow(tapin);
-        if(ret != NO_ERROR) {
-            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
-            goto exit;
-        }
-    } else {
-        // Update the display adapter with the new window that is passed from CameraService
-        ret = mBufferSourceAdapter_In->setPreviewWindow(tapin);
-        if (ret == ALREADY_EXISTS) {
-            // ALREADY_EXISTS should be treated as a noop in this case
-            ret = NO_ERROR;
+/**
+   @brief Releases ANativeWindow object.
+
+   Release Buffers previously released with setBufferSource()
+
+   TODO(XXX): this is just going to use preview_stream_ops for now, but we
+   most likely need to extend it when we want more functionality
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::releaseBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout)
+{
+    status_t ret = NO_ERROR;
+    int index = -1;
+
+    LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
+    CAMHAL_LOGD ("releaseBufferSource(%p, %p)", tapin, tapout);
+    if (tapout) {
+        ret |= releaseTapoutLocked(tapout);
+        if (ret != NO_ERROR) {
+            CAMHAL_LOGE("Error %d to release tap out", ret);
         }
     }
 
- exit:
+    if (tapin) {
+        ret |= releaseTapinLocked(tapin);
+        if (ret != NO_ERROR) {
+            CAMHAL_LOGE("Error %d to release tap in", ret);
+        }
+    }
+
+exit:
+
+    LOG_FUNCTION_NAME_EXIT;
+
     return ret;
 }
 #endif
@@ -2985,7 +3200,7 @@ status_t CameraHal::__takePicture(const char *params)
     // check if camera application is using shots parameters
     // api. parameters set here override anything set using setParameters
     // TODO(XXX): Just going to use legacy TI parameters for now. Need
-    // add new APIs in CameraHal to utilize ShotParameters later, so
+    // add new APIs in CameraHal to utilize android::ShotParameters later, so
     // we don't have to parse through the whole set of parameters
     // in camera adapter
     if (strlen(params) > 0) {
@@ -3025,6 +3240,25 @@ status_t CameraHal::__takePicture(const char *params)
             }
         }
 
+        valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_OUT);
+        if (valStr != NULL) {
+            int index = -1;
+            for (unsigned int i = 0; i < mOutAdapters.size(); i++) {
+                if(mOutAdapters.itemAt(i)->match(valStr)) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) {
+                CAMHAL_LOGE("Invalid tap out surface passed to camerahal");
+                return BAD_VALUE;
+            }
+            CAMHAL_LOGD("Found matching out adapter at %d", index);
+            mBufferSourceAdapter_Out = mOutAdapters.itemAt(index);
+        } else {
+            mBufferSourceAdapter_Out.clear();
+        }
+
         mCameraAdapter->setParameters(mParameters);
     } else
 #endif
@@ -3050,7 +3284,7 @@ status_t CameraHal::__takePicture(const char *params)
 
     if ( !mBracketingRunning )
     {
-         // if application didn't set burst through ShotParameters
+         // if application didn't set burst through android::ShotParameters
          // then query from TICameraParameters
          if ((burst == -1) && (NO_ERROR == ret)) {
             burst = mParameters.getInt(TICameraParameters::KEY_BURST);
@@ -3300,10 +3534,37 @@ status_t CameraHal::reprocess(const char *params)
     CameraAdapter::BuffersDescriptor desc;
     CameraBuffer *reprocBuffers = NULL;
     android::ShotParameters shotParams;
+    const char *valStr = NULL;
 
     android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME;
+
+    // 0. Get tap in surface
+    if (strlen(params) > 0) {
+        android::String8 shotParams8(params);
+        shotParams.unflatten(shotParams8);
+    }
+
+    valStr = shotParams.get(android::ShotParameters::KEY_CURRENT_TAP_IN);
+    if (valStr != NULL) {
+        int index = -1;
+        for (unsigned int i = 0; i < mInAdapters.size(); i++) {
+            if(mInAdapters.itemAt(i)->match(valStr)) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            CAMHAL_LOGE("Invalid tap in surface passed to camerahal");
+            return BAD_VALUE;
+        }
+        CAMHAL_LOGD("Found matching in adapter at %d", index);
+        mBufferSourceAdapter_In = mInAdapters.itemAt(index);
+    } else {
+        CAMHAL_LOGE("No tap in surface sent with shot config!");
+        return BAD_VALUE;
+    }
 
     // 1. Get buffers
     if (mBufferSourceAdapter_In.get()) {
@@ -4260,6 +4521,8 @@ void CameraHal::deinitialize()
 
     mBufferSourceAdapter_Out.clear();
     mBufferSourceAdapter_In.clear();
+    mOutAdapters.clear();
+    mInAdapters.clear();
 
     LOG_FUNCTION_NAME_EXIT;
 

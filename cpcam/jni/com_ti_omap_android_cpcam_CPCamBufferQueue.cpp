@@ -360,6 +360,13 @@ static void CPCamBufferQueue_release(JNIEnv* env, jobject thiz)
     env->SetIntField(thiz, fields.context, 0);
 }
 
+static jstring CPCamBufferQueue_getId(JNIEnv* env, jobject thiz)
+{
+    sp<BufferQueue> bufferQueue(CPCamBufferQueue_getCPCamBufferQueue(env, thiz));
+    String8 id = bufferQueue->getId();
+    return env->NewStringUTF(id.string());
+}
+
 // ----------------------------------------------------------------------------
 
 static JNINativeMethod gCPCamBufferQueueMethods[] = {
@@ -371,6 +378,7 @@ static JNINativeMethod gCPCamBufferQueueMethods[] = {
     {"nativeReleaseBuffer",        "(I)V",  (void*)CPCamBufferQueue_releaseBuffer },
     {"nativeGetTimestamp",         "(I)J",  (void*)CPCamBufferQueue_getTimestamp },
     {"nativeRelease",              "()V",   (void*)CPCamBufferQueue_release },
+    {"nativeGetId",                "()Ljava/lang/String;", (void*)CPCamBufferQueue_getId },
 };
 
 struct field {
