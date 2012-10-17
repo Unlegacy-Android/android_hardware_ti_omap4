@@ -20,6 +20,7 @@ endif
 LOCAL_LDLIBS += -llog
 
 LOCAL_CFLAGS += -DLINUX
+LOCAL_CFLAGS += -DANDROID
 LOCAL_CFLAGS += -I $(LOCAL_PATH)/../tf_sdk/include/
 
 LOCAL_MODULE:= libtee_client_api_driver

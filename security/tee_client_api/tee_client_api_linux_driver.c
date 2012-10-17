@@ -101,7 +101,7 @@ typedef struct
 #include <android/log.h>
 #define TRACE_INFO(format, ...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, format, __VA_ARGS__)
 #define TRACE_ERROR(format, ...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, format, __VA_ARGS__)
-#define TRACE_WARNING(format, ...) __android_log_print(TRACE_WARNING, LOG_TAG, format, __VA_ARGS__)
+#define TRACE_WARNING(format, ...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, format, __VA_ARGS__)
 #else
 static void TRACE_ERROR(const char* format, ...)
 {
@@ -900,7 +900,7 @@ void TEEC_GetImplementationInfo(
                                 TEEC_Context*            context,
                                 TEEC_ImplementationInfo* description)
 {
-   TRACE_INFO("TEEC_GetImplementationInfo");
+   TRACE_INFO("TEEC_GetImplementationInfo", NULL);
 
    memset(description, 0, sizeof(TEEC_ImplementationInfo));
 

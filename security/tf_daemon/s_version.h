@@ -44,7 +44,7 @@
 #if defined(WIN32)
 #define S_VERSION_OS "W"          /* "W" for Windows PC (XP, Vista…) */
 #define S_VERSION_PLATFORM "X"    /* "X" for ix86 PC simulators */
-#elif defined(__ANDROID32__)
+#elif defined(ANDROID)
 #define S_VERSION_OS "A"          /* "A" for Android */
 #define S_VERSION_PLATFORM "G"    /* "G" for 4430 */
 #elif defined(LINUX)
@@ -66,7 +66,7 @@
 * defines to set the version number. Else set these values to 0.
 */
 #define S_VERSION_ENG 0
-#define S_VERSION_PATCH 0
+#define S_VERSION_PATCH 6
 
 #ifdef S_VERSION_BUILD
 /* TRICK: detect if S_VERSION is defined but empty */

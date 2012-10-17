@@ -15,18 +15,21 @@ LOCAL_SRC_FILES := \
 	pkcs11_object.c \
 	pkcs11_session.c
 
-LOCAL_CFLAGS += -DLINUX
-LOCAL_CFLAGS += -D__ANDROID32__
-
 ifdef S_VERSION_BUILD
 LOCAL_CFLAGS += -DS_VERSION_BUILD=$(S_VERSION_BUILD)
 endif
 
+LOCAL_LDLIBS += -llog
+
+LOCAL_CFLAGS += -DLINUX
+LOCAL_CFLAGS += -DANDROID
 LOCAL_CFLAGS += -I $(LOCAL_PATH)/../tf_sdk/include/
 
 LOCAL_MODULE:= libtf_crypto_sst
 LOCAL_STATIC_LIBRARIES := libtee_client_api_driver
 LOCAL_MODULE_TAGS := optional
+LOCAL_SHARED_LIBRARIES:= liblog
+
 
 include $(BUILD_SHARED_LIBRARY)
 endif
