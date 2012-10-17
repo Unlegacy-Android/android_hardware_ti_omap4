@@ -129,6 +129,7 @@ extern void DumpVideoFrame(DebugFrame_Dump *frameInfo);
 #endif
 
 OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent);
+OMX_ERRORTYPE PROXY_VIDDEC_ComponentDeInit(OMX_HANDLETYPE hComponent);
 
 OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 {
@@ -228,6 +229,7 @@ OMX_ERRORTYPE OMX_ProxyViddecInit(OMX_HANDLETYPE hComponent)
         pHandle->GetParameter = PROXY_VIDDEC_GetParameter;
 #endif
 	pHandle->GetExtensionIndex = PROXY_VIDDEC_GetExtensionIndex;
+        pHandle->ComponentDeInit = PROXY_VIDDEC_ComponentDeInit;
 
 #ifdef  SET_STRIDE_PADDING_FROM_PROXY
         pHandle->SendCommand = PROXY_VIDDEC_SendCommand;
@@ -794,3 +796,20 @@ EXIT:
 
 #endif
 
+OMX_ERRORTYPE PROXY_VIDDEC_ComponentDeInit(OMX_HANDLETYPE hComponent)
+{
+        OMX_ERRORTYPE eError = OMX_ErrorNone;
+	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+
+        DOMX_ENTER("PROXY_VIDDEC_ComponentDeinit called with hComp %x",hComponent);
+	PROXY_require((hComp->pComponentPrivate != NULL),
+			OMX_ErrorBadParameter,
+			"This is fatal error, processing cant proceed - please debug");
+
+        //decoder specific config will be included here in following patches
+
+        eError = PROXY_ComponentDeInit(hComponent);
+EXIT:
+	DOMX_EXIT("eError: %d", eError);
+	return eError;
+}
