@@ -394,6 +394,8 @@ enum bverror parse_format(struct bvbltparams *bvbltparams,
 					? GCREG_PE_CONTROL_UV_SWIZZLE_VU
 					: GCREG_PE_CONTROL_UV_SWIZZLE_UV;
 				format->cs.yuv.planecount = 1;
+				format->cs.yuv.xsample = 2;
+				format->cs.yuv.ysample = 1;
 				break;
 
 			default:
@@ -426,6 +428,8 @@ enum bverror parse_format(struct bvbltparams *bvbltparams,
 					? GCREG_PE_CONTROL_UV_SWIZZLE_VU
 					: GCREG_PE_CONTROL_UV_SWIZZLE_UV;
 				format->cs.yuv.planecount = 2;
+				format->cs.yuv.xsample = 2;
+				format->cs.yuv.ysample = 2;
 				break;
 
 			case OCDFMTDEF_3_PLANE_STACKED
@@ -446,6 +450,8 @@ enum bverror parse_format(struct bvbltparams *bvbltparams,
 					? GCREG_PE_CONTROL_UV_SWIZZLE_VU
 					: GCREG_PE_CONTROL_UV_SWIZZLE_UV;
 				format->cs.yuv.planecount = 3;
+				format->cs.yuv.xsample = 2;
+				format->cs.yuv.ysample = 2;
 				break;
 
 			default:
@@ -1242,12 +1248,35 @@ static inline int get_angle(int orientation)
 
 bool valid_rect(struct bvsurfgeom *bvsurfgeom, struct gcrect *gcrect)
 {
-	return ((gcrect->left >= 0) &&
-		(gcrect->top  >= 0) &&
-		((gcrect->right  - gcrect->left) > 0) &&
-		((gcrect->bottom - gcrect->top)  > 0) &&
-		 (gcrect->right  <= (int) bvsurfgeom->width) &&
-		 (gcrect->bottom <= (int) bvsurfgeom->height));
+	int width, height;
+
+	if ((gcrect->left < 0) || (gcrect->top < 0)) {
+		GCERR("invalid rectangle origin: %d,%d.\n",
+		      gcrect->left, gcrect->top);
+		return false;
+	}
+
+	width  = gcrect->right  - gcrect->left;
+	height = gcrect->bottom - gcrect->top;
+	if ((width <= 0) || (height <= 0)) {
+		GCERR("invalid rectangle size: %d,%d.\n",
+		      width, height);
+		return false;
+	}
+
+	if (gcrect->right > (int) bvsurfgeom->width) {
+		GCERR("right coordinate (%d) exceeds surface width (%d).\n",
+		      gcrect->right, bvsurfgeom->width);
+		return false;
+	}
+
+	if (gcrect->bottom > (int) bvsurfgeom->height) {
+		GCERR("bottom coordinate (%d) exceeds surface height (%d).\n",
+		      gcrect->bottom, bvsurfgeom->height);
+		return false;
+	}
+
+	return true;
 }
 
 static bool valid_geom(struct surfaceinfo *surfaceinfo)
@@ -1321,11 +1350,14 @@ int get_pixel_offset(struct surfaceinfo *surfaceinfo, int offset)
 	 * given offset. */
 	if (surfaceinfo->buf.desc->auxtype == BVAT_PHYSDESC) {
 		struct bvphysdesc *bvphysdesc;
-
 		bvphysdesc = (struct bvphysdesc *)
 			     surfaceinfo->buf.desc->auxptr;
-		GCDBG(GCZONE_OFFSET, "physical descriptor @ 0x%08X\n",
+		GCDBG(GCZONE_OFFSET, "physical descriptor = 0x%08X\n",
 		      bvphysdesc);
+		GCDBG(GCZONE_OFFSET, "first page = 0x%08X\n",
+			bvphysdesc->pagearray[0]);
+		GCDBG(GCZONE_OFFSET, "page offset = 0x%08X\n",
+			bvphysdesc->pageoffset);
 
 		byteoffset = bvphysdesc->pageoffset + offset;
 	} else {
@@ -1343,7 +1375,7 @@ int get_pixel_offset(struct surfaceinfo *surfaceinfo, int offset)
 	pixeloffset = alignedoffset * 8 / surfaceinfo->format.bitspp;
 
 	GCDBG(GCZONE_OFFSET, "alignedoffset = %d\n", alignedoffset);
-	GCDBG(GCZONE_OFFSET, "pixeloffset = %d\n", pixeloffset);
+	GCDBG(GCZONE_OFFSET, "pixeloffset = %d\n", -pixeloffset);
 
 	GCEXIT(GCZONE_OFFSET);
 	return -pixeloffset;
@@ -1390,8 +1422,9 @@ enum bverror parse_destination(struct bvbltparams *bvbltparams,
 
 		/* Compute the destination alignments needed to compensate
 		 * for the surface base address misalignment if any. */
-		dstinfo->pixalign = get_pixel_offset(dstinfo, 0);
-		dstinfo->bytealign = (dstinfo->pixalign
+		dstinfo->xpixalign = get_pixel_offset(dstinfo, 0);
+		dstinfo->ypixalign = 0;
+		dstinfo->bytealign = (dstinfo->xpixalign
 				   * (int) dstinfo->format.bitspp) / 8;
 
 		GCDBG(GCZONE_DEST, "  buffer length = %d\n",
@@ -1403,6 +1436,10 @@ enum bverror parse_destination(struct bvbltparams *bvbltparams,
 			struct bvphysdesc *bvphysdesc;
 			bvphysdesc = (struct bvphysdesc *)
 				     dstinfo->buf.desc->auxptr;
+			GCDBG(GCZONE_DEST, "  physical descriptor = 0x%08X\n",
+			      bvphysdesc);
+			GCDBG(GCZONE_DEST, "  first page = 0x%08X\n",
+			      bvphysdesc->pagearray[0]);
 			GCDBG(GCZONE_DEST, "  page offset = 0x%08X\n",
 			      bvphysdesc->pageoffset);
 		} else {
@@ -1414,8 +1451,8 @@ enum bverror parse_destination(struct bvbltparams *bvbltparams,
 		      dstinfo->geom->virtstride);
 		GCDBG(GCZONE_DEST, "  geometry size = %dx%d\n",
 		      dstinfo->geom->width, dstinfo->geom->height);
-		GCDBG(GCZONE_DEST, "  surface offset (pixels) = %d,0\n",
-		      dstinfo->pixalign);
+		GCDBG(GCZONE_DEST, "  surface offset (pixels) = %d,%d\n",
+		      dstinfo->xpixalign, dstinfo->ypixalign);
 		GCDBG(GCZONE_DEST, "  surface offset (bytes) = %d\n",
 		      dstinfo->bytealign);
 
@@ -1575,7 +1612,7 @@ enum bverror parse_destination(struct bvbltparams *bvbltparams,
 					       &batch->dstclippedaux);
 		}
 
-		GCPRINT_RECT(GCZONE_DEST, "  clipped rect",
+		GCPRINT_RECT(GCZONE_DEST, "  clipped dest",
 			     &batch->dstclipped);
 
 		/* Validate the destination rectangle. */
@@ -1586,7 +1623,7 @@ enum bverror parse_destination(struct bvbltparams *bvbltparams,
 		}
 
 		if (batch->haveaux) {
-			GCPRINT_RECT(GCZONE_DEST, "  clipped aux rect",
+			GCPRINT_RECT(GCZONE_DEST, "  clipped aux dest",
 				     &batch->dstclippedaux);
 
 			/* Validate the aux destination rectangle. */
@@ -1630,13 +1667,14 @@ void process_dest_rotation(struct bvbltparams *bvbltparams,
 		switch (dstinfo->angle) {
 		case ROT_ANGLE_0:
 			/* Determine the origin offset. */
-			dstoffsetX = dstinfo->pixalign;
-			dstoffsetY = 0;
+			dstoffsetX = dstinfo->xpixalign;
+			dstoffsetY = dstinfo->ypixalign;
 
 			/* Determine geometry size. */
 			batch->dstwidth  = dstinfo->geom->width
-					 - dstinfo->pixalign;
-			batch->dstheight = dstinfo->geom->height;
+					 - dstinfo->xpixalign;
+			batch->dstheight = dstinfo->geom->height
+					 - dstinfo->ypixalign;
 
 			/* Determine the physical size. */
 			dstinfo->physwidth  = batch->dstwidth;
@@ -1645,18 +1683,20 @@ void process_dest_rotation(struct bvbltparams *bvbltparams,
 
 		case ROT_ANGLE_90:
 			/* Determine the origin offset. */
-			dstoffsetX = 0;
-			dstoffsetY = dstinfo->pixalign;
+			dstoffsetX = dstinfo->ypixalign;
+			dstoffsetY = dstinfo->xpixalign;
 
 			/* Determine geometry size. */
-			batch->dstwidth  = dstinfo->geom->width;
+			batch->dstwidth  = dstinfo->geom->width
+					 - dstinfo->ypixalign;
 			batch->dstheight = dstinfo->geom->height
-					 - dstinfo->pixalign;
+					 - dstinfo->xpixalign;
 
 			/* Determine the physical size. */
 			dstinfo->physwidth  = dstinfo->geom->height
-					    - dstinfo->pixalign;
-			dstinfo->physheight = dstinfo->geom->width;
+					    - dstinfo->xpixalign;
+			dstinfo->physheight = dstinfo->geom->width
+					    - dstinfo->ypixalign;
 			break;
 
 		case ROT_ANGLE_180:
@@ -1666,8 +1706,9 @@ void process_dest_rotation(struct bvbltparams *bvbltparams,
 
 			/* Determine geometry size. */
 			batch->dstwidth  = dstinfo->geom->width
-					 - dstinfo->pixalign;
-			batch->dstheight = dstinfo->geom->height;
+					 - dstinfo->xpixalign;
+			batch->dstheight = dstinfo->geom->height
+					 - dstinfo->ypixalign;
 
 			/* Determine the physical size. */
 			dstinfo->physwidth  = batch->dstwidth;
@@ -1680,14 +1721,16 @@ void process_dest_rotation(struct bvbltparams *bvbltparams,
 			dstoffsetY = 0;
 
 			/* Determine geometry size. */
-			batch->dstwidth  = dstinfo->geom->width;
+			batch->dstwidth  = dstinfo->geom->width
+					 - dstinfo->ypixalign;
 			batch->dstheight = dstinfo->geom->height
-					 - dstinfo->pixalign;
+					 - dstinfo->xpixalign;
 
 			/* Determine the physical size. */
 			dstinfo->physwidth  = dstinfo->geom->height
-					    - dstinfo->pixalign;
-			dstinfo->physheight = dstinfo->geom->width;
+					    - dstinfo->xpixalign;
+			dstinfo->physheight = dstinfo->geom->width
+					    - dstinfo->ypixalign;
 			break;
 
 		default:
@@ -1730,6 +1773,7 @@ enum bverror parse_source(struct bvbltparams *bvbltparams,
 {
 	enum bverror bverror = BVERR_NONE;
 
+	GCENTER(GCZONE_SRC);
 	GCDBG(GCZONE_SRC, "parsing source #%d\n",
 	      srcinfo->index + 1);
 
@@ -1766,8 +1810,12 @@ enum bverror parse_source(struct bvbltparams *bvbltparams,
 	if (srcinfo->buf.desc->auxtype == BVAT_PHYSDESC) {
 		struct bvphysdesc *bvphysdesc;
 		bvphysdesc = (struct bvphysdesc *) srcinfo->buf.desc->auxptr;
+		GCDBG(GCZONE_SRC, "  physical descriptor = 0x%08X\n",
+		      bvphysdesc);
+		GCDBG(GCZONE_SRC, "  first page = 0x%08X\n",
+		      bvphysdesc->pagearray[0]);
 		GCDBG(GCZONE_SRC, "  page offset = 0x%08X\n",
-			bvphysdesc->pageoffset);
+		      bvphysdesc->pageoffset);
 	} else {
 		GCDBG(GCZONE_SRC, "  virtual address = 0x%08X\n",
 			(unsigned int) srcinfo->buf.desc->virtaddr);
@@ -1796,7 +1844,7 @@ enum bverror parse_source(struct bvbltparams *bvbltparams,
 	/* Planar YUV? */
 	if ((srcinfo->format.type == BVFMT_YUV) &&
 	    (srcinfo->format.cs.yuv.planecount > 1)) {
-		int pixalign;
+		int xpixalign;
 
 		/* Source rotation is not supported. */
 		if (srcinfo->angle != ROT_ANGLE_0) {
@@ -1809,8 +1857,8 @@ enum bverror parse_source(struct bvbltparams *bvbltparams,
 		}
 
 		/* Check base address alignment. */
-		pixalign = get_pixel_offset(srcinfo, 0);
-		if (pixalign != 0) {
+		xpixalign = get_pixel_offset(srcinfo, 0);
+		if (xpixalign != 0) {
 			BVSETBLTERROR((srcinfo->index == 0)
 						? BVERR_SRC1DESC_ALIGNMENT
 						: BVERR_SRC2DESC_ALIGNMENT,
@@ -1831,6 +1879,8 @@ enum bverror parse_source(struct bvbltparams *bvbltparams,
 	}
 
 exit:
+	GCEXITARG(GCZONE_SRC, "bv%s = %d\n",
+		  (bverror == BVERR_NONE) ? "result" : "error", bverror);
 	return bverror;
 }
 

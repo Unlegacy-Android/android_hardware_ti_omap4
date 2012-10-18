@@ -237,6 +237,8 @@ struct bvformatxlate {
 		struct {
 			unsigned int std;
 			unsigned int planecount;
+			unsigned int xsample;
+			unsigned int ysample;
 		} yuv;
 	} cs;
 };
@@ -324,8 +326,13 @@ struct surfaceinfo {
 	unsigned int physheight;
 
 	/* Base address alignment. */
-	int pixalign;
+	int xpixalign;
+	int ypixalign;
 	int bytealign;
+	int bytealign2;
+	int bytealign3;
+	int stride2;
+	int stride3;
 
 	/* Rotation angle. */
 	int angle;
@@ -558,6 +565,7 @@ enum bverror set_blending_index(struct bvbltparams *bvbltparams,
 				unsigned int index);
 
 /* Program YUV source. */
+void set_computeyuv(struct surfaceinfo *srcinfo, int x, int y);
 enum bverror set_yuvsrc(struct bvbltparams *bvbltparams,
 			struct gcbatch *batch,
 			struct surfaceinfo *srcinfo,
