@@ -36,7 +36,7 @@
 #define GCZONE_ALL		(~0U)
 #define GCZONE_MAPPING		(1 << 0)
 
-GCDBG_FILTERDEF(gcmap, GCZONE_NONE,
+GCDBG_FILTERDEF(map, GCZONE_NONE,
 		"mapping")
 
 

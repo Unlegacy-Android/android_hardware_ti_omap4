@@ -42,7 +42,7 @@
 #define GCZONE_DEST		(1 << 5)
 #define GCZONE_SURF		(1 << 6)
 
-GCDBG_FILTERDEF(gcfilter, GCZONE_NONE,
+GCDBG_FILTERDEF(filter, GCZONE_NONE,
 		"kernel",
 		"filter",
 		"blend",
