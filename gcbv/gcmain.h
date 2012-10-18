@@ -74,6 +74,9 @@ typedef uint64_t u64;
 #define div64_u64(x, y) ((x) / (y))
 #define div64_s64(x, y) ((x) / (y))
 
+#define PAGE_SHIFT              12
+#define PAGE_SIZE               (1 << PAGE_SHIFT)
+#define PAGE_MASK               (~(PAGE_SIZE-1))
 
 /*******************************************************************************
  * Not defined in bltsville userspace headers.
