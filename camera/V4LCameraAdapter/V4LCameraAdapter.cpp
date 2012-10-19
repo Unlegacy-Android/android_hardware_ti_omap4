@@ -293,6 +293,9 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
     char value[PROPERTY_VALUE_MAX];
 
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
+
     property_get("debug.camera.showfps", value, "0");
     mDebugFps = atoi(value);
 
@@ -346,11 +349,15 @@ status_t V4LCameraAdapter::fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::F
     int idx = 0;
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     if ( frameType == CameraFrame::IMAGE_FRAME) { //(1 > mCapturedFrames)
         // Signal end of image capture
         if ( NULL != mEndImageCaptureCallback) {
             CAMHAL_LOGDB("===========Signal End Image Capture==========");
+            mLock.unlock();
             mEndImageCaptureCallback(mEndCaptureData);
+            mLock.lock();
         }
         goto EXIT;
     }
@@ -416,6 +423,8 @@ status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params
 
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     if(!mPreviewing && !mCapturing) {
         params.getPreviewSize(&width, &height);
         CAMHAL_LOGDB("Width * Height %d x %d format 0x%x", width, height, DEFAULT_PIXEL_FORMAT);
@@ -447,6 +456,7 @@ void V4LCameraAdapter::getParameters(android::CameraParameters& params)
 {
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
     // Return the current parameter set
     params = mParams;
 
@@ -565,7 +575,7 @@ status_t V4LCameraAdapter::takePicture() {
 
     LOG_FUNCTION_NAME;
 
-    android::AutoMutex lock(mCaptureBufsLock);
+    android::AutoMutex lock(mLock);
 
     if(mCapturing) {
         CAMHAL_LOGEA("Already Capture in Progress...");
@@ -695,6 +705,8 @@ status_t V4LCameraAdapter::stopImageCapture()
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     //Release image buffers
     if ( NULL != mReleaseImageBuffersCallback ) {
         mReleaseImageBuffersCallback(mReleaseData);
@@ -722,7 +734,8 @@ status_t V4LCameraAdapter::startPreview()
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    android::AutoMutex lock(mPreviewBufsLock);
+
+    android::AutoMutex lock(mLock);
 
     if(mPreviewing) {
         ret = BAD_VALUE;
@@ -767,7 +780,8 @@ status_t V4LCameraAdapter::stopPreview()
     int ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    android::AutoMutex lock(mStopPreviewLock);
+
+    android::AutoMutex lock(mLock);
 
     if(!mPreviewing) {
         return NO_INIT;
@@ -834,6 +848,8 @@ status_t V4LCameraAdapter::getFrameSize(size_t &width, size_t &height)
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     // Just return the current preview size, nothing more to do here.
     mParams.getPreviewSize(( int * ) &width,
                            ( int * ) &height);
@@ -845,6 +861,7 @@ status_t V4LCameraAdapter::getFrameSize(size_t &width, size_t &height)
 
 status_t V4LCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t bufferCount)
 {
+    android::AutoMutex lock(mLock);
     // We don't support meta data, so simply return
     return NO_ERROR;
 }
@@ -856,6 +873,8 @@ status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t buffe
     int bytesPerPixel = 2; // for YUV422i; default pixel format
 
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
 
     mParams.getPictureSize( &width, &height );
     frame.mLength = width * height * bytesPerPixel;
@@ -922,6 +941,8 @@ status_t V4LCameraAdapter::recalculateFPS()
 void V4LCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
 {
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME_EXIT;
 }

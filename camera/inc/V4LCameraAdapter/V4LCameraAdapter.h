@@ -199,22 +199,18 @@ private:
     status_t restartPreview();
     status_t applyFpsValue();
 
-
     int mPreviewBufferCount;
     int mPreviewBufferCountQueueable;
     int mCaptureBufferCount;
     int mCaptureBufferCountQueueable;
     CameraBuffer *mPreviewBufs[NB_BUFFER];
     android::KeyedVector<CameraBuffer *, int> mCaptureBufs;
-    mutable android::Mutex mPreviewBufsLock;
-    mutable android::Mutex mCaptureBufsLock;
-    mutable android::Mutex mStopPreviewLock;
 
     android::CameraParameters mParams;
 
     bool mPreviewing;
     bool mCapturing;
-    android::Mutex mLock;
+    mutable android::Mutex mLock;
 
     int mFrameCount;
     int mLastFrameCount;
