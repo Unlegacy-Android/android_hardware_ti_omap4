@@ -1531,8 +1531,7 @@ static void blit_reset(omap4_hwc_device_t *hwc_dev)
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
 {
-    /* Do not blit if this frame will be composed entirely by the GPU */
-    if (!list || hwc_dev->force_sgx || hwc_dev->ext.mirror.enabled)
+    if (!list || hwc_dev->ext.mirror.enabled)
         goto err_out;
 
     int rgz_in_op;
