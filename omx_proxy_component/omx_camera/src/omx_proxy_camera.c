@@ -71,8 +71,6 @@
 
 /* Tiler heap resservation specific */
 #define OMAP_ION_HEAP_TILER_ALLOCATION_MASK (1<<4)
-/* store handles for tracking and freeing */
-OMX_PTR gComponentBufferAllocation[PROXY_MAXNUMOFPORTS][MAX_NUM_INTERNAL_BUFFERS];
 
 /* Incase of multiple instance, making sure DCC is initialized only for
    first instance */
@@ -242,21 +240,23 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
 
         OMX_CameraVtcFreeMemory(hComponent);
 
-        if(pCompPrv->pCompProxyPrv != NULL)
-        {
-	    TIMM_OSAL_Free(pCompPrv->pCompProxyPrv);
-            pCompPrv->pCompProxyPrv = NULL;
-        }
 
+    if(pCompPrv->pCompProxyPrv != NULL) {
+        pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
-                if (gComponentBufferAllocation[i][j]) {
-                    delBuffer_prop.sBuffer_accessor.pBufferHandle = gComponentBufferAllocation[i][j];
+                if (pCamPrv->gComponentBufferAllocation[i][j]) {
+                    delBuffer_prop.sBuffer_accessor.pBufferHandle = pCamPrv->gComponentBufferAllocation[i][j];
                     MemPlugin_Free(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc,&delBuffer_params,&delBuffer_prop);
                 }
-                gComponentBufferAllocation[i][j] = NULL;
+                pCamPrv->gComponentBufferAllocation[i][j] = NULL;
             }
         }
+
+        TIMM_OSAL_Free(pCompPrv->pCompProxyPrv);
+        pCompPrv->pCompProxyPrv = NULL;
+        pCamPrv = NULL;
+    }
 
 	eError = PROXY_ComponentDeInit(hComponent);
 
@@ -272,9 +272,12 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn;
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
     PROXY_COMPONENT_PRIVATE *pCompPrv;
+    OMX_PROXY_CAM_PRIVATE   *pCamPrv;
     MEMPLUGIN_BUFFER_PARAMS delBuffer_params;
     MEMPLUGIN_BUFFER_PROPERTIES delBuffer_prop;
     pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
+
+    pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
 
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
     if ((eCmd == OMX_CommandStateSet) &&
@@ -291,11 +294,11 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             if ((i == nParam) || (nParam == OMX_ALL)) {
                 for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
-                    if (gComponentBufferAllocation[i][j]) {
-                        delBuffer_prop.sBuffer_accessor.pBufferHandle = gComponentBufferAllocation[i][j];
+                     if (pCamPrv->gComponentBufferAllocation[i][j]) {
+                     delBuffer_prop.sBuffer_accessor.pBufferHandle = pCamPrv->gComponentBufferAllocation[i][j];
                         MemPlugin_Free(pCompPrv->pMemPluginHandle, pCompPrv->nMemmgrClientDesc,
                                        &delBuffer_params,&delBuffer_prop);
-                        gComponentBufferAllocation[i][j] = NULL;
+                        pCamPrv->gComponentBufferAllocation[i][j] = NULL;
                     }
                 }
             }
@@ -536,7 +539,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
-                gComponentBufferAllocation[i][j] = NULL;
+                pCamPrv->gComponentBufferAllocation[i][j] = NULL;
             }
         }
 
