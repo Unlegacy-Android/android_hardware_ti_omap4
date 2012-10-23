@@ -95,6 +95,12 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::VSTAB, DEFAULT_VSTAB);
     params->set(CameraProperties::VNF, DEFAULT_VNF);
 
+    //For compatibility
+    params->set(CameraProperties::SUPPORTED_ZOOM_RATIOS,"0");
+    params->set(CameraProperties::SUPPORTED_ZOOM_STAGES, "0");
+    params->set(CameraProperties::ZOOM, "0");
+    params->set(CameraProperties::ZOOM_SUPPORTED, "true");
+
 
     LOG_FUNCTION_NAME_EXIT;
 
