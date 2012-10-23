@@ -178,6 +178,7 @@ private:
     static const char DEFAULT_PICTURE_FORMAT[];
     static const char DEFAULT_PICTURE_SIZE[];
     static const char DEFAULT_FOCUS_MODE[];
+    static const char DEFAULT_FRAMERATE_RANGE[];
     static const char * DEFAULT_VSTAB;
     static const char * DEFAULT_VNF;
 
@@ -196,6 +197,7 @@ private:
     status_t v4lStopStreaming(int nBufferCount);
     status_t v4lSetFormat(int, int, uint32_t);
     status_t restartPreview();
+    status_t applyFpsValue();
 
 
     int mPreviewBufferCount;
@@ -236,6 +238,8 @@ private:
     Decoder_libjpeg jpgdecoder;
     unsigned char *jpeg_with_dht_buffer[NB_BUFFER];
     unsigned int jpeg_with_dht_buffer_size;
+
+    int mFrameRate;
 };
 
 } // namespace Camera

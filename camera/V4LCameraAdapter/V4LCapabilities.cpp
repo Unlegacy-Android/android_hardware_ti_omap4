@@ -48,6 +48,7 @@ const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
 const char V4LCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
+const char V4LCameraAdapter::DEFAULT_FRAMERATE_RANGE[] = "30000,30000";
 const char * V4LCameraAdapter::DEFAULT_VSTAB = android::CameraParameters::FALSE;
 const char * V4LCameraAdapter::DEFAULT_VNF = android::CameraParameters::FALSE;
 
@@ -81,8 +82,7 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
     params->set(CameraProperties::JPEG_QUALITY, "90");
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, "50");
-    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "(30000,30000)");
-    params->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
+    params->set(CameraProperties::FRAMERATE_RANGE, DEFAULT_FRAMERATE_RANGE);
     params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, "none");
     params->set(CameraProperties::SUPPORTED_EXPOSURE_MODES, "auto");
     params->set(CameraProperties::SUPPORTED_ISO_VALUES, "auto");
@@ -154,11 +154,11 @@ status_t V4LCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params, V4L_TI_CAPTYPE &caps) {
 
     char supported[MAX_PROP_VALUE_LENGTH];
-    char temp[10];
+    char temp[MAX_PROP_VALUE_LENGTH];
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulFrameRateCount; i++) {
-        snprintf (temp, 10, "%d", caps.ulFrameRates[i] );
+        snprintf (temp, sizeof(temp) - 1, "%d", caps.ulFrameRates[i] );
         if (supported[0] != '\0') {
             strncat(supported, PARAM_SEP, 1);
         }
@@ -166,6 +166,17 @@ status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params
     }
 
     params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
+
+    memset(supported, 0, sizeof(supported));
+
+    for (int i = caps.ulFrameRateCount - 1; i >= 0 ; i--) {
+        if ( supported[0] ) strncat(supported, PARAM_SEP, 1);
+        snprintf(temp, sizeof(temp) - 1, "(%d,%d)", caps.ulFrameRates[i] * CameraHal::VFR_SCALE, caps.ulFrameRates[i] *  CameraHal::VFR_SCALE);
+        strcat(supported, temp);
+    }
+
+    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, supported);
+
     return NO_ERROR;
 }
 

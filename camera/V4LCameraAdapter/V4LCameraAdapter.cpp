@@ -163,7 +163,10 @@ status_t V4LCameraAdapter::v4lStartStreaming () {
 
     if (!mVideoInfo->isStreaming) {
         bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
+        ret = applyFpsValue();
+        if (ret != NO_ERROR) {
+            return ret;
+        }
         ret = v4lIoctl (mCameraHandle, VIDIOC_STREAMON, &bufType);
         if (ret < 0) {
             CAMHAL_LOGEB("StartStreaming: Unable to start capture: %s", strerror(errno));
@@ -260,18 +263,6 @@ status_t V4LCameraAdapter::restartPreview ()
     ret = v4lInitMmap(mPreviewBufferCount);
     if (ret < 0) {
         CAMHAL_LOGEB("v4lInitMmap Failed: %s", strerror(errno));
-        goto EXIT;
-    }
-
-    //set frame rate
-    streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-    streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
-    streamParams.parm.capture.timeperframe.denominator = FPS_PERIOD;
-    streamParams.parm.capture.timeperframe.numerator= 1;
-    ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
-    if (ret < 0) {
-        CAMHAL_LOGEB("VIDIOC_S_PARM Failed: %s", strerror(errno));
         goto EXIT;
     }
 
@@ -399,11 +390,29 @@ EXIT:
 
 }
 
+status_t V4LCameraAdapter::applyFpsValue() {
+    struct v4l2_streamparm streamParams;
+    status_t ret = NO_ERROR;
+    streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+    streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
+    streamParams.parm.capture.timeperframe.denominator = mFrameRate / CameraHal::VFR_SCALE;
+    streamParams.parm.capture.timeperframe.numerator= 1;
+    ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
+    if (ret < 0) {
+        CAMHAL_LOGEB(" VIDIOC_S_PARM Failed: %s", strerror(errno));
+        return ret;
+    }
+    int actualFps = streamParams.parm.capture.timeperframe.denominator / streamParams.parm.capture.timeperframe.numerator;
+    CAMHAL_LOGDB("Actual FPS set is : %d.", actualFps);
+    return NO_ERROR;
+}
+
 status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params)
 {
     status_t ret = NO_ERROR;
     int width, height;
-    struct v4l2_streamparm streamParams;
+    int minFps = 0, maxFps = 0;
 
     LOG_FUNCTION_NAME;
 
@@ -416,20 +425,13 @@ status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params
             CAMHAL_LOGEB(" VIDIOC_S_FMT Failed: %s", strerror(errno));
             goto EXIT;
         }
-        //set frame rate
-        // Now its fixed to 30 FPS
-        streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-        streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
-        streamParams.parm.capture.timeperframe.denominator = FPS_PERIOD;
-        streamParams.parm.capture.timeperframe.numerator= 1;
-        ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
-        if (ret < 0) {
-            CAMHAL_LOGEB(" VIDIOC_S_PARM Failed: %s", strerror(errno));
-            goto EXIT;
+
+        params.getPreviewFpsRange(&minFps, &maxFps);
+        CAMHAL_LOGD("Current fps is %d new fps is (%d,%d)", mFrameRate, minFps, maxFps);
+        if (maxFps != mFrameRate) {
+            mFrameRate = maxFps;
         }
-        int actualFps = streamParams.parm.capture.timeperframe.denominator / streamParams.parm.capture.timeperframe.numerator;
-        CAMHAL_LOGDB("Actual FPS set is : %d.", actualFps);
+
     }
 
     // Udpate the current parameter set
@@ -926,6 +928,7 @@ void V4LCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
 
 
 V4LCameraAdapter::V4LCameraAdapter(size_t sensor_index)
+: mFrameRate(0)
 {
     LOG_FUNCTION_NAME;
 
