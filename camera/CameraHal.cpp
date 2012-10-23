@@ -440,7 +440,8 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {
             if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES))) {
-                if (strcmp(valstr, mParameters.get(TICameraParameters::KEY_IPP))) {
+                if ((mParameters.get(TICameraParameters::KEY_IPP) == NULL) ||
+                        (strcmp(valstr, mParameters.get(TICameraParameters::KEY_IPP)))) {
                     CAMHAL_LOGDB("IPP mode set %s", params.get(TICameraParameters::KEY_IPP));
                     mParameters.set(TICameraParameters::KEY_IPP, valstr);
                     restartPreviewRequired = true;
