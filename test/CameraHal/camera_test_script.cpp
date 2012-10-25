@@ -171,6 +171,10 @@ extern int manualConvMax ;
 extern bool faceDetectToggle;
 extern unsigned int burstCount;
 
+/** Buffer source reset */
+extern bool bufferSourceInputReset;
+extern bool bufferSourceOutputReset;
+
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
 
@@ -351,10 +355,6 @@ int execute_functional_script(char *script) {
                 } else {
                     stopPreview();
                 }
-                if (bufferSourceOutputThread.get()) {
-                    bufferSourceOutputThread->requestExit();
-                    bufferSourceOutputThread.clear();
-                }
 
                 break;
 
@@ -436,6 +436,9 @@ int execute_functional_script(char *script) {
                         camera->setParameters(params.flatten());
                     }
                 }
+
+                requestBufferSourceReset();
+
                 break;
 
             case '6':
@@ -720,6 +723,8 @@ int execute_functional_script(char *script) {
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
 
+                requestBufferSourceReset();
+
                 break;
 
             case 'K':
@@ -809,6 +814,8 @@ int execute_functional_script(char *script) {
                     params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
                     camera->setParameters(params.flatten());
                 }
+
+                requestBufferSourceReset();
 
                 break;
 
@@ -1190,7 +1197,7 @@ int execute_functional_script(char *script) {
                 if((NULL != format) && isRawPixelFormat(format)) {
                     createBufferOutputSource();
                     if (bufferSourceOutputThread.get()) {
-                        bufferSourceOutputThread->setBuffer();
+                        bufferSourceOutputThread->setBuffer(shotParams);
                     }
                 } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
                     msgType = CAMERA_MSG_COMPRESSED_IMAGE |
@@ -1249,15 +1256,11 @@ int execute_functional_script(char *script) {
             case 'P':
             {
                 int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+                ShotParameters reprocParams;
+
                 gettimeofday(&picture_start, 0);
-                if (!bufferSourceInput.get()) {
-#ifdef ANDROID_API_JB_OR_LATER
-                    bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
-#else
-                    bufferSourceInput = new ST_BufferSourceInput(1234, camera);
-#endif
-                    bufferSourceInput->init();
-                }
+
+                createBufferInputSource();
 
                 if (bufferSourceOutputThread.get() &&
                     bufferSourceOutputThread->hasBuffer())
@@ -1266,7 +1269,7 @@ int execute_functional_script(char *script) {
 
                     if (bufferSourceInput.get()) {
                         buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                        bufferSourceInput->setInput(info, params.getPictureFormat());
+                        bufferSourceInput->setInput(info, params.getPictureFormat(), reprocParams);
                         if (hardwareActive) camera->reprocess(msgType, String8());
                     }
                 }

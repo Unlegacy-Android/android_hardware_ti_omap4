@@ -153,14 +153,14 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
          ( strcmp(str, android::CameraParameters::TRUE) == 0 ) ) {
 
         if ( !mBracketingSet ) {
-            mPendingCaptureSettings |= SetExpBracket;
+            mPendingCaptureSettings |= SetBurstExpBracket;
         }
 
         mBracketingSet = true;
     } else {
 
         if ( mBracketingSet ) {
-            mPendingCaptureSettings |= SetExpBracket;
+            mPendingCaptureSettings |= SetBurstExpBracket;
         }
 
         mBracketingSet = false;
@@ -175,7 +175,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         } else {
             mExposureBracketMode = OMX_BracketExposureRelativeInEV;
         }
-        mPendingCaptureSettings |= SetExpBracket;
+        mPendingCaptureSettings |= SetBurstExpBracket;
     } else if ( (str = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
         parseExpRange(str, mExposureBracketingValues, mExposureGainBracketingValues,
                       mExposureGainBracketingModes,
@@ -185,11 +185,16 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         } else {
             mExposureBracketMode = OMX_BracketExposureGainAbsolute;
         }
-        mPendingCaptureSettings |= SetExpBracket;
+        mPendingCaptureSettings |= SetBurstExpBracket;
     } else {
+        // always set queued shot config in CPCAM mode
+        if (mCapMode == OMXCameraAdapter::CP_CAM) {
+            mExposureBracketMode = OMX_BracketVectorShot;
+            mPendingCaptureSettings |= SetBurstExpBracket;
+        }
         // if bracketing was previously set...we set again before capturing to clear
         if (mExposureBracketingValidEntries) {
-            mPendingCaptureSettings |= SetExpBracket;
+            mPendingCaptureSettings |= SetBurstExpBracket;
             mExposureBracketingValidEntries = 0;
         }
     }
@@ -263,13 +268,13 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
     if ( varint >= 1 )
         {
         if (varint != (int) mBurstFrames) {
-            mPendingCaptureSettings |= SetBurst;
+            mPendingCaptureSettings |= SetBurstExpBracket;
         }
         mBurstFrames = varint;
         }
     else
         {
-        if (mBurstFrames != 1) mPendingCaptureSettings |= SetBurst;
+        if (mBurstFrames != 1) mPendingCaptureSettings |= SetBurstExpBracket;
         mBurstFrames = 1;
         }
 
@@ -706,13 +711,37 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
                         ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
                             &enqueueShotConfigs);
         if ( OMX_ErrorNone != eError ) {
-            CAMHAL_LOGEB("Error while configuring bracket shot 0x%x", eError);
+            CAMHAL_LOGEB("Error while configuring enqueue shot 0x%x", eError);
             goto exit;
         } else {
-            CAMHAL_LOGDA("Bracket shot configured successfully");
+            CAMHAL_LOGDA("Enqueue shot configured successfully");
         }
         // Flush only first time
         doFlush = false;
+    }
+
+    // Handle burst capture (no any bracketing) case
+    if (0 == evCount) {
+        CAMHAL_LOGE("Handle burst capture (no any bracketing) case");
+        enqueueShotConfigs.nShotConfig[0].nConfigId = 0;
+        enqueueShotConfigs.nShotConfig[0].nFrames = frameCount;
+        enqueueShotConfigs.nShotConfig[0].nEC = 0;
+        enqueueShotConfigs.nShotConfig[0].nExp = 0;
+        enqueueShotConfigs.nShotConfig[0].nGain = 0;
+        enqueueShotConfigs.nShotConfig[0].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE;
+        enqueueShotConfigs.nShotConfig[0].bNoSnapshot = OMX_FALSE; // TODO: Make this configurable
+        enqueueShotConfigs.nNumConfigs = 1;
+        enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        enqueueShotConfigs.bFlushQueue = doFlush ? OMX_TRUE : OMX_FALSE;
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                        ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
+                            &enqueueShotConfigs);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring enqueue shot 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Enqueue shot configured successfully");
+        }
     }
 
  exit:
@@ -1140,8 +1169,8 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
             }
         }
 
-        if (capParams->mPendingCaptureSettings & (SetBurst|SetExpBracket)) {
-            mPendingCaptureSettings &= ~(SetExpBracket|SetBurst);
+        if (capParams->mPendingCaptureSettings & SetBurstExpBracket) {
+            mPendingCaptureSettings &= ~SetBurstExpBracket;
             if ( mBracketingSet ) {
                 ret = doExposureBracketing(capParams->mExposureBracketingValues,
                                             capParams->mExposureGainBracketingValues,
@@ -1264,7 +1293,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
         mWaitingForSnapshot = true;
         mCaptureSignalled = false;
-        mPendingCaptureSettings &= ~SetBurst;
 
         // Capturing command is not needed when capturing in video mode
         // Only need to queue buffers on image ports

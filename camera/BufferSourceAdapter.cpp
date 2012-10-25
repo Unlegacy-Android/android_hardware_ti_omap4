@@ -58,11 +58,11 @@ static int getUsageFromANW(int format)
 
     switch (format) {
         case HAL_PIXEL_FORMAT_TI_NV12:
+        case HAL_PIXEL_FORMAT_TI_Y16:
             // This usage flag indicates to gralloc we want the
             // buffers to come from system heap
             usage |= GRALLOC_USAGE_PRIVATE_0;
             break;
-        case HAL_PIXEL_FORMAT_TI_Y16:
         default:
             // No special flags needed
             break;
@@ -904,9 +904,6 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     }
 
     mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) frame->mBuffer->opaque);
-
-    // signal return frame thread that it can dequeue a buffer now
-    mReturnFrame->signal();
 }
 
 

@@ -306,6 +306,17 @@ void SurfaceTextureBase::deinit() {
     mST.clear();
 }
 
+void SurfaceTextureBase::getId(const char **name) {
+    sp<ANativeWindow> windowTapOut = mSTC;
+
+    *name = NULL;
+    if (windowTapOut.get()) {
+        windowTapOut->perform(windowTapOut.get(), NATIVE_WINDOW_GET_ID, name);
+    }
+
+    windowTapOut.clear();
+}
+
 // SurfaceTexture with GL specific
 
 void SurfaceTextureGL::initialize(int display, int tex_id) {
@@ -454,7 +465,7 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     }
 }
 
-void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
+void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, ShotParameters &params) {
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
@@ -490,10 +501,10 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     // to make sure the stride of the buffer is correct
     if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
         mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
-        mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
+        mapper.lock(anb->handle, GRALLOC_USAGE_SW_WRITE_OFTEN, bounds, &data);
         // copy buffer to input buffer if available
         if (bufinfo.buf.get()) {
-            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
+            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_OFTEN, &input);
         }
         if (input) {
             if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
@@ -533,6 +544,23 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     }
 
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
+
+    {
+        sp<ANativeWindow> windowTapIn = mWindowTapIn;
+        const char* id = NULL;
+
+        if (windowTapIn.get()) {
+            windowTapIn->perform(windowTapIn.get(), NATIVE_WINDOW_GET_ID, &id);
+        }
+
+        if (id) {
+            params.set(KEY_TAP_IN_SURFACE, id);
+        } else {
+            params.remove(KEY_TAP_IN_SURFACE);
+        }
+
+        windowTapIn.clear();
+    }
 }
 
 void BufferSourceThread::showMetadata(sp<IMemory> data) {

@@ -97,6 +97,7 @@ public:
 
     void initialize(int tex_id, EGLenum tex_target = EGL_NONE);
     void deinit();
+    void getId(const char **name);
 
     virtual sp<SurfaceTexture> getST();
 
@@ -133,8 +134,14 @@ public:
         mSurfaceTexture->setSynchronousMode(true);
         mFW = new FrameWaiter();
         mSurfaceTexture->setFrameAvailableListener(mFW);
+#ifndef ANDROID_API_JB_OR_LATER
+        mCamera->setBufferSource(NULL, mSurfaceTexture);
+#endif
     }
     virtual ~ST_BufferSourceThread() {
+#ifndef ANDROID_API_JB_OR_LATER
+        mCamera->releaseBufferSource(NULL, mSurfaceTexture);
+#endif
         mSurfaceTextureBase->deinit();
         delete mSurfaceTextureBase;
     }
@@ -165,10 +172,18 @@ public:
         mFW->onFrameAvailable();
     }
 
-    virtual void setBuffer() {
-#ifndef ANDROID_API_JB_OR_LATER
-        mCamera->setBufferSource(NULL, mSurfaceTexture);
-#endif
+    virtual void setBuffer(android::ShotParameters &params) {
+        {
+            const char* id = NULL;
+
+            mSurfaceTextureBase->getId(&id);
+
+            if (id) {
+                params.set(KEY_TAP_OUT_SURFACES, id);
+            } else {
+                params.remove(KEY_TAP_OUT_SURFACES);
+            }
+        }
     }
 
 private:
@@ -182,28 +197,31 @@ public:
     ST_BufferSourceInput(int tex_id, sp<Camera> camera) :
                  BufferSourceInput(camera), mTexId(tex_id) {
         mSurfaceTexture = new SurfaceTextureBase();
-    }
-    virtual ~ST_BufferSourceInput() {
-        delete mSurfaceTexture;
-    }
-
-    virtual void init() {
         sp<SurfaceTexture> surface_texture;
         mSurfaceTexture->initialize(mTexId);
         surface_texture = mSurfaceTexture->getST();
         surface_texture->setSynchronousMode(true);
 
         mWindowTapIn = new SurfaceTextureClient(surface_texture);
-    }
-
-    virtual void setInput(buffer_info_t bufinfo, const char *format) {
-        mSurfaceTexture->getST()->setDefaultBufferSize(bufinfo.width, bufinfo.height);
-        BufferSourceInput::setInput(bufinfo, format);
 #ifndef ANDROID_API_JB_OR_LATER
         mCamera->setBufferSource(mSurfaceTexture->getST(), NULL);
 #else
         mCamera->setBufferSource(mSurfaceTexture->getST()->getBufferQueue(), NULL);
 #endif
+    }
+    virtual ~ST_BufferSourceInput() {
+#ifndef ANDROID_API_JB_OR_LATER
+        mCamera->releaseBufferSource(mSurfaceTexture->getST(), NULL);
+#else
+        mCamera->releaseBufferSource(mSurfaceTexture->getST()->getBufferQueue(), NULL);
+#endif
+        delete mSurfaceTexture;
+    }
+
+    virtual void setInput(buffer_info_t bufinfo, const char *format) {
+        android::ShotParameters params;
+        mSurfaceTexture->getST()->setDefaultBufferSize(bufinfo.width, bufinfo.height);
+        BufferSourceInput::setInput(bufinfo, format, params);
     }
 
 private:
