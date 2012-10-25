@@ -833,6 +833,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
 
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
 
+#ifndef ANDROID_API_JB_OR_LATER
     {
         sp<ANativeWindow> windowTapIn = mWindowTapIn;
         const char* id = NULL;
@@ -849,6 +850,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
 
         windowTapIn.clear();
     }
+#endif
 }
 
 void BufferSourceThread::showMetadata(sp<IMemory> data) {
