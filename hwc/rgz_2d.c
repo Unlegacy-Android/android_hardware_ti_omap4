@@ -1718,6 +1718,9 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
          * We save a read and a write from the FB if we blend the bottom
          * two layers, we can do this only if both layers are not scaled
          */
+        int prev_layer_scaled = 0;
+        int prev_layer_nv12 = 0;
+        int first_batchflags = 0;
         rgz_layer_t *rgz_src1 = hregion->rgz_layers[lix];
         rgz_layer_t *rgz_src2 = hregion->rgz_layers[s2lix];
         if (rgz_can_blend_together(&rgz_src1->hwc_layer, &rgz_src2->hwc_layer))
@@ -1725,21 +1728,71 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
         else {
             /* Return index to the first operation and make a copy of the first layer */
             lix = s2lix;
-            e = rgz_hwc_subregion_copy(params, rect, hregion->rgz_layers[lix]);
+            rgz_src1 = hregion->rgz_layers[lix];
+            e = rgz_hwc_subregion_copy(params, rect, rgz_src1);
+            /*
+             * First blit is a copy, the rest will be blends, hence the operation
+             * changed on the second blit.
+             */
+            first_batchflags |= BVBATCH_OP;
+            prev_layer_nv12 = rgz_is_layer_nv12(&rgz_src1->hwc_layer);
+            prev_layer_scaled = rgz_hwc_scaled(&rgz_src1->hwc_layer);
         }
+
+        /*
+         * Regardless if the first blit is a copy or blend, src2 may have changed
+         * on the second blit
+         */
+        first_batchflags |= BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE;
+
         rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
         while((lix = get_layer_ops_next(hregion, sidx, lix)) != -1) {
-            e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix], NULL);
+            int batchflags = first_batchflags;
+            first_batchflags = 0;
+            rgz_src1 = hregion->rgz_layers[lix];
+
+            /* Blend src1 into dst */
+            e = rgz_hwc_subregion_blend(params, rect, rgz_src1, NULL);
+
             /*
-             * TODO: This will work when scaling is introduced, however we need
-             * to think on a better way to optimize this.
+             * NOTE: After the first blit is configured, consequent blits are
+             * blend operations done with src1 and the destination, that is,
+             * src2 is the same as dst, any batchflag changed for the destination
+             * applies to src2 as well.
              */
-            int batchflags = BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE |
-                BVBATCH_DST | BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
-                BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
-                BVBATCH_OP | BVBATCH_SCALE | BVBATCH_CLIPRECT;
+
+            /* src1 parameters always change on every blit */
+            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE;
+
+            /*
+             * If the current/previous layer has scaling, destination rectangles
+             * likely changed as well as the scaling mode. Clipping rectangle
+             * remains the same as well as destination geometry.
+             */
+            int cur_layer_scaled = rgz_hwc_scaled(&rgz_src1->hwc_layer);
+            if (cur_layer_scaled || prev_layer_scaled) {
+                batchflags |= BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
+                    BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
+                    BVBATCH_SCALE;
+            }
+            prev_layer_scaled = cur_layer_scaled;
+
+            /*
+             * If the current/previous layer is NV12, the destination geometry
+             * could have been rotated, hence the destination and clipping
+             * rectangles might have been trasformed to match the rotated
+             * destination geometry.
+             */
+            int cur_layer_nv12 = rgz_is_layer_nv12(&rgz_src1->hwc_layer);
+            if (cur_layer_nv12 || prev_layer_nv12) {
+                batchflags |= BVBATCH_DST | BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
+                    BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
+                    BVBATCH_CLIPRECT;
+            }
+            prev_layer_nv12 = cur_layer_nv12;
+
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
 
