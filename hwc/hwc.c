@@ -1250,7 +1250,9 @@ static int can_dss_render_all(omap4_hwc_device_t *hwc_dev, struct counts *num)
             (!tform || (num->NV12 == num->possible_overlay_layers) ||
             (num->NV12 && ext->current.docking)) &&
             /* HDMI cannot display BGR */
-            (num->BGR == 0 || (num->RGB == 0 && !on_tv) || !hwc_dev->flags_rgb_order);
+            (num->BGR == 0 || (num->RGB == 0 && !on_tv) || !hwc_dev->flags_rgb_order) &&
+            /* If nv12_only flag is set DSS should only render NV12 */
+            (!hwc_dev->flags_nv12_only || (num->BGR == 0 && num->RGB == 0));
 }
 
 static inline int can_dss_render_layer(omap4_hwc_device_t *hwc_dev,
