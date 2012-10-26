@@ -201,6 +201,7 @@ status_t AppCallbackNotifier::initialize()
 
     mRecording = false;
     mPreviewing = false;
+    mExternalLocking = false;
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -786,6 +787,38 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
     }
 }
 
+void AppCallbackNotifier::lockBufferAndUpdatePtrs(CameraFrame* frame)
+{
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+    android::Rect bounds;
+
+    bounds.left = 0;
+    bounds.top = 0;
+    bounds.right = frame->mWidth;
+    bounds.bottom = frame->mHeight;
+    void *y_uv[2];
+    buffer_handle_t *handle = reinterpret_cast<buffer_handle_t *>(frame->mBuffer->opaque);
+    mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+    frame->mBuffer->mapped = y_uv[0];
+    frame->mYuv[0] = reinterpret_cast<int>(frame->mBuffer->mapped);
+    frame->mYuv[1] = frame->mYuv[0] + (frame->mLength + frame->mOffset)*2/3;
+}
+
+void AppCallbackNotifier::unlockBufferAndUpdatePtrs(CameraFrame* frame)
+{
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+    buffer_handle_t *handle = reinterpret_cast<buffer_handle_t *>(frame->mBuffer->opaque);
+    mapper.unlock(*handle);
+    frame->mBuffer->mapped = NULL;
+    frame->mYuv[0] = NULL;
+    frame->mYuv[1] = NULL;
+}
+
+void AppCallbackNotifier::setExternalLocking(bool extBuffLocking)
+{
+    mExternalLocking = extBuffLocking;
+}
+
 void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t msgType)
 {
     camera_memory_t* picture = NULL;
@@ -805,7 +838,9 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
         }
 
         dest = &mPreviewBuffers[mPreviewBufCount];
-
+        if (mExternalLocking) {
+            lockBufferAndUpdatePtrs(frame);
+        }
         CAMHAL_LOGVB("%d:copy2Dto1D(%p, %p, %d, %d, %d, %d, %d,%s)",
                      __LINE__,
                       dest,
@@ -855,6 +890,10 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
         android::AutoMutex locker(mLock);
         if ( mPreviewMemory )
             mDataCb(msgType, mPreviewMemory, mPreviewBufCount, NULL, mCallbackCookie);
+    }
+
+    if (mExternalLocking) {
+        unlockBufferAndUpdatePtrs(frame);
     }
 
     // increment for next buffer
@@ -1131,7 +1170,9 @@ void AppCallbackNotifier::notifyFrame()
                                 bounds.top = 0;
                                 bounds.right = mVideoWidth;
                                 bounds.bottom = mVideoHeight;
-
+                                if (mExternalLocking) {
+                                    lockBufferAndUpdatePtrs(frame);
+                                }
                                 void *y_uv[2];
                                 mapper.lock((buffer_handle_t)vBuf, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
                                 y_uv[1] = y_uv[0] + mVideoHeight*4096;
@@ -1154,6 +1195,9 @@ void AppCallbackNotifier::notifyFrame()
 
                                 VT_resizeFrame_Video_opt2_lp(&input, &output, NULL, 0);
                                 mapper.unlock((buffer_handle_t)vBuf->opaque);
+                                if (mExternalLocking) {
+                                    unlockBufferAndUpdatePtrs(frame);
+                                }
                                 videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
                                 /* FIXME remove cast */
                                 videoMetadataBuffer->handle = (void *)vBuf->opaque;
@@ -1181,10 +1225,15 @@ void AppCallbackNotifier::notifyFrame()
                                 CAMHAL_LOGEA("Error! One of the video buffers is NULL");
                                 break;
                                 }
-
+                            if (mExternalLocking) {
+                                lockBufferAndUpdatePtrs(frame);
+                            }
                             *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer->mapped);
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME, fakebuf, 0, mCallbackCookie);
                             fakebuf->release(fakebuf);
+                            if (mExternalLocking) {
+                                unlockBufferAndUpdatePtrs(frame);
+                            }
                             }
                         }
                     }

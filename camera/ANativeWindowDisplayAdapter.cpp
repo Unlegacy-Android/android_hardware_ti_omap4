@@ -75,7 +75,8 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
 ANativeWindowDisplayAdapter::ANativeWindowDisplayAdapter():mDisplayThread(NULL),
                                         mDisplayState(ANativeWindowDisplayAdapter::DISPLAY_INIT),
                                         mDisplayEnabled(false),
-                                        mBufferCount(0)
+                                        mBufferCount(0),
+                                        mUseExternalBufferLocking(false)
 
 
 
@@ -579,6 +580,9 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
         mBuffers[i].mapped = y_uv[0];
         mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
+        if (mUseExternalBufferLocking) {
+            mapper.unlock(*handle);
+        }
     }
 
     // return the rest of the buffers back to ANativeWindow
@@ -781,8 +785,10 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
                  continue;
              }
 
-             // unlock buffer before giving it up
-             mapper.unlock(*handle);
+             if (!mUseExternalBufferLocking) {
+                 // unlock buffer before giving it up
+                 mapper.unlock(*handle);
+             }
 
              ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
              if ( NO_INIT == ret ) {
@@ -1070,8 +1076,10 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 
         {
             buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
-            // unlock buffer before sending to display
-            mapper.unlock(*handle);
+            if (!mUseExternalBufferLocking) {
+                // unlock buffer before sending to display
+                mapper.unlock(*handle);
+            }
             ret = mANativeWindow->enqueue_buffer(mANativeWindow, handle);
         }
         if ( NO_ERROR != ret ) {
@@ -1090,9 +1098,10 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     else
     {
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
-
-        // unlock buffer before giving it up
-        mapper.unlock(*handle);
+        if (!mUseExternalBufferLocking) {
+            // unlock buffer before giving it up
+            mapper.unlock(*handle);
+        }
 
         // cancel buffer and dequeue another one
         ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
@@ -1162,23 +1171,24 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     if (i == mBufferCount) {
         CAMHAL_LOGEB("Failed to find handle %p", buf);
     }
+    if (!mUseExternalBufferLocking) {
+        // lock buffer before sending to FrameProvider for filling
+        bounds.left = 0;
+        bounds.top = 0;
+        bounds.right = mFrameWidth;
+        bounds.bottom = mFrameHeight;
 
-    // lock buffer before sending to FrameProvider for filling
-    bounds.left = 0;
-    bounds.top = 0;
-    bounds.right = mFrameWidth;
-    bounds.bottom = mFrameHeight;
-
-    int lock_try_count = 0;
-    while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
-      if (++lock_try_count > LOCK_BUFFER_TRIES){
-        if ( NULL != mErrorNotifier.get() ){
-          mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
+        int lock_try_count = 0;
+        while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
+          if (++lock_try_count > LOCK_BUFFER_TRIES){
+            if ( NULL != mErrorNotifier.get() ){
+              mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
+            }
+            return false;
+          }
+          CAMHAL_LOGEA("Gralloc Lock FrameReturn Error: Sleeping 15ms");
+          usleep(15000);
         }
-        return false;
-      }
-      CAMHAL_LOGEA("Gralloc Lock FrameReturn Error: Sleeping 15ms");
-      usleep(15000);
     }
 
     {
@@ -1242,6 +1252,10 @@ void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
     PostFrame(df);
 }
 
+void ANativeWindowDisplayAdapter::setExternalLocking(bool extBuffLocking)
+{
+    mUseExternalBufferLocking = extBuffLocking;
+}
 
 /*--------------------ANativeWindowDisplayAdapter Class ENDS here-----------------------------*/
 

@@ -725,6 +725,7 @@ public:
     void setVideoRes(int width, int height);
 
     void flushEventQueue();
+    void setExternalLocking(bool extBuffLocking);
 
     //Internal class definitions
     class NotificationThread : public android::Thread {
@@ -760,6 +761,8 @@ private:
     void copyAndSendPreviewFrame(CameraFrame* frame, int32_t msgType);
     size_t calculateBufferSize(size_t width, size_t height, const char *pixelFormat);
     const char* getContstantForPixelFormat(const char *pixelFormat);
+    void lockBufferAndUpdatePtrs(CameraFrame* frame);
+    void unlockBufferAndUpdatePtrs(CameraFrame* frame);
 
 private:
     mutable android::Mutex mLock;
@@ -814,6 +817,8 @@ private:
 
     int mVideoWidth;
     int mVideoHeight;
+
+    bool mExternalLocking;
 
 };
 
@@ -1242,6 +1247,9 @@ public:
 
     status_t storeMetaDataInBuffers(bool enable);
 
+    // Use external locking for graphic buffers
+    void setExternalLocking(bool extBuffLocking);
+
      //@}
 
 /*--------------------Internal Member functions - Public---------------------------------*/
@@ -1504,6 +1512,8 @@ private:
     int mVideoHeight;
 
     android::String8 mCapModeBackup;
+
+    bool mExternalLocking;
 };
 
 } // namespace Camera

@@ -86,6 +86,9 @@ public:
     virtual status_t maxQueueableBuffers(unsigned int& queueable);
     virtual status_t minUndequeueableBuffers(int& unqueueable);
 
+    // If set to true ANativeWindowDisplayAdapter will not lock/unlock graphic buffers
+    void setExternalLocking(bool extBuffLocking);
+
     ///Class specific functions
     static void frameCallbackRelay(CameraFrame* caFrame);
     void frameCallback(CameraFrame* caFrame);
@@ -172,6 +175,10 @@ private:
     uint32_t mYOff;
 
     const char *mPixelFormat;
+
+    //In case if we ,as example, using out buffers in Ducati Decoder
+    //DOMX will handle lock/unlock of graphic buffers
+    bool mUseExternalBufferLocking;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
     //Used for calculating standby to first shot
