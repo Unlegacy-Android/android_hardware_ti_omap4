@@ -51,7 +51,6 @@
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
-#define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
 #define HAL_PIXEL_FORMAT_TI_Y8 0x103
 #define HAL_PIXEL_FORMAT_TI_Y16 0x104
 
@@ -70,7 +69,7 @@ static size_t calcBufSize(int format, int width, int height)
     int buf_size;
 
     switch (format) {
-        case HAL_PIXEL_FORMAT_TI_NV12_1D:
+        case HAL_PIXEL_FORMAT_TI_NV12:
             buf_size = width * height * 3 /2;
             break;
         case HAL_PIXEL_FORMAT_TI_Y16:
@@ -87,18 +86,37 @@ static size_t calcBufSize(int format, int width, int height)
 
 static int getHalPixFormat(const char *format)
 {
-    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
     if ( NULL != format ) {
         if ( strcmp(format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0 ) {
             pixformat = HAL_PIXEL_FORMAT_TI_Y16;
         } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
-            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12;
         } else {
-            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12;
         }
     }
 
     return pixformat;
+}
+
+static int getUsageFromANW(int format)
+{
+    int usage = GRALLOC_USAGE_SW_READ_RARELY |
+                GRALLOC_USAGE_SW_WRITE_NEVER;
+
+    switch (format) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            // This usage flag indicates to gralloc we want the
+            // buffers to come from system heap
+            usage |= GRALLOC_USAGE_PRIVATE_0;
+            break;
+        default:
+            // No special flags needed
+            break;
+    }
+    return usage;
 }
 
 void GLSurface::initialize(int display) {
@@ -470,7 +488,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
     void *input = NULL;
-    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
 
     int aligned_width, aligned_height;
     aligned_width = ALIGN_UP(bufinfo.width, ALIGN_WIDTH);
@@ -489,8 +507,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     }
 
     native_window_set_usage(mWindowTapIn.get(),
-                            GRALLOC_USAGE_SW_READ_RARELY |
-                            GRALLOC_USAGE_SW_WRITE_NEVER);
+                            getUsageFromANW(pixformat));
     native_window_set_buffer_count(mWindowTapIn.get(), 1);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
