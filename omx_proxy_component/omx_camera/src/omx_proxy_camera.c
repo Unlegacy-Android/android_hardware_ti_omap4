@@ -288,14 +288,15 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
         }
     } else if (eCmd == OMX_CommandPortDisable) {
         int i, j;
-        for (i = 0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
-            for (j = 0; j < PROXY_MAXNUMOFPORTS; j++) {
-                if (((j == nParam) || (nParam == OMX_ALL)) &&
-                     gComponentBufferAllocation[i][j])
-                {
-                     delBuffer_prop.sBuffer_accessor.pBufferHandle = gComponentBufferAllocation[i][j];
-                     MemPlugin_Free(pCompPrv->pMemPluginHandle, pCompPrv->nMemmgrClientDesc, &delBuffer_params,&delBuffer_prop);
-                    gComponentBufferAllocation[i][j] = NULL;
+        for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
+            if ((i == nParam) || (nParam == OMX_ALL)) {
+                for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
+                    if (gComponentBufferAllocation[i][j]) {
+                        delBuffer_prop.sBuffer_accessor.pBufferHandle = gComponentBufferAllocation[i][j];
+                        MemPlugin_Free(pCompPrv->pMemPluginHandle, pCompPrv->nMemmgrClientDesc,
+                                       &delBuffer_params,&delBuffer_prop);
+                        gComponentBufferAllocation[i][j] = NULL;
+                    }
                 }
             }
         }
