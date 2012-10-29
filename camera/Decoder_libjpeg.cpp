@@ -218,6 +218,8 @@ bool Decoder_libjpeg::decode(unsigned char *jpeg_src, int filled_len, unsigned c
         CAMHAL_LOGEA(" Free the existing buffers so that they are reallocated for new w x h. Old WxH = %dx%d. New WxH = %dx%d",
         mWidth, mHeight, cinfo.output_width, cinfo.output_height);
         release();
+        mWidth = cinfo.output_width;
+        mHeight = cinfo.output_height;
     }
 
     unsigned int decoded_uv_buffer_size = cinfo.output_width * cinfo.output_height / 2;
