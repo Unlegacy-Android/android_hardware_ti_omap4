@@ -279,6 +279,7 @@ typedef enum OMX_TI_INDEXTYPE {
 
     /*H264 Encoder specific Indices*/
     OMX_TI_IndexConfigVideoIntraRefresh,                /**< 0x7F0000B5 reference: OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE */
+    OMX_TI_IndexConfigDynamicCameraDescriptor,          /**< 0x7F000B4 reference: OMX_TI_CONFIG_SHAREDBUFFER */
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 
 } OMX_TI_INDEXTYPE;
