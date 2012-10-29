@@ -1753,6 +1753,8 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         if (blit_all) {
             needs_fb = 1;
             hwc_dev->use_sgx = 0;
+            /* No need to swap red and blue channels */
+            hwc_dev->swap_rb = 0;
         }
     }
 
