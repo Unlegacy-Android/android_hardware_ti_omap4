@@ -541,17 +541,6 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                     android::AutoMutex lock(mCaptureBufferLock);
                     mCaptureBuffers = desc->mBuffers;
                     mCaptureBuffersLength = desc->mLength;
-                    mCaptureBuffersAvailable.clear();
-                    for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
-                        {
-                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
-                        }
-                    // initial ref count for undeqeueued buffers is 1 since buffer provider
-                    // is still holding on to it
-                    for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ )
-                        {
-                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
-                        }
                     }
 
                 if ( NULL != desc )
@@ -2118,6 +2107,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = PREVIEW_STATE;
                     break;
 
+                case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_START_IMAGE_CAPTURE:
                      CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->CAPTURE_STATE event = %s",
                                  printState);
@@ -2426,13 +2416,23 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                                  printState);
                     mNextState = PREVIEW_STATE;
                     break;
+                case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_START_IMAGE_CAPTURE:
-                case CAMERA_USE_BUFFERS_REPROCESS:
                      CAMHAL_LOGDB("Adapter state switch REPROCESS_STATE->REPROCESS_STATE event = %s",
                                  printState);
                     mNextState = REPROCESS_STATE;
                     break;
+                case CAMERA_USE_BUFFERS_REPROCESS:
+                     CAMHAL_LOGDB("Adapter state switch REPROCESS_STATE->REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = LOADED_REPROCESS_STATE;
+                    break;
 
+                case CAMERA_USE_BUFFERS_IMAGE_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch REPROCESS_STATE->LOADED_CAPTURE_STATE event = %s",
+                            printState);
+                    mNextState = LOADED_CAPTURE_STATE;
+                    break;
                 default:
                     CAMHAL_LOGEB("Adapter state switch REPROCESS_STATE Invalid Op! event = %s",
                                  printState);

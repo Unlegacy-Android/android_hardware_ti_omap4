@@ -1220,9 +1220,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
         apply3Asettings(mParameters3A);
     }
 
-    // check is we are already in capture state...which means we are
-    // accumulating shots
-    if ((ret == NO_ERROR) && (mBurstFramesQueued > 0)) {
+    if (ret == NO_ERROR) {
         int index = 0;
         int queued = 0;
         android::AutoMutex lock(mBurstLock);
@@ -1241,7 +1239,13 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
             mCapturedFrames += mBurstFrames;
             mBurstFramesAccum += mBurstFrames;
         }
-
+        CAMHAL_LOGD("mBurstFramesQueued = %d mBurstFramesAccum = %d index = %d "
+                    "capData->mNumBufs = %d queued = %d capData->mMaxQueueable = %d",
+                    mBurstFramesQueued,mBurstFramesAccum,index,
+                    capData->mNumBufs,queued,capData->mMaxQueueable);
+        CAMHAL_LOGD("%d", (mBurstFramesQueued < mBurstFramesAccum)
+                          && (index < capData->mNumBufs)
+                          && (queued < capData->mMaxQueueable));
         while ((mBurstFramesQueued < mBurstFramesAccum) &&
                (index < capData->mNumBufs) &&
                (queued < capData->mMaxQueueable)) {
@@ -1255,24 +1259,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                 mBurstFramesQueued++;
                 queued++;
             } else if (OMXCameraPortParameters::FILL == capData->mStatus[index]) {
+               CAMHAL_LOGE("Not queueing index = %d", index);
                 queued++;
             }
             index++;
-        }
-    } else if ( NO_ERROR == ret ) {
-        ///Queue all the buffers on capture port
-        for ( int index = 0 ; index < capData->mMaxQueueable ; index++ ) {
-            if (mBurstFramesQueued < mBurstFramesAccum) {
-                CAMHAL_LOGDB("Queuing buffer on Capture port - %p",
-                              capData->mBufferHeader[index]->pBuffer);
-                capData->mStatus[index] = OMXCameraPortParameters::FILL;
-                eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
-                        (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
-                mBurstFramesQueued++;
-            } else {
-                capData->mStatus[index] = OMXCameraPortParameters::IDLE;
-            }
-            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
@@ -1847,6 +1837,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             pBufferHdr->nVersion.s.nRevision = 0;
             pBufferHdr->nVersion.s.nStep =  0;
             imgCaptureData->mBufferHeader[index] = pBufferHdr;
+            imgCaptureData->mStatus[index] = OMXCameraPortParameters::IDLE;
         }
 
         // Wait for the image port enable event
@@ -1877,6 +1868,17 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         // CPCam mode only supports vector shot
         // Regular capture is not supported
         if (mCapMode == CP_CAM) initVectorShot();
+
+        mCaptureBuffersAvailable.clear();
+        for (unsigned int i = 0; i < imgCaptureData->mMaxQueueable; i++ ) {
+            mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
+        }
+
+        // initial ref count for undeqeueued buffers is 1 since buffer provider
+        // is still holding on to it
+        for (unsigned int i = imgCaptureData->mMaxQueueable; i < imgCaptureData->mNumBufs; i++ ) {
+            mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
+        }
     }
 
     if ( NO_ERROR == ret )
@@ -1910,10 +1912,6 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             CAMHAL_LOGDA("single preview mode configured successfully");
         }
     }
-
-    mCapturedFrames = mBurstFrames;
-    mBurstFramesAccum = mBurstFrames;
-    mBurstFramesQueued = 0;
 
     mCaptureConfigured = true;
 

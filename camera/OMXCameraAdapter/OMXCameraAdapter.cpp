@@ -464,17 +464,6 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
     isCaptureFrame = (CameraFrame::IMAGE_FRAME == frameType) ||
                      (CameraFrame::RAW_FRAME == frameType);
 
-    if ( isCaptureFrame && (NO_ERROR == ret) ) {
-        // In CP_CAM mode, end image capture will be signalled when application starts preview
-        if ((1 > mCapturedFrames) && !mBracketingEnabled && (mCapMode != CP_CAM)) {
-            // Signal end of image capture
-            if ( NULL != mEndImageCaptureCallback) {
-                mEndImageCaptureCallback(mEndCaptureData);
-            }
-            return NO_ERROR;
-        }
-    }
-
     if ( NO_ERROR == ret )
         {
         port = getPortParams(frameType);
@@ -490,7 +479,14 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
             if ((CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf) {
                 if ( isCaptureFrame && !mBracketingEnabled ) {
                     android::AutoMutex lock(mBurstLock);
-                    if (mBurstFramesQueued >= mBurstFramesAccum) {
+                    if ((1 > mCapturedFrames) && !mBracketingEnabled && (mCapMode != CP_CAM)) {
+                        // Signal end of image capture
+                        if ( NULL != mEndImageCaptureCallback) {
+                            mEndImageCaptureCallback(mEndCaptureData);
+                        }
+                        port->mStatus[i] = OMXCameraPortParameters::IDLE;
+                        return NO_ERROR;
+                    } else if (mBurstFramesQueued >= mBurstFramesAccum) {
                         port->mStatus[i] = OMXCameraPortParameters::IDLE;
                         return NO_ERROR;
                     }
