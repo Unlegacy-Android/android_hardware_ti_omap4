@@ -771,7 +771,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
                             getUsageFromANW(pixformat));
     mWindowTapIn->perform(mWindowTapIn.get(),
                           NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
-                          &tapInMinUndequeued);;
+                          &tapInMinUndequeued);
     native_window_set_buffer_count(mWindowTapIn.get(), tapInMinUndequeued);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);

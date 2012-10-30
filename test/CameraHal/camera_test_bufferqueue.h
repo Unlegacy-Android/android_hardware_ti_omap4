@@ -136,6 +136,9 @@ public:
 
     virtual void setInput(buffer_info_t bufinfo, const char *format, android::ShotParameters &params) {
         mBufferQueue->setDefaultBufferSize(bufinfo.width, bufinfo.height);
+        // Reset buffer slots, any remaining buffers slots that were
+        // previously added should get flushed.
+        mBufferQueue->setBufferCount(android::BufferQueue::NUM_BUFFER_SLOTS);
         BufferSourceInput::setInput(bufinfo, format, params);
         {
             String8 id = mBufferQueue->getId();
