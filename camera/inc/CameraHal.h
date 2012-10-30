@@ -359,6 +359,7 @@ typedef struct _CameraBuffer {
     /* These are for buffers which include borders */
     int offset; // where valid data starts
     int actual_size; // size of the entire buffer with borders
+    int privateData;
 } CameraBuffer;
 
 void * camera_buffer_get_omx_ptr (CameraBuffer *buffer);

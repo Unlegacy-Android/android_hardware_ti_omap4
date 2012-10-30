@@ -68,7 +68,11 @@ extern const char * const kYuvImagesOutputDirPath = "/data/misc/camera/YuV_PiCtU
 
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
-static int dummy_update_and_get_buffer(preview_stream_ops_t*, buffer_handle_t**, int*) {
+static int dummy_update_and_get_buffer(preview_stream_ops_t*, buffer_handle_t**, int*,int*) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_release_buffer(preview_stream_ops_t*, int slot) {
     return INVALID_OPERATION;
 }
 
@@ -107,6 +111,7 @@ static int dummy_get_current_size(preview_stream_ops_t*,
 static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
 #ifdef OMAP_ENHANCEMENT_CPCAM
     dummy_update_and_get_buffer,
+    dummy_release_buffer,
     dummy_get_buffer_dimension,
     dummy_get_buffer_format,
     dummy_set_metadata,

@@ -632,6 +632,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
 
     // TODO(XXX): Only supporting one input buffer at a time right now
     *num = 1;
+    mBufferCount = *num;
     mBuffers = new CameraBuffer [lnumBufs];
     memset (mBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
 
@@ -639,7 +640,10 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
         return NULL;
     }
 
-    err = extendedOps()->update_and_get_buffer(mBufferSource, &handle, &mBuffers[0].stride);
+    err = extendedOps()->update_and_get_buffer(mBufferSource,
+                                               &handle,
+                                               &mBuffers[0].stride,
+                                               &mBuffers[0].privateData);
     if (err != 0) {
         CAMHAL_LOGEB("update and get buffer failed: %s (%d)", strerror(-err), -err);
         if ( ENODEV == err ) {
@@ -877,6 +881,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     if (frame->mFrameType == CameraFrame::REPROCESS_INPUT_FRAME) {
         CAMHAL_LOGD("Unlock %p (buffer #%d)", handle, i);
         mapper.unlock(*handle);
+        extendedOps()->release_buffer(mBufferSource, mBuffers[i].privateData);
         return;
     }
 
