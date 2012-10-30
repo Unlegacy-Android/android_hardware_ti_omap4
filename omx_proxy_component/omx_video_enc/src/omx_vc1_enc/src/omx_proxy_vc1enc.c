@@ -272,13 +272,35 @@ static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
                                                      OMX_BUFFERHEADERTYPE *pBufferHdr)
 {
     OMX_ERRORTYPE    eError = OMX_ErrorNone;
-
-    eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
-    if( eError != OMX_ErrorNone ) {
-        DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d", eError);
-    }
+    OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	PROXY_COMPONENT_PRIVATE *pCompPrv;
+	PROXY_assert(hComponent != NULL, OMX_ErrorInsufficientResources,"Null component handle received in EmptyThisBuffer");
+	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
+	PROXY_assert(pCompPrv != NULL, OMX_ErrorInsufficientResources,"Pointer to Null component private structure received in EmptyThisBuffer");
+        if(pCompPrv->proxyPortBuffers[0].proxyBufferType == EncoderMetadataPointers) {
+		OMX_U32 *pTempBuffer;
+		OMX_U32 nMetadataBufferType;
+		pTempBuffer = (OMX_U32 *) (pBufferHdr->pBuffer);
+		if(pTempBuffer == NULL) {
+	        eError = OMX_ErrorBadParameter;
+			DOMX_ERROR("Null meta data buffer supplied - Cannot find metadata type");
+			goto EXIT;
+	        }
+		nMetadataBufferType = *pTempBuffer;
+		if(nMetadataBufferType == kMetadataBufferTypeCameraSource) {
+			eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
+			if( eError != OMX_ErrorNone)
+				DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d - Non Fatal Error",eError);
+		}
+	}
 
     DOMX_DEBUG("Redirection from ComponentPricateEmptyThisBuffer to PROXY_EmptyThisBuffer");
+EXIT:
+        if( eError != OMX_ErrorNone) {
+		DOMX_EXIT("%s: exiting with error 0x%x - Non Fatal",__FUNCTION__,eError);
+        } else {
+               DOMX_EXIT("%s: dynamic frame rate config successful",__FUNCTION__);
+        }
     return (LOCAL_PROXY_VC1E_EmptyThisBuffer(hComponent, pBufferHdr));
 }
 
