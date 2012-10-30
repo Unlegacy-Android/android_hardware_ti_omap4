@@ -134,8 +134,10 @@ private:
                 mBufferSourceAdapter->handleFrameCallback(frame);
                 frame->mMetaData.clear();
 
-                // signal return frame thread that it can dequeue a buffer now
-                mBufferSourceAdapter->mReturnFrame->signal();
+                if (frame->mFrameType != CameraFrame::REPROCESS_INPUT_FRAME) {
+                    // signal return frame thread that it can dequeue a buffer now
+                    mBufferSourceAdapter->mReturnFrame->signal();
+                }
 
                 delete frame;
             }
