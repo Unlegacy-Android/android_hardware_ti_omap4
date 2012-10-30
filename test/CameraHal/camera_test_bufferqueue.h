@@ -80,11 +80,12 @@ public:
                 // the first time we acquire it. We are expected to hold a reference to
                 // it there after...
                 mBufferSlots[slot].mGraphicBuffer = item.mGraphicBuffer;
+                mBufferSlots[slot].mCrop = item.mCrop;
             }
             showMetadata(item.mMetadata);
             printf("\n");
             graphic_buffer = mBufferSlots[item.mBuf].mGraphicBuffer;
-            mDeferThread->add(graphic_buffer, mCounter++, item.mBuf);
+            mDeferThread->add(graphic_buffer, item.mCrop, mCounter++, item.mBuf);
             restartCapture();
             return true;
         }

@@ -151,6 +151,7 @@ public:
 
         mFW->waitForFrame();
         if (!mDestroying) {
+            float mtx[16] = {0.0};
             mSurfaceTexture->updateTexImage();
             printf("=== Metadata for buffer %d ===\n", mCounter);
 #ifndef ANDROID_API_JB_OR_LATER
@@ -158,7 +159,10 @@ public:
 #endif
             printf("\n");
             graphic_buffer = mSurfaceTexture->getCurrentBuffer();
-            mDeferThread->add(graphic_buffer, mCounter++);
+            mSurfaceTexture->getTransformMatrix(mtx);
+            Rect crop = getCrop(graphic_buffer, mtx);
+
+            mDeferThread->add(graphic_buffer, crop, mCounter++);
             restartCapture();
             return true;
         }
