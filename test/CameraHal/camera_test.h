@@ -410,10 +410,10 @@ public:
     virtual void setBuffer(android::ShotParameters &params) {};
     virtual void onHandled(sp<GraphicBuffer> &g, unsigned int slot) {};
 
-    bool toggleStreamCapture(int expBracketIdx) {
+    bool setStreamCapture(bool restart, int expBracketIdx) {
         Mutex::Autolock lock(mToggleStateMutex);
         mExpBracketIdx = expBracketIdx;
-        mRestartCapture = !mRestartCapture;
+        mRestartCapture = restart;
         return mRestartCapture;
     }
 

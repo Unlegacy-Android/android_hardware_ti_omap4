@@ -60,6 +60,7 @@
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 #define HAL_PIXEL_FORMAT_TI_Y8 0x103
 #define HAL_PIXEL_FORMAT_TI_Y16 0x104
+#define HAL_PIXEL_FORMAT_TI_UYVY 0x105
 
 #define MIN_WIDTH           640
 #define MIN_HEIGHT          480
@@ -348,6 +349,16 @@ typedef struct _CameraBuffer {
     int stride;
     int height;
     const char *format;
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    struct timeval ppmStamp;
+
+#endif
+
+    /* These are for buffers which include borders */
+    int offset; // where valid data starts
+    int actual_size; // size of the entire buffer with borders
 } CameraBuffer;
 
 void * camera_buffer_get_omx_ptr (CameraBuffer *buffer);
@@ -1358,7 +1369,7 @@ private:
     void resetPreviewRes(android::CameraParameters *params);
 
     // Internal __takePicture function - used in public takePicture() and reprocess()
-    int   __takePicture(const char* params);
+    int   __takePicture(const char* params, struct timeval *captureStart = NULL);
     //@}
 
     status_t setTapoutLocked(struct preview_stream_ops *out);

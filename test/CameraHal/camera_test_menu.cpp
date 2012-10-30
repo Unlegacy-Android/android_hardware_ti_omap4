@@ -88,6 +88,7 @@ bool vnftoggle = false;
 bool faceDetectToggle = false;
 bool metaDataToggle = false;
 bool shotConfigFlush = false;
+bool streamCapture = false;
 int saturation = 0;
 int zoomIDX = 0;
 int videoCodecIDX = 0;
@@ -2138,6 +2139,7 @@ void initDefaults() {
     caf_mode = 0;
 
     shotConfigFlush = false;
+    streamCapture = false;
     vstabtoggle = false;
     vnftoggle = false;
     AutoExposureLocktoggle = false;
@@ -2540,6 +2542,7 @@ int functional_menu() {
     int k = 0;
     const char *valstr = NULL;
     struct CameraInfo cameraInfo;
+    bool queueEmpty = true;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -2924,7 +2927,13 @@ int functional_menu() {
             printf("numpreviewFormat %d\n", numpictureFormat);
             params.setPictureFormat(pictureFormatArray[pictureFormat]);
 
-            if ( hardwareActive )
+            queueEmpty = true;
+            if ( bufferSourceOutputThread.get() ) {
+                if ( 0 < bufferSourceOutputThread->hasBuffer() ) {
+                    queueEmpty = false;
+                }
+            }
+            if ( hardwareActive && queueEmpty )
                 camera->setParameters(params.flatten());
 
             break;
@@ -3495,43 +3504,45 @@ int functional_menu() {
         {
             int msgType = 0;
 
-            if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
-                createBufferOutputSource();
-                if (bufferSourceOutputThread.get()) {
-                    bufferSourceOutputThread->setBuffer(shotParams);
-                }
-            } else {
-                msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                msgType |= CAMERA_MSG_RAW_BURST;
-#endif
-            }
-
             if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
                (0 != strcmp(videosnapshotstr, "true"))) {
                 printf("Video Snapshot is not supported\n");
-            } else {
-                gettimeofday(&picture_start, 0);
-                if ( hardwareActive ) {
-                    camera->setParameters(params.flatten());
-                    camera->takePictureWithParameters(msgType, shotParams.flatten());
+            } else if ( hardwareActive ) {
+                if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
+                    createBufferOutputSource();
+                    if (bufferSourceOutputThread.get()) {
+                        bufferSourceOutputThread->setBuffer(shotParams);
+                        bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
+                    }
+                } else {
+                    msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                              CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                    msgType |= CAMERA_MSG_RAW_BURST;
+#endif
                 }
+
+                gettimeofday(&picture_start, 0);
+                camera->setParameters(params.flatten());
+                camera->takePictureWithParameters(msgType, shotParams.flatten());
             }
             break;
         }
 
         case 'S':
         {
-            createBufferOutputSource();
-            if (bufferSourceOutputThread.get()) {
-                if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
-                    setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
-                    // Queue more frames initially
-                    shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
-                } else {
-                    setDefaultExpGainPreset(shotParams, expBracketIdx);
+            if (streamCapture) {
+                streamCapture = false;
+                setDefaultExpGainPreset(shotParams, expBracketIdx);
+                // Stop streaming
+                if (bufferSourceOutputThread.get()) {
+                    bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
                 }
+            } else {
+                streamCapture = true;
+                setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                // Queue more frames initially
+                shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
             }
             break;
         }
@@ -3546,6 +3557,7 @@ int functional_menu() {
             if (bufferSourceOutputThread.get() &&
                 bufferSourceOutputThread->hasBuffer())
             {
+                bufferSourceOutputThread->setStreamCapture(false, expBracketIdx);
                 if (hardwareActive) camera->setParameters(params.flatten());
 
                 if (bufferSourceInput.get()) {

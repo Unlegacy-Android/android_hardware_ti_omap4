@@ -2734,7 +2734,7 @@ status_t OMXCameraAdapter::takePicture()
 
     LOG_FUNCTION_NAME;
 
-    {
+    if (mNextState != REPROCESS_STATE) {
         android::AutoMutex lock(mFrameCountMutex);
         if (mFrameCount < 1) {
             // first frame may time some time to come...so wait for an adequate amount of time

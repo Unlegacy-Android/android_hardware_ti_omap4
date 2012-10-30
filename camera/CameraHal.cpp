@@ -91,6 +91,16 @@ static int dummy_get_id(preview_stream_ops_t*, char *data, unsigned int dataSize
 static int dummy_get_buffer_count(preview_stream_ops_t*, int *count) {
     return INVALID_OPERATION;
 }
+
+static int dummy_get_crop(preview_stream_ops_t*,
+                          int *, int *, int *, int *) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_get_current_size(preview_stream_ops_t*,
+                                  int *, int *) {
+    return INVALID_OPERATION;
+}
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -102,6 +112,8 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
     dummy_set_metadata,
     dummy_get_id,
     dummy_get_buffer_count,
+    dummy_get_crop,
+    dummy_get_current_size,
 #endif
 };
 #endif
@@ -3159,7 +3171,7 @@ status_t CameraHal::takePicture(const char *params)
    @todo Define error codes if unable to switch to image capture
 
  */
-status_t CameraHal::__takePicture(const char *params)
+status_t CameraHal::__takePicture(const char *params, struct timeval *captureStart)
 {
     // cancel AF state if needed (before any operation and mutex lock)
     if (mCameraAdapter->getState() == CameraAdapter::AF_STATE) {
@@ -3180,7 +3192,11 @@ status_t CameraHal::__takePicture(const char *params)
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
-    gettimeofday(&mStartCapture, NULL);
+    if ( NULL == captureStart ) {
+        gettimeofday(&mStartCapture, NULL);
+    } else {
+        memcpy(&mStartCapture, captureStart, sizeof(struct timeval));
+    }
 
 #endif
 
@@ -3288,6 +3304,12 @@ status_t CameraHal::__takePicture(const char *params)
         // when we remove legacy TI parameters implementation
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture parameters set: ", &mStartCapture);
+
+#endif
+
     // if we are already in the middle of a capture and using the same
     // tapout ST...then we just need setParameters and start image
     // capture to queue more shots
@@ -3384,6 +3406,12 @@ status_t CameraHal::__takePicture(const char *params)
                 }
             }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture buffer size queried: ", &mStartCapture);
+
+#endif
+
         if (outAdapter.get()) {
             // Avoid locking the tapout again when reusing it
             if (!reuseTapout) {
@@ -3417,7 +3445,14 @@ status_t CameraHal::__takePicture(const char *params)
             }
         }
 
-        if (  (NO_ERROR == ret) && ( NULL != mCameraAdapter ) )
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Takepicture buffers allocated: ", &mStartCapture);
+    memcpy(&mImageBuffers->ppmStamp, &mStartCapture, sizeof(struct timeval));
+
+#endif
+
+    if (  (NO_ERROR == ret) && ( NULL != mCameraAdapter ) )
             {
             desc.mBuffers = mImageBuffers;
             desc.mOffsets = mImageOffsets;
@@ -3456,6 +3491,12 @@ status_t CameraHal::__takePicture(const char *params)
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+        CameraHal::PPM("Takepicture buffers registered: ", &mStartCapture);
+
+#endif
+
     if ((ret == NO_ERROR) && mBufferSourceAdapter_Out.get()) {
         mBufferSourceAdapter_Out->enableDisplay(0, 0, NULL);
     }
@@ -3466,6 +3507,8 @@ status_t CameraHal::__takePicture(const char *params)
 
          //pass capture timestamp along with the camera adapter command
         ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE,  (int) &mStartCapture);
+
+        CameraHal::PPM("Takepicture capture started: ", &mStartCapture);
 
 #else
 
@@ -3582,10 +3625,17 @@ status_t CameraHal::reprocess(const char *params)
     CameraBuffer *reprocBuffers = NULL;
     android::ShotParameters shotParams;
     const char *valStr = NULL;
+    struct timeval startReprocess;
 
     android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME;
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    gettimeofday(&startReprocess, NULL);
+
+#endif
 
     // 0. Get tap in surface
     if (strlen(params) > 0) {
@@ -3623,10 +3673,23 @@ status_t CameraHal::reprocess(const char *params)
         goto exit;
     }
 
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Got reprocess buffers: ", &startReprocess);
+
+#endif
+
     // 2. Get buffer information and parse parameters
     {
         shotParams.setBurst(bufferCount);
     }
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    memcpy(&reprocBuffers->ppmStamp, &startReprocess, sizeof(struct timeval));
+
+#endif
 
     // 3. Give buffer to camera adapter
     desc.mBuffers = reprocBuffers;
@@ -3635,11 +3698,18 @@ status_t CameraHal::reprocess(const char *params)
     desc.mLength = 0;
     desc.mCount = (size_t) bufferCount;
     desc.mMaxQueueable = (size_t) bufferCount;
+
     ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS, (int) &desc);
     if (ret != NO_ERROR) {
         CAMHAL_LOGE("Error calling camera use buffers");
         goto exit;
     }
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    CameraHal::PPM("Reprocess buffers registered: ", &startReprocess);
+
+#endif
 
     // 4. Start reprocessing
     ret = mBufferSourceAdapter_In->enableDisplay(0, 0, NULL);
@@ -3649,9 +3719,9 @@ status_t CameraHal::reprocess(const char *params)
     }
 
     // 5. Start capturing
-    ret = __takePicture(shotParams.flatten().string());
+    ret = __takePicture(shotParams.flatten().string(), &startReprocess);
 
- exit:
+exit:
     return ret;
 }
 

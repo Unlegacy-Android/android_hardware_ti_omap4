@@ -31,8 +31,7 @@ static int getANWFormat(const char* parameters_format)
     if (parameters_format != NULL) {
         if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
-            // TODO(XXX): not defined yet
-            format = -1;
+            format = HAL_PIXEL_FORMAT_TI_UYVY;
         } else if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             format = HAL_PIXEL_FORMAT_TI_NV12;
@@ -78,6 +77,8 @@ static const char* getFormatFromANW(int format)
             return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
         case HAL_PIXEL_FORMAT_TI_Y16:
             return android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+        case HAL_PIXEL_FORMAT_TI_UYVY:
+            return android::CameraParameters::PIXEL_FORMAT_YUV422I;
         default:
             break;
     }
@@ -88,6 +89,7 @@ static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
     switch (getANWFormat(format)) {
         case HAL_PIXEL_FORMAT_TI_NV12:
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             // Assuming NV12 1D is RAW or Image frame
             return CameraFrame::RAW_FRAME;
         default:
@@ -102,6 +104,7 @@ static int getHeightFromFormat(const char* format, int stride, int size) {
         case HAL_PIXEL_FORMAT_TI_NV12:
             return (size / (3 * stride)) * 2;
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             return (size / stride) / 2;
         default:
             break;
@@ -653,6 +656,10 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     err = extendedOps()->get_buffer_dimension(mBufferSource, &mBuffers[0].width, &mBuffers[0].height);
     err = extendedOps()->get_buffer_format(mBufferSource, &formatSource);
 
+    int t, l, r, b, w, h;
+    err = extendedOps()->get_crop(mBufferSource, &l, &t, &r, &b);
+    err = extendedOps()->get_current_size(mBufferSource, &w, &h);
+
     // lock buffer
     {
         void *y_uv[2];
@@ -666,6 +673,8 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     mPixelFormat = getFormatFromANW(formatSource);
 
     mBuffers[0].format = mPixelFormat;
+    mBuffers[0].actual_size = CameraHal::calculateBufferSize(mPixelFormat, w, h);
+    mBuffers[0].offset = t * w + l * CameraHal::getBPP(mPixelFormat);
     mBufferSourceDirection = BUFFER_SOURCE_TAP_IN;
 
     return mBuffers;
@@ -799,15 +808,13 @@ int BufferSourceAdapter::freeBufferList(CameraBuffer * buflist)
 
     status_t ret = NO_ERROR;
 
+    if ( mBuffers != buflist ) {
+        return BAD_VALUE;
+    }
+
     android::AutoMutex lock(mLock);
 
     if (mBufferSourceDirection == BUFFER_SOURCE_TAP_OUT) returnBuffersToWindow();
-
-    if ( NULL != buflist )
-    {
-        delete [] buflist;
-        mBuffers = NULL;
-    }
 
     if( mBuffers != NULL)
     {
@@ -878,6 +885,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     ret = mBufferSource->set_crop(mBufferSource, x, y, x + frame->mWidth, y + frame->mHeight);
     if (NO_ERROR != ret) {
         CAMHAL_LOGE("mBufferSource->set_crop returned error %d", ret);
+        goto fail;
     }
 
     if ( NULL != frame->mMetaData.get() ) {
@@ -888,6 +896,7 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
             ret = extendedOps()->set_metadata(mBufferSource, extMeta);
             if (ret != 0) {
                 CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+                goto fail;
             }
         }
     }
@@ -898,9 +907,18 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     ret = mBufferSource->enqueue_buffer(mBufferSource, handle);
     if (ret != 0) {
         CAMHAL_LOGE("Surface::queueBuffer returned error %d", ret);
+        goto fail;
     }
 
     mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) frame->mBuffer->opaque);
+
+    return;
+
+fail:
+    mFramesWithCameraAdapterMap.clear();
+    mBufferSource = NULL;
+    mReturnFrame->requestExit();
+    mQueueFrame->requestExit();
 }
 
 

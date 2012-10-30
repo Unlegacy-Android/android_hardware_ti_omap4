@@ -36,6 +36,7 @@ extern sp<BufferSourceInput> bufferSourceInput;
 extern CameraParameters params;
 extern ShotParameters shotParams;
 extern bool shotConfigFlush;
+extern bool streamCapture;
 extern bool recordingMode;
 extern int camera_index;
 extern int rotation;
@@ -214,6 +215,7 @@ int execute_functional_script(char *script) {
     int frameRConst = 0;
     int frameRRange = 0;
     struct CameraInfo cameraInfo;
+    bool queueEmpty = true;
 
     LOG_FUNCTION_NAME;
 
@@ -548,8 +550,15 @@ int execute_functional_script(char *script) {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
                 }
 
-                if ( hardwareActive )
+                queueEmpty = true;
+                if ( bufferSourceOutputThread.get() ) {
+                    if ( 0 < bufferSourceOutputThread->hasBuffer() ) {
+                        queueEmpty = false;
+                    }
+                }
+                if ( hardwareActive && queueEmpty ) {
                     camera->setParameters(params.flatten());
+                }
 
                 break;
             case '-':
@@ -1191,46 +1200,45 @@ int execute_functional_script(char *script) {
 
             case 'p':
             {
-                 int msgType = 0;
-                 const char *format = params.getPictureFormat();
-
-                if((NULL != format) && isRawPixelFormat(format)) {
-                    createBufferOutputSource();
-                    if (bufferSourceOutputThread.get()) {
-                        bufferSourceOutputThread->setBuffer(shotParams);
-                    }
-                } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
-                    msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_RAW_IMAGE;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                    msgType |= CAMERA_MSG_RAW_BURST;
-#endif
-                } else {
-                    msgType = CAMERA_MSG_POSTVIEW_FRAME |
-                              CAMERA_MSG_RAW_IMAGE_NOTIFY |
-                              CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_SHUTTER;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                    msgType |= CAMERA_MSG_RAW_BURST;
-#endif
-                }
+                int msgType = 0;
+                const char *format = params.getPictureFormat();
 
                 if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
                    (0 != strcmp(videosnapshotstr, "true"))) {
                     printf("Video Snapshot is not supported\n");
-                } else {
+                } else if ( hardwareActive ) {
+                    if((NULL != format) && isRawPixelFormat(format)) {
+                        createBufferOutputSource();
+                        if (bufferSourceOutputThread.get()) {
+                            bufferSourceOutputThread->setBuffer(shotParams);
+                            bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
+                        }
+                    } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
+                        msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                                  CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                        msgType |= CAMERA_MSG_RAW_BURST;
+#endif
+                    } else {
+                        msgType = CAMERA_MSG_POSTVIEW_FRAME |
+                                  CAMERA_MSG_RAW_IMAGE_NOTIFY |
+                                  CAMERA_MSG_COMPRESSED_IMAGE |
+                                  CAMERA_MSG_SHUTTER;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                        msgType |= CAMERA_MSG_RAW_BURST;
+#endif
+                    }
+
                     gettimeofday(&picture_start, 0);
-                    if ( hardwareActive ) {
-                        ret = camera->setParameters(params.flatten());
-                        if ( ret != NO_ERROR ) {
-                            printf("Error returned while setting parameters");
-                            break;
-                        }
-                        ret = camera->takePictureWithParameters(msgType, shotParams.flatten());
-                        if ( ret != NO_ERROR ) {
-                            printf("Error returned while taking a picture");
-                            break;
-                        }
+                    ret = camera->setParameters(params.flatten());
+                    if ( ret != NO_ERROR ) {
+                        printf("Error returned while setting parameters");
+                        break;
+                    }
+                    ret = camera->takePictureWithParameters(msgType, shotParams.flatten());
+                    if ( ret != NO_ERROR ) {
+                        printf("Error returned while taking a picture");
+                        break;
                     }
                 }
                 break;
@@ -1238,17 +1246,20 @@ int execute_functional_script(char *script) {
 
             case 'S':
             {
-                createBufferOutputSource();
-                if (bufferSourceOutputThread.get()) {
-                    if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
-                        expBracketIdx = BRACKETING_IDX_STREAM;
-                        setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
-                        // Queue more frames initially
-                        shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
-                    } else {
-                        expBracketIdx = BRACKETING_IDX_DEFAULT;
-                        setDefaultExpGainPreset(shotParams, expBracketIdx);
+                if (streamCapture) {
+                    streamCapture = false;
+                    expBracketIdx = BRACKETING_IDX_DEFAULT;
+                    setDefaultExpGainPreset(shotParams, expBracketIdx);
+                    // Stop streaming
+                    if (bufferSourceOutputThread.get()) {
+                        bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
                     }
+                } else {
+                    streamCapture = true;
+                    expBracketIdx = BRACKETING_IDX_STREAM;
+                    setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                    // Queue more frames initially
+                    shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
                 }
                 break;
             }
@@ -1265,6 +1276,7 @@ int execute_functional_script(char *script) {
                 if (bufferSourceOutputThread.get() &&
                     bufferSourceOutputThread->hasBuffer())
                 {
+                    bufferSourceOutputThread->setStreamCapture(false, expBracketIdx);
                     if (hardwareActive) camera->setParameters(params.flatten());
 
                     if (bufferSourceInput.get()) {

@@ -54,6 +54,7 @@
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 #define HAL_PIXEL_FORMAT_TI_Y8 0x103
 #define HAL_PIXEL_FORMAT_TI_Y16 0x104
+#define HAL_PIXEL_FORMAT_TI_UYVY 0x105
 
 using namespace android;
 
@@ -74,6 +75,7 @@ static size_t calcBufSize(int format, int width, int height)
             buf_size = width * height * 3 /2;
             break;
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             buf_size = width * height * 2;
             break;
         // add more formats later
@@ -93,6 +95,7 @@ static unsigned int calcOffset(int format, unsigned int width, unsigned int top,
         case HAL_PIXEL_FORMAT_TI_NV12:
             bpp = 1;
             break;
+        case HAL_PIXEL_FORMAT_TI_UYVY:
         case HAL_PIXEL_FORMAT_TI_Y16:
             bpp = 2;
             break;
@@ -113,6 +116,8 @@ static int getHalPixFormat(const char *format)
             pixformat = HAL_PIXEL_FORMAT_TI_Y16;
         } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
             pixformat = HAL_PIXEL_FORMAT_TI_NV12;
+        } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV422I) == 0 ) {
+            pixformat = HAL_PIXEL_FORMAT_TI_UYVY;
         } else {
             pixformat = HAL_PIXEL_FORMAT_TI_NV12;
         }
@@ -190,6 +195,37 @@ static status_t writeCroppedNV12(unsigned int offset,
             return UNKNOWN_ERROR;
         }
         chroma += stride;
+    }
+
+    return NO_ERROR;
+}
+
+static status_t writeCroppedUYVY(unsigned int offset,
+                                 unsigned int stride,
+                                 unsigned int bufWidth,
+                                 unsigned int bufHeight,
+                                 const Rect &crop,
+                                 int fd,
+                                 unsigned char *buffer)
+{
+    unsigned char *src = NULL;
+    int write_size;
+
+    if (!buffer) {
+        return BAD_VALUE;
+    }
+
+    src = buffer + offset;
+    int height = crop.height();
+    int width = crop.width();
+    write_size = width*2;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, src, width*2)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        src += stride*2;
     }
 
     return NO_ERROR;
@@ -634,6 +670,9 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
             if (HAL_PIXEL_FORMAT_TI_NV12 == info.format) {
                 writeCroppedNV12(offset, info.width, info.width, info.height,
                                  crop, fd, buffer);
+            } else if (HAL_PIXEL_FORMAT_TI_UYVY == info.format) {
+                writeCroppedUYVY(offset, info.width, info.width, info.height,
+                                 crop, fd, buffer);
             } else if (size != write(fd, buffer + offset, size)) {
                 printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
             }
@@ -704,9 +743,19 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
+    size_t tapInMinUndequeued = 0;
 
     int aligned_width, aligned_height;
-    aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
+
+    pixformat = bufinfo.format;
+
+    // Aligning is not needed for Bayer
+    if ( ( pixformat == HAL_PIXEL_FORMAT_TI_Y16 ) ||
+         ( pixformat == HAL_PIXEL_FORMAT_TI_UYVY ) ) {
+        aligned_width = bufinfo.crop.right - bufinfo.crop.left;
+    } else {
+        aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
+    }
     aligned_height = bufinfo.crop.bottom - bufinfo.crop.top;
     printf("aligned width: %d height: %d \n", aligned_width, aligned_height);
 
@@ -714,13 +763,12 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
         return;
     }
 
-    if ( NULL != format ) {
-        pixformat = getHalPixFormat(format);
-    }
-
     native_window_set_usage(mWindowTapIn.get(),
                             getUsageFromANW(pixformat));
-    native_window_set_buffer_count(mWindowTapIn.get(), 1);
+    mWindowTapIn->perform(mWindowTapIn.get(),
+                          NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
+                          &tapInMinUndequeued);;
+    native_window_set_buffer_count(mWindowTapIn.get(), tapInMinUndequeued);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
 
@@ -728,7 +776,9 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
     // queue the buffer directly to tapin surface. if the dimensions are different
     // then the aligned ones, then we have to copy the buffer into our own buffer
     // to make sure the stride of the buffer is correct
-    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
+    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height) ||
+        ( pixformat == HAL_PIXEL_FORMAT_TI_Y16 ) ||
+        ( pixformat == HAL_PIXEL_FORMAT_TI_UYVY) ) {
         void *dest[3] = { 0 };
         void *src[3] = { 0 };
         Rect bounds(aligned_width, aligned_height);
@@ -742,6 +792,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, Shot
         if (src[0]) {
             switch (pixformat) {
                 case HAL_PIXEL_FORMAT_TI_Y16:
+                case HAL_PIXEL_FORMAT_TI_UYVY:
                     copyCroppedPacked16(bufinfo.offset,
                                         bufinfo.width,
                                         bufinfo.width,
