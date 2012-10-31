@@ -58,6 +58,7 @@ static int getUsageFromANW(int format)
     switch (format) {
         case HAL_PIXEL_FORMAT_TI_NV12:
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             // This usage flag indicates to gralloc we want the
             // buffers to come from system heap
             usage |= GRALLOC_USAGE_PRIVATE_0;
