@@ -134,6 +134,7 @@ static int getUsageFromANW(int format)
     switch (format) {
         case HAL_PIXEL_FORMAT_TI_NV12:
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             // This usage flag indicates to gralloc we want the
             // buffers to come from system heap
             usage |= GRALLOC_USAGE_PRIVATE_0;
@@ -211,7 +212,7 @@ static status_t writeCroppedUYVY(unsigned int offset,
     unsigned char *src = NULL;
     int write_size;
 
-    if (!buffer) {
+    if (!buffer || !crop.isValid()) {
         return BAD_VALUE;
     }
 
@@ -245,7 +246,7 @@ static status_t copyCroppedNV12(unsigned int offset,
     unsigned int uvoffset;
     int write_size;
 
-    if (!bufferSrc || !bufferDst) {
+    if (!bufferSrc || !bufferDst || !crop.isValid()) {
         return BAD_VALUE;
     }
 
@@ -291,7 +292,7 @@ static status_t copyCroppedPacked16(unsigned int offset,
 {
     unsigned char *src = NULL, *dst = NULL;
 
-    if (!bufferSrc || !bufferDst) {
+    if (!bufferSrc || !bufferDst || !crop.isValid()) {
         return BAD_VALUE;
     }
 
@@ -659,6 +660,9 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     // re-calculate size and offset
     size = calcBufSize((int) graphic_buffer->getPixelFormat(), crop.width(), crop.height());
     offset = calcOffset((int) graphic_buffer->getPixelFormat(), info.width, crop.top, crop.left);
+
+    info.offset = offset;
+    mReturnedBuffers.add(info);
 
     // Do not write buffer to file if we are streaming capture
     // It adds too much latency
