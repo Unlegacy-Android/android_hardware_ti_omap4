@@ -24,14 +24,11 @@
 #include "CameraHal.h"
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"
-#include "Decoder_libjpeg.h"
 
 namespace Ti {
 namespace Camera {
 
-//#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
-#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_MJPEG
-#define DEFAULT_CAPTURE_FORMAT V4L2_PIX_FMT_YUYV
+#define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
 
 #define NB_BUFFER 10
 #define DEVICE "/dev/videoxx"
@@ -156,7 +153,7 @@ private:
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();
 
-    char * GetFrame(int &index, int &filledLen);
+    char * GetFrame(int &index);
 
     int previewThread();
 
@@ -202,7 +199,7 @@ private:
     int mPreviewBufferCountQueueable;
     int mCaptureBufferCount;
     int mCaptureBufferCountQueueable;
-    CameraBuffer *mPreviewBufs[NB_BUFFER];
+    android::KeyedVector<CameraBuffer *, int> mPreviewBufs;
     android::KeyedVector<CameraBuffer *, int> mCaptureBufs;
     mutable android::Mutex mPreviewBufsLock;
     mutable android::Mutex mCaptureBufsLock;
@@ -233,9 +230,6 @@ private:
     int nQueued;
     int nDequeued;
 
-    Decoder_libjpeg jpgdecoder;
-    unsigned char *jpeg_with_dht_buffer[NB_BUFFER];
-    unsigned int jpeg_with_dht_buffer_size;
 };
 
 } // namespace Camera
