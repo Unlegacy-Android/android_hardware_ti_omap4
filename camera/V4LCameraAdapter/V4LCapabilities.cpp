@@ -43,7 +43,7 @@ static const char PARAM_SEP[] = ",";
 //Camera defaults
 const char V4LCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
 const char V4LCameraAdapter::DEFAULT_PICTURE_SIZE[] = "640x480";
-const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv422i-yuyv";
+const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv420sp";
 const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
@@ -115,6 +115,8 @@ status_t V4LCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
         }
     }
     strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
+    strncat (supported, PARAM_SEP, 1 );
+    strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420SP, MAX_PROP_VALUE_LENGTH - 1);
     params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     return NO_ERROR;
 }

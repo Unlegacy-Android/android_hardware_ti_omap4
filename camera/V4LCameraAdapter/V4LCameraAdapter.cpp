@@ -1328,11 +1328,12 @@ void V4LCameraAdapter::returnOutputBuffer(int index)
 {
     LOG_FUNCTION_NAME;
 
-    int width, height;
+    size_t width, height;
     int stride = 4096;
     CameraFrame frame;
 
-    mParams.getPreviewSize(&width, &height);
+    getFrameSize(width, height);
+
     android::Mutex::Autolock slock(mSubscriberLock);
 
     android::sp<MediaBuffer>& buffer = mOutBuffers.editItemAt(index);
@@ -1341,7 +1342,12 @@ void V4LCameraAdapter::returnOutputBuffer(int index)
 
     frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
     frame.mBuffer = cbuffer;
-    frame.mLength = width*height*3/2;
+    if (isNeedToUseDecoder()) {
+        //We always get NV12 on out, when using decoder.
+        frame.mLength = height * stride * 3 / 2;
+    } else {
+        frame.mLength = CameraHal::calculateBufferSize(mParams.getPreviewFormat(), width, height);
+    }
     frame.mAlignment = stride;
     frame.mOffset = buffer->getOffset();
     frame.mTimestamp = buffer->getTimestamp();
