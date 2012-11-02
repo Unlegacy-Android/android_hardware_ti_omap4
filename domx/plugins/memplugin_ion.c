@@ -146,6 +146,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
     {
         eError = MEMPLUGIN_ERROR_BADPARAMETER;
         DOMX_ERROR("%s: width should be positive %d", __FUNCTION__,pIonBufferParams->nWidth);
+        goto EXIT;
     }
 
     if(pMemPluginHdl->pPluginExtendedInfo == NULL)

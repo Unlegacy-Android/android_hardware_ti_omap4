@@ -798,6 +798,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		if(eMemError != MEMPLUGIN_ERROR_NONE)
 		{
 			DOMX_ERROR("Allocation failed %d",eMemError);
+			eError = OMX_ErrorInsufficientResources;
 			goto EXIT;
 		}
 		pCompPrv->tBufList[currentBuffer].bufferAccessors[0].pBufferHandle = newbuffer_prop.sBuffer_accessor.pBufferHandle;
@@ -1069,6 +1070,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		if(eMemError != MEMPLUGIN_ERROR_NONE)
 		{
 			DOMX_ERROR("Allocation failed %d",eMemError);
+			eError = OMX_ErrorInsufficientResources;
 			goto EXIT;
 		}
 		((OMX_TI_PLATFORMPRIVATE *)pBufferHeader->
