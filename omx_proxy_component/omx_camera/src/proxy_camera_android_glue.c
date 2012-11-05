@@ -54,7 +54,6 @@
 #include "memplugin_ion.h"
 
 #define MAX_NUM_INTERNAL_BUFFERS 4
-extern OMX_PTR gComponentBufferAllocation[PROXY_MAXNUMOFPORTS][MAX_NUM_INTERNAL_BUFFERS];
 OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
     hComponent, OMX_IN OMX_INDEXTYPE nParamIndex,
     OMX_INOUT OMX_PTR pComponentParameterStructure)
@@ -65,6 +64,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
     MEMPLUGIN_BUFFER_PROPERTIES newBuffer_prop,delBuffer_prop;
     OMX_S32 ret = 0;
     PROXY_COMPONENT_PRIVATE *pCompPrv;
+    OMX_PROXY_CAM_PRIVATE* pCamPrv;
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
     OMX_U32 stride_Y = 0;
     OMX_TI_PARAM_COMPONENTBUFALLOCTYPE *bufferalloc = NULL;
@@ -74,6 +74,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
 
 	DOMX_ENTER("%s: ENTERING",__FUNCTION__);
     pCompPrv = (PROXY_COMPONENT_PRIVATE *)hComp->pComponentPrivate;
+    pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
     pMemPluginHdl = ((MEMPLUGIN_OBJECT *)pCompPrv->pMemPluginHandle);
     pIonParams = ((MEMPLUGIN_ION_PARAMS *)pMemPluginHdl->pPluginExtendedInfo);
     MEMPLUGIN_BUFFER_PARAMS_INIT(newBuffer_params);
@@ -121,11 +122,11 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
                 if (eError != OMX_ErrorNone) {
                    MemPlugin_Free(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc, &newBuffer_params,&newBuffer_prop);
                 } else {
-                   if (gComponentBufferAllocation[port][index]) {
-					   delBuffer_prop.sBuffer_accessor.pBufferHandle = gComponentBufferAllocation[port][index];
+                   if (pCamPrv->gComponentBufferAllocation[port][index]) {
+					   delBuffer_prop.sBuffer_accessor.pBufferHandle = pCamPrv->gComponentBufferAllocation[port][index];
                        MemPlugin_Free(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc,&delBuffer_params,&delBuffer_prop);
                    }
-                   gComponentBufferAllocation[port][index] = newBuffer_prop.sBuffer_accessor.pBufferHandle;
+                   pCamPrv->gComponentBufferAllocation[port][index] = newBuffer_prop.sBuffer_accessor.pBufferHandle;
                 }
 		close (newBuffer_prop.sBuffer_accessor.bufferFd);
 		newBuffer_prop.sBuffer_accessor.bufferFd = -1;
