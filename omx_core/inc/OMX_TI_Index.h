@@ -275,11 +275,13 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_IndexParamVC1BitStreamFormatSupported,          /**< 0x7F000B1 reference: OMX_VC1BITSTREAMFORMATTYPE */
     OMX_IndexParamVC1BitStreamFormat,                   /**< 0x7F000B2 reference: OMX_VC1BITSTREAMFORMATTYPE */
     OMX_IndexParamVC1BitStreamFormatSelect,             /**< 0x7F000B3 reference: OMX_VC1BITSTREAMFORMATTYPE */
-    OMX_TI_IndexConfigGammaTable,                       /**< 0x7F0000B4 reference: OMX_TI_CONFIG_SHAREDBUFFER */
 
     /*H264 Encoder specific Indices*/
-    OMX_TI_IndexConfigVideoIntraRefresh,                /**< 0x7F0000B5 reference: OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE */
-    OMX_TI_IndexConfigDynamicCameraDescriptor,          /**< 0x7F000B4 reference: OMX_TI_CONFIG_SHAREDBUFFER */
+    OMX_TI_IndexConfigVideoIntraRefresh,                /**< 0x7F0000B4 reference: OMX_TI_VIDEO_PARAM_INTRAREFRESHTYPE */
+
+    OMX_TI_IndexConfigGammaTable,                       /**< 0x7F0000B5 reference: OMX_TI_CONFIG_SHAREDBUFFER */
+    OMX_TI_IndexConfigDynamicCameraDescriptor,          /**< 0x7F0000B6 reference: OMX_TI_CONFIG_SHAREDBUFFER */
+
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 
 } OMX_TI_INDEXTYPE;
