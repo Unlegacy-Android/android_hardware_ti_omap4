@@ -34,7 +34,7 @@ struct ext_transform {
 typedef struct ext_transform ext_transform_t;
 
 /* cloning support and state */
-struct omap4_hwc_ext {
+struct omap_hwc_ext {
     /* support */
     ext_transform_t mirror;             /* mirroring settings */
     ext_transform_t dock;               /* docking settings */
@@ -66,7 +66,7 @@ struct omap4_hwc_ext {
     enum S3DLayoutType s3d_type;
     enum S3DLayoutOrder s3d_order;
 };
-typedef struct omap4_hwc_ext omap4_hwc_ext_t;
+typedef struct omap_hwc_ext omap_hwc_ext_t;
 
 enum bltpolicy {
     BLTPOLICY_DISABLED = 0,
@@ -79,12 +79,12 @@ enum bltmode {
     BLTMODE_REGION = 1,   /* Attempt to blit layers via regions */
 };
 
-struct omap4_hwc_module {
+struct omap_hwc_module {
     hwc_module_t base;
 
     IMG_framebuffer_device_public_t *fb_dev;
 };
-typedef struct omap4_hwc_module omap4_hwc_module_t;
+typedef struct omap_hwc_module omap_hwc_module_t;
 
 struct counts {
     uint32_t possible_overlay_layers;
@@ -103,7 +103,7 @@ struct counts {
 };
 typedef struct counts counts_t;
 
-struct omap4_hwc_device {
+struct omap_hwc_device {
     /* static data */
     hwc_composer_device_t base;
     hwc_procs_t *procs;
@@ -126,7 +126,7 @@ struct omap4_hwc_device {
 
     bool on_tv;                  /* using a tv */
     int force_sgx;
-    omap4_hwc_ext_t ext;         /* external mirroring data */
+    omap_hwc_ext_t ext;         /* external mirroring data */
     int idle;
 
     float primary_m[2][3];       /* internal transformation matrix */
@@ -161,6 +161,6 @@ struct omap4_hwc_device {
     struct ion_handle *ion_handles[2];
 
 };
-typedef struct omap4_hwc_device omap4_hwc_device_t;
+typedef struct omap_hwc_device omap_hwc_device_t;
 
 #endif
