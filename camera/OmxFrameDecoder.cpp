@@ -18,6 +18,8 @@
 #include "OmxFrameDecoder.h"
 #include "OMX_TI_IVCommon.h"
 #include "OMX_TI_Index.h"
+#include "Decoder_libjpeg.h"
+
 
 namespace Ti {
 namespace Camera {
@@ -157,13 +159,14 @@ OMX_ERRORTYPE OmxFrameDecoder::fillBufferDoneCallback(OMX_HANDLETYPE hComponent,
 
 OmxFrameDecoder::OmxFrameDecoder(DecoderType type)
     : mOmxInialized(false), mCurrentState(OmxDecoderState_Unloaded), mPreviousState(OmxDecoderState_Unloaded),
-    mStopping(false), mDecoderType(type) {
+    mStopping(false), mDecoderType(type), mIsNeedCheckDHT(true), mAlwaysAppendDHT(false) {
 }
 
 OmxFrameDecoder::~OmxFrameDecoder() {
 }
 
 OMX_ERRORTYPE OmxFrameDecoder::emptyBufferDoneHandler(OMX_BUFFERHEADERTYPE* pBuffHead) {
+    LOG_FUNCTION_NAME;
     android::AutoMutex lock(mHwLock);
 
     int bufferIndex = reinterpret_cast<int>(pBuffHead->pAppPrivate);
@@ -177,6 +180,7 @@ OMX_ERRORTYPE OmxFrameDecoder::emptyBufferDoneHandler(OMX_BUFFERHEADERTYPE* pBuf
 }
 
 OMX_ERRORTYPE OmxFrameDecoder::fillBufferDoneHandler(OMX_BUFFERHEADERTYPE* pBuffHead) {
+    LOG_FUNCTION_NAME;
     android::AutoMutex lock(mHwLock);
 
     int index = (int)pBuffHead->pAppPrivate;
@@ -517,7 +521,6 @@ status_t OmxFrameDecoder::omxGetHandle(OMX_HANDLETYPE *handle, OMX_PTR pAppData,
     return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
-
 status_t OmxFrameDecoder::omxEmptyThisBuffer(android::sp<MediaBuffer>& inBuffer, OMX_BUFFERHEADERTYPE *pInBufHdr) {
 
     LOG_FUNCTION_NAME;
@@ -533,10 +536,28 @@ status_t OmxFrameDecoder::omxEmptyThisBuffer(android::sp<MediaBuffer>& inBuffer,
         CAMHAL_LOGE("Can't copy IN buffer due to it too small %d than needed %d", def.nBufferSize, inBuffer->filledLen);
         return UNKNOWN_ERROR;
     }
-    memcpy(pInBufHdr->pBuffer, reinterpret_cast<unsigned char*>(inBuffer->buffer),  inBuffer->filledLen);
-    CAMHAL_LOGV("Copied %d bytes into In buffer with bh=%p", inBuffer->filledLen, pInBufHdr);
+
+    int filledLen = inBuffer->filledLen;
+    unsigned char* dataBuffer = reinterpret_cast<unsigned char*>(inBuffer->buffer);
+
+    //If decoder type MJPEG we check if append DHT forced and if true append it
+    //in other case we check mIsNeedCheckDHT and if true search for DHT in buffer
+    //if we don't found it - will do append
+    //once we find that buffer not contain DHT we will append it each time
+    if ((mDecoderType == DecoderType_MJPEG) && ((mAlwaysAppendDHT) || ((mIsNeedCheckDHT) &&
+            (mIsNeedCheckDHT = !Decoder_libjpeg::isDhtExist(dataBuffer, filledLen))))) {
+        CAMHAL_LOGV("Will append DHT to buffer");
+        Decoder_libjpeg::appendDHT(dataBuffer, filledLen, pInBufHdr->pBuffer, filledLen + Decoder_libjpeg::readDHTSize());
+        filledLen += Decoder_libjpeg::readDHTSize();
+        mIsNeedCheckDHT = false;
+        mAlwaysAppendDHT = true;
+    } else {
+        memcpy(pInBufHdr->pBuffer, dataBuffer, filledLen);
+    }
+
+    CAMHAL_LOGV("Copied %d bytes into In buffer with bh=%p", filledLen, pInBufHdr);
     CAMHAL_LOGV("Empty this buffer id=%d timestamp %lld offset=%d", inBuffer->bufferId, pInBufHdr->nTimeStamp, pInBufHdr->nOffset);
-    pInBufHdr->nFilledLen = inBuffer->filledLen;
+    pInBufHdr->nFilledLen = filledLen;
     pInBufHdr->nTimeStamp = inBuffer->getTimestamp();
     pInBufHdr->nFlags = 16;
     pInBufHdr->nOffset = 0;
@@ -972,7 +993,7 @@ void OmxFrameDecoder::doStop() {
 
 void OmxFrameDecoder::doFlush() {
     LOG_FUNCTION_NAME;
-
+    mIsNeedCheckDHT = true;
     LOG_FUNCTION_NAME_EXIT;
 }
 
@@ -1047,7 +1068,7 @@ bool OmxFrameDecoder::getPaddedDimensions(size_t &width, size_t &height) {
 
     }
 
-    CAMHAL_LOGE("WxH updated to padded values : %d x %d", width, height);
+    CAMHAL_LOGD("WxH updated to padded values : %d x %d", width, height);
     return true;
 }
 

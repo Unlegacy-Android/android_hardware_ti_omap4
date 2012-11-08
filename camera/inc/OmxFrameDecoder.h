@@ -192,6 +192,11 @@ private:
 
     bool mStopping;
     DecoderType mDecoderType;
+
+    // If true we will search for DHT in JPEG buffer
+    bool mIsNeedCheckDHT;
+    // If true we always append DHT to JPEG buffer
+    bool mAlwaysAppendDHT;
 };
 
 } //namespace Camera

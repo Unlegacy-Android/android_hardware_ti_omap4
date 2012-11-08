@@ -37,8 +37,9 @@ class Decoder_libjpeg
 public:
     Decoder_libjpeg();
     ~Decoder_libjpeg();
-    int readDHTSize();
-    int appendDHT(unsigned char *jpeg_src, int filled_len, unsigned char *jpeg_with_dht_buffer, int buff_size);
+    static int readDHTSize();
+    static bool isDhtExist(unsigned char *jpeg_src,  int filled_len);
+    static int appendDHT(unsigned char *jpeg_src, int filled_len, unsigned char *jpeg_with_dht_buffer, int buff_size);
     bool decode(unsigned char *jpeg_src, int filled_len, unsigned char *nv12_buffer, int stride);
 
 private:

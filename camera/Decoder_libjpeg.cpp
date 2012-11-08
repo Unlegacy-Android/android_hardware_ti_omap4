@@ -166,6 +166,24 @@ int Decoder_libjpeg::readDHTSize()
     return sizeof(jpeg_odml_dht);
 }
 
+// 0xFF 0xC4 - DHT (Define Huffman Table) marker
+// 0xFF 0xD9 - SOI (Start Of Image) marker
+// 0xFF 0xD9 - EOI (End Of Image) marker
+// This function return true if if found DHT
+bool Decoder_libjpeg::isDhtExist(unsigned char *jpeg_src,  int filled_len) {
+    if (filled_len <= 0) {
+        return false;
+    }
+
+    for (int i = 1; i < filled_len; i++) {
+        if((jpeg_src[i - 1] == 0xFF) && (jpeg_src[i] == 0xC4)) {
+            CAMHAL_LOGD("Found DHT (Define Huffman Table) marker");
+            return true;
+        }
+    }
+    return false;
+}
+
 int Decoder_libjpeg::appendDHT(unsigned char *jpeg_src, int filled_len, unsigned char *jpeg_with_dht_buffer, int buff_size)
 {
     /* Appending DHT to JPEG */
