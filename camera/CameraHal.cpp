@@ -2799,7 +2799,6 @@ status_t CameraHal::restartPreview()
         android::AutoMutex lock(mLock);
         if (!mCapModeBackup.isEmpty()) {
             mParameters.set(TICameraParameters::KEY_CAP_MODE, mCapModeBackup.string());
-            mCapModeBackup = "";
         } else {
             mParameters.set(TICameraParameters::KEY_CAP_MODE, "");
         }
