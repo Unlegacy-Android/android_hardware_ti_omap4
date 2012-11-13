@@ -32,7 +32,6 @@
 #include <cutils/log.h>
 #include <cutils/properties.h>
 #include <hardware/hwcomposer.h>
-#include "hal_public.h"
 #else
 #include "hwcomposer.h"
 #include "buffer_handle.h"
@@ -40,7 +39,7 @@
 #define HW_ALIGN   32
 #endif
 
-#include "rgz_2d.h"
+#include "hwc_dev.h"
 
 #ifdef RGZ_TEST_INTEGRATION
 extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);

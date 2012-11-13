@@ -23,6 +23,11 @@
 #include <hardware/hwcomposer.h>
 #include <ui/S3DFormat.h>
 
+#include <linux/bltsville.h>
+#include <video/dsscomp.h>
+#include <video/omap_hwc.h>
+
+#include "hal_public.h"
 #include "rgz_2d.h"
 
 struct ext_transform {

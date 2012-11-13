@@ -40,16 +40,9 @@
 
 #include <linux/fb.h>
 #include <linux/omapfb.h>
-#include <linux/bltsville.h>
-#include <linux/ion.h>
-#include <linux/omap_ion.h>
 #include <ion/ion.h>
-#include <video/dsscomp.h>
-#include <video/omap_hwc.h>
 
-#include "hal_public.h"
 #include "hwc_dev.h"
-#include "rgz_2d.h"
 
 #define min(a, b) ( { typeof(a) __a = (a), __b = (b); __a < __b ? __a : __b; } )
 #define max(a, b) ( { typeof(a) __a = (a), __b = (b); __a > __b ? __a : __b; } )
