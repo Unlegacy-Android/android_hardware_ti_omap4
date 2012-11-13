@@ -122,9 +122,6 @@ struct omap_hwc_device {
     int hdmi_fb_fd;              /* file descriptor for /dev/fb1 */
     int pipe_fds[2];             /* pipe to event thread */
 
-    int img_mem_size;            /* size of fb for hdmi */
-    void *img_mem_ptr;           /* start of fb for hdmi */
-
     int flags_rgb_order;
     int flags_nv12_only;
     float upscaled_nv12_limit;

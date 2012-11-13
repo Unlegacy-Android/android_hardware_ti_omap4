@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 #include <cutils/properties.h>
@@ -35,7 +34,6 @@
 #include <ui/S3DFormat.h>
 #include <utils/Timers.h>
 #include <EGL/egl.h>
-#include <png.h>
 #include <edid_parser.h>
 
 #include <linux/fb.h>
@@ -43,6 +41,7 @@
 #include <ion/ion.h>
 
 #include "hwc_dev.h"
+#include "dock_image.h"
 
 #define min(a, b) ( { typeof(a) __a = (a), __b = (b); __a < __b ? __a : __b; } )
 #define max(a, b) ( { typeof(a) __a = (a), __b = (b); __a > __b ? __a : __b; } )
@@ -64,15 +63,6 @@ enum {
     EXT_ROTATION    = 3,        /* rotation while mirroring */
     EXT_HFLIP       = (1 << 2), /* flip l-r on output (after rotation) */
 };
-
-/* ARGB image */
-struct image_info {
-    int width;
-    int height;
-    int rowbytes;
-    int size;
-    uint8_t *ptr;
-} dock_image = { .rowbytes = 0 };
 
 #define HAL_FMT(f) ((f) == HAL_PIXEL_FORMAT_TI_NV12 ? "NV12" : \
                     (f) == HAL_PIXEL_FORMAT_TI_NV12_1D ? "NV12" : \
@@ -1764,9 +1754,10 @@ static int hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* list)
         } else if (ext->current.docking && ix_docking < 0 && ext->force_dock) {
             ix_docking = dsscomp->num_ovls;
             struct dss2_ovl_info *oi = &dsscomp->ovls[ix_docking];
+            image_info_t *dock_image = get_dock_image();
             setup_layer_base(&oi->cfg, 0, HAL_PIXEL_FORMAT_BGRA_8888, 1,
-                             dock_image.width, dock_image.height);
-            oi->cfg.stride = dock_image.rowbytes;
+                             dock_image->width, dock_image->height);
+            oi->cfg.stride = dock_image->rowbytes;
             if (clone_external_layer(hwc_dev, ix_docking) == 0) {
                 oi->addressing = OMAP_DSS_BUFADDR_FB;
                 oi->ba = 0;
@@ -2005,122 +1996,6 @@ static void hwc_dump(struct hwc_composer_device *dev, char *buff, int buff_len)
     dump_printf(&log, "\n");
 }
 
-static void free_png_image(omap_hwc_device_t *hwc_dev, struct image_info *img)
-{
-    memset(img, 0, sizeof(*img));
-}
-
-static int load_png_image(omap_hwc_device_t *hwc_dev, char *path, struct image_info *img)
-{
-    void *ptr = NULL;
-    png_bytepp row_pointers = NULL;
-
-    FILE *fd = fopen(path, "rb");
-    if (!fd) {
-        ALOGE("failed to open PNG file %s: (%d)", path, errno);
-        return -EINVAL;
-    }
-
-    const int SIZE_PNG_HEADER = 8;
-    uint8_t header[SIZE_PNG_HEADER];
-    fread(header, 1, SIZE_PNG_HEADER, fd);
-    if (png_sig_cmp(header, 0, SIZE_PNG_HEADER)) {
-        ALOGE("%s is not a PNG file", path);
-        goto fail;
-    }
-
-    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!png_ptr)
-         goto fail_alloc;
-    png_infop info_ptr = png_create_info_struct(png_ptr);
-    if (!info_ptr)
-         goto fail_alloc;
-
-    if (setjmp(png_jmpbuf(png_ptr)))
-        goto fail_alloc;
-
-    png_init_io(png_ptr, fd);
-    png_set_sig_bytes(png_ptr, SIZE_PNG_HEADER);
-    png_set_user_limits(png_ptr, limits.max_width, limits.max_height);
-    png_read_info(png_ptr, info_ptr);
-
-    uint8_t bit_depth = png_get_bit_depth(png_ptr, info_ptr);
-    uint32_t width = png_get_image_width(png_ptr, info_ptr);
-    uint32_t height = png_get_image_height(png_ptr, info_ptr);
-    uint8_t color_type = png_get_color_type(png_ptr, info_ptr);
-
-    switch (color_type) {
-    case PNG_COLOR_TYPE_PALETTE:
-        png_set_palette_to_rgb(png_ptr);
-        png_set_filler(png_ptr, 128, PNG_FILLER_AFTER);
-        break;
-    case PNG_COLOR_TYPE_GRAY:
-        if (bit_depth < 8) {
-            png_set_expand_gray_1_2_4_to_8(png_ptr);
-            if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
-                png_set_tRNS_to_alpha(png_ptr);
-        } else {
-            png_set_filler(png_ptr, 128, PNG_FILLER_AFTER);
-        }
-        /* fall through */
-    case PNG_COLOR_TYPE_GRAY_ALPHA:
-        png_set_gray_to_rgb(png_ptr);
-        break;
-    case PNG_COLOR_TYPE_RGB:
-        png_set_filler(png_ptr, 128, PNG_FILLER_AFTER);
-        /* fall through */
-    case PNG_COLOR_TYPE_RGB_ALPHA:
-        png_set_bgr(png_ptr);
-        break;
-    default:
-        ALOGE("unsupported PNG color: %x", color_type);
-        goto fail_alloc;
-    }
-
-    if (bit_depth == 16)
-        png_set_strip_16(png_ptr);
-
-    const uint32_t bpp = 4;
-    img->size = ALIGN(width * height * bpp, 4096);
-    if (img->size > hwc_dev->img_mem_size) {
-        ALOGE("image does not fit into framebuffer area (%d > %d)", img->size, hwc_dev->img_mem_size);
-        goto fail_alloc;
-    }
-    img->ptr = hwc_dev->img_mem_ptr;
-
-    row_pointers = calloc(height, sizeof(*row_pointers));
-    if (!row_pointers) {
-        ALOGE("failed to allocate row pointers");
-        goto fail_alloc;
-    }
-    uint32_t i;
-    for (i = 0; i < height; i++)
-        row_pointers[i] = img->ptr + i * width * bpp;
-    png_set_rows(png_ptr, info_ptr, row_pointers);
-    png_read_update_info(png_ptr, info_ptr);
-    img->rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-
-    png_read_image(png_ptr, row_pointers);
-    png_read_end(png_ptr, NULL);
-    free(row_pointers);
-    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-    fclose(fd);
-    img->width = width;
-    img->height = height;
-    return 0;
-
-fail_alloc:
-    free_png_image(hwc_dev, img);
-    free(row_pointers);
-    if (!png_ptr || !info_ptr)
-        ALOGE("failed to allocate PNG structures");
-    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-fail:
-    fclose(fd);
-    return -EINVAL;
-}
-
-
 static int hwc_device_close(hw_device_t* device)
 {
     omap_hwc_device_t *hwc_dev = (omap_hwc_device_t *) device;;
@@ -2290,10 +2165,7 @@ static void handle_hotplug(omap_hwc_device_t *hwc_dev)
             ext->dock.rotation = 0;
             ext->dock.hflip = 0;
 
-            if (!dock_image.rowbytes) {
-                property_get("persist.hwc.dock_image", value, "/vendor/res/images/dock/dock.png");
-                load_png_image(hwc_dev, value, &dock_image);
-            }
+            load_dock_image();
         }
 
         /* select best mode for mirroring */
@@ -2576,20 +2448,9 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
         goto done;
     }
 
-    struct fb_fix_screeninfo fix;
-    if (ioctl(hwc_dev->fb_fd, FBIOGET_FSCREENINFO, &fix)) {
-        ALOGE("failed to get fb info (%d)", errno);
-        err = -errno;
+    err = init_dock_image(hwc_dev, limits.max_width, limits.max_height);
+    if (err)
         goto done;
-    }
-
-    hwc_dev->img_mem_size = fix.smem_len;
-    hwc_dev->img_mem_ptr = mmap(NULL, fix.smem_len, PROT_WRITE, MAP_SHARED, hwc_dev->fb_fd, 0);
-    if (hwc_dev->img_mem_ptr == MAP_FAILED) {
-        ALOGE("failed to map fb memory");
-        err = -errno;
-        goto done;
-    }
 
     /* Allocate the maximum buffers that we can receive from HWC */
     hwc_dev->buffers = malloc(sizeof(buffer_handle_t) * MAX_HWC_LAYERS);
