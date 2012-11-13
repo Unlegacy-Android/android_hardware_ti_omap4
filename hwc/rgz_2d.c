@@ -28,31 +28,17 @@
 #include <video/dsscomp.h>
 #include <video/omap_hwc.h>
 
-#ifndef RGZ_TEST_INTEGRATION
 #include <cutils/log.h>
 #include <cutils/properties.h>
 #include <hardware/hwcomposer.h>
-#else
-#include "hwcomposer.h"
-#include "buffer_handle.h"
-#define ALIGN(x,a) (((x) + (a) - 1L) & ~((a) - 1L))
-#define HW_ALIGN   32
-#endif
 
 #include "hwc_dev.h"
 
-#ifdef RGZ_TEST_INTEGRATION
-extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);
-#define BVDUMP(p,t,parms) BVDump(p, t, parms)
-#define HANDLE_TO_BUFFER(h) handle_to_buffer(h)
-#define HANDLE_TO_STRIDE(h) handle_to_stride(h)
-#else
 static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define BVDUMP(p,t,parms)
 #define HANDLE_TO_BUFFER(h) NULL
 /* Needs to be meaningful for TILER & GFX buffers and NV12 */
 #define HANDLE_TO_STRIDE(h) rgz_handle_to_stride(h)
-#endif
 #define DSTSTRIDE(dstgeom) dstgeom->virtstride
 
 /* Borrowed macros from hwc.c vvv - consider sharing later */
@@ -74,14 +60,8 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define is_OPAQUE(format) ((format) == HAL_PIXEL_FORMAT_RGB_565 || (format) == HAL_PIXEL_FORMAT_RGBX_8888 || (format) == HAL_PIXEL_FORMAT_BGRX_8888)
 
 /* OUTP the means for grabbing diagnostic data */
-#ifndef RGZ_TEST_INTEGRATION
 #define OUTP ALOGI
 #define OUTE ALOGE
-#else
-#define OUTP(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
-#define OUTE OUTP
-#define ALOGD_IF(debug, ...) { if (debug) OUTP(__VA_ARGS__); }
-#endif
 
 #define IS_BVCMD(params) (params->op == RGZ_OUT_BVCMD_REGION || params->op == RGZ_OUT_BVCMD_PAINT)
 
@@ -1514,63 +1494,16 @@ static int hal_to_ocd(int color)
     }
 }
 
-/*
- * The loadbltsville fn is only needed for testing, the bltsville shared
- * libraries aren't planned to be used directly in production code here
- */
 static BVFN_MAP bv_map;
 static BVFN_BLT bv_blt;
 static BVFN_UNMAP bv_unmap;
-#ifndef RGZ_TEST_INTEGRATION
-gralloc_module_t const *gralloc;
-#endif
-#define BLTSVILLELIB "libbltsville_cpu.so"
 
-#ifdef RGZ_TEST_INTEGRATION
-static int loadbltsville(void)
-{
-    void *hndl = dlopen(BLTSVILLELIB, RTLD_LOCAL | RTLD_LAZY);
-    if (!hndl) {
-        OUTE("Loading bltsville failed");
-        return -1;
-    }
-    bv_map = (BVFN_MAP)dlsym(hndl, "bv_map");
-    bv_blt = (BVFN_BLT)dlsym(hndl, "bv_blt");
-    bv_unmap = (BVFN_UNMAP)dlsym(hndl, "bv_unmap");
-    if(!bv_blt || !bv_map || !bv_unmap) {
-        OUTE("Missing bltsville fn %p %p %p", bv_map, bv_blt, bv_unmap);
-        return -1;
-    }
-    OUTP("Loaded %s", BLTSVILLELIB);
-
-#ifndef RGZ_TEST_INTEGRATION
-    hw_module_t const* module;
-    int err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module);
-    if (err != 0) {
-        OUTE("Loading gralloc failed");
-        return -1;
-    }
-    gralloc = (gralloc_module_t const *)module;
-#endif
-    return 0;
-}
-#else
-static int loadbltsville(void) {
-    return 0;
-}
-#endif
-
-#ifndef RGZ_TEST_INTEGRATION
 static int rgz_handle_to_stride(IMG_native_handle_t *h)
 {
     int bpp = is_NV12(h->iFormat) ? 0 : (h->iFormat == HAL_PIXEL_FORMAT_RGB_565 ? 2 : 4);
     int stride = ALIGN(h->iWidth, HW_ALIGN) * bpp;
     return stride;
 }
-
-#endif
-
-extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);
 
 static int rgz_get_orientation(unsigned int transform)
 {
@@ -1599,10 +1532,6 @@ static int rgz_get_flip_flags(unsigned int transform, int use_src2_flags)
 
 static int rgz_hwc_layer_blit(rgz_out_params_t *params, rgz_layer_t *rgz_layer)
 {
-    static int loaded = 0;
-    if (!loaded)
-        loaded = loadbltsville() ? : 1; /* attempt load once */
-
     hwc_layer_t* layer = &rgz_layer->hwc_layer;
     blit_rect_t srcregion;
     rgz_get_displayframe_rect(layer, &srcregion);
@@ -1641,10 +1570,6 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
 static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params,
     blit_rect_t *damaged_area)
 {
-    static int loaded = 0;
-    if (!loaded)
-        loaded = loadbltsville() ? : 1; /* attempt load once */
-
     int lix;
     int ldepth = get_layer_ops(hregion, sidx, &lix);
     if (ldepth == 0) {
@@ -1939,7 +1864,6 @@ void rgz_profile_hwc(hwc_layer_list_t* list, int dispw, int disph)
     if (!list)  /* A NULL composition list can occur */
         return;
 
-#ifndef RGZ_TEST_INTEGRATION
     static char regiondump2[PROPERTY_VALUE_MAX] = "";
     char regiondump[PROPERTY_VALUE_MAX];
     property_get("debug.2dhwc.region", regiondump, "0");
@@ -1958,11 +1882,6 @@ void rgz_profile_hwc(hwc_layer_list_t* list, int dispw, int disph)
     /* 0 - off, 1 - human readable, 2 - CSV */
     property_get("debug.2dhwc.dumplayers", dumplayerdata, "0");
     int dumplayers = atoi(dumplayerdata);
-#else
-    char regiondump[] = "";
-    int dumplayers = 1;
-    int dumpregions = 0;
-#endif
     if (dumplayers && (list->flags & HWC_GEOMETRY_CHANGED)) {
         OUTP("<!-- BEGUN-LAYER-DUMP: %d -->", list->numHwLayers);
         rgz_print_layers(list, dumplayers == 1 ? 0 : 1);
