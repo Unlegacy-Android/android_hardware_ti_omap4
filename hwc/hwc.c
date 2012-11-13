@@ -42,6 +42,7 @@
 
 #include "hwc_dev.h"
 #include "dock_image.h"
+#include "sw_vsync.h"
 
 #define min(a, b) ( { typeof(a) __a = (a), __b = (b); __a < __b ? __a : __b; } )
 #define max(a, b) ( { typeof(a) __a = (a), __b = (b); __a > __b ? __a : __b; } )
@@ -2359,6 +2360,14 @@ static int hwc_eventControl(struct hwc_composer_device* dev, int event, int enab
         int val = !!enabled;
         int err;
 
+        if (hwc_dev->use_sw_vsync) {
+            if (enabled)
+                start_sw_vsync(hwc_dev);
+            else
+                stop_sw_vsync();
+            return 0;
+        }
+
         err = ioctl(hwc_dev->fb_fd, OMAPFB_ENABLEVSYNC, &val);
         if (err < 0)
             return -errno;
@@ -2401,17 +2410,11 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
     hwc_dev->base.common.tag = HARDWARE_DEVICE_TAG;
     hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_3;
 
-    char value[PROPERTY_VALUE_MAX];
-    property_get("ro.product.board", value, "");
-    if (strncmp("blaze", value, PROPERTY_VALUE_MAX) == 0) {
-        ALOGI("Revert to legacy HWC API for fake vsync");
-        hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
+    if (use_sw_vsync()) {
+        hwc_dev->use_sw_vsync = true;
+        init_sw_vsync(hwc_dev);
     }
 
-    if (strncmp("panda5", value, PROPERTY_VALUE_MAX) == 0) {
-        ALOGI("Revert to legacy HWC API for fake vsync");
-        hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
-    }
     hwc_dev->base.common.module = (hw_module_t *)module;
     hwc_dev->base.common.close = hwc_device_close;
     hwc_dev->base.prepare = hwc_prepare;
@@ -2519,6 +2522,7 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
     /* get debug properties */
 
     /* see if hwc is enabled at all */
+    char value[PROPERTY_VALUE_MAX];
     property_get("debug.hwc.rgb_order", value, "1");
     hwc_dev->flags_rgb_order = atoi(value);
     property_get("debug.hwc.nv12_only", value, "0");
