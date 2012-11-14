@@ -264,7 +264,7 @@ public:
         SetRotation             = 1 << 4,
         ECaptureSettingMax,
         ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ), /// all possible flags raised
-        ECaptureParamSettings = SetFormat | SetThumb | SetQuality, // Settings set with SetParam
+        ECaptureParamSettings = SetFormat | SetThumb | SetQuality | SetBurstExpBracket, // Settings set with SetParam
         ECaptureConfigSettings = (ECapturesettingsAll & ~ECaptureParamSettings)
     };
 
