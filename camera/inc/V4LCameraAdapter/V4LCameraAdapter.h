@@ -196,7 +196,7 @@ private:
     static status_t sortAscend(V4L_TI_CAPTYPE&, uint16_t ) ;
 
     status_t v4lIoctl(int, int, void*);
-    status_t v4lInitMmap(int&);
+    status_t v4lInitMmap(int& count, int width, int height);
     status_t v4lInitUsrPtr(int&);
     status_t v4lStartStreaming();
     status_t v4lStopStreaming(int nBufferCount);
@@ -253,6 +253,7 @@ private:
     android::Condition mStopCondition;
 
     CameraHal* mCameraHal;
+    int mSkipFramesCount;
 };
 
 } // namespace Camera
