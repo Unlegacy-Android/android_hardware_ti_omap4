@@ -2220,6 +2220,11 @@ status_t OMXCameraAdapter::startPreview()
     if ( OMX_ErrorNone == eError) {
         ret |= setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_AncillaryData);
         ret |= setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
+#ifdef CAMERAHAL_OMX_PROFILING
+        if ( UNLIKELY( mDebugProfile ) ) {
+            ret |= setExtraData(true, OMX_ALL, OMX_TI_ProfilerData);
+        }
+#endif
     }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -2472,6 +2477,9 @@ status_t OMXCameraAdapter::stopPreview() {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     status_t ret = NO_ERROR;
 
+#ifdef CAMERAHAL_OMX_PROFILING
+    ret |= setExtraData(false, OMX_ALL, OMX_TI_ProfilerData);
+#endif
     if (mTunnelDestroyed == false){
         ret = destroyTunnel();
         if (ret == ALREADY_EXISTS) {
@@ -3381,7 +3389,7 @@ status_t OMXCameraAdapter::storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader)
     if ( UNLIKELY( mDebugProfile ) ) {
 
         platformPrivate =  static_cast<OMX_TI_PLATFORMPRIVATE *> (pBuffHeader->pPlatformPrivate);
-        extraData = getExtradata(platformPrivate->pMetaDataBuffer,
+        extraData = getExtradata(platformPrivate,
                 static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData));
 
         if ( NULL != extraData ) {
