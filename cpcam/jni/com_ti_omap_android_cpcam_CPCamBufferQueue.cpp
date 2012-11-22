@@ -227,12 +227,19 @@ static void CPCamBufferQueue_classInit(JNIEnv* env, jclass clazz)
 static void CPCamBufferQueue_init(JNIEnv* env, jobject thiz,
         jobject weakThiz, jboolean allowSynchronous)
 {
-    sp<BufferQueue> bufferQueue(new BufferQueue(allowSynchronous, 1));
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    sp<BufferQueue> bufferQueue(new BufferQueue(allowSynchronous));
+#else
+    sp<BufferQueue> bufferQueue(new BufferQueue(allowSynchronous), 1);
+#endif
     if (bufferQueue == 0) {
         jniThrowException(env, OutOfResourcesException,
                 "Unable to create native SurfaceTexture");
         return;
     }
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    bufferQueue->setMaxAcquiredBufferCount(1);
+#endif
     CPCamBufferQueue_setCPCamBufferQueue(env, thiz, bufferQueue);
 
     jclass clazz = env->GetObjectClass(thiz);
@@ -308,7 +315,11 @@ static void CPCamBufferQueue_releaseBuffer(JNIEnv* env, jobject thiz, jint slot)
 {
     sp<BufferQueue> bufferQueue(CPCamBufferQueue_getCPCamBufferQueue(env, thiz));
 
+#ifdef ANDROID_API_JB_MR1_OR_LATER
+    bufferQueue->releaseBuffer(slot, EGL_NO_DISPLAY, EGL_NO_SYNC_KHR, Fence::NO_FENCE);
+#else
     bufferQueue->releaseBuffer(slot, EGL_NO_DISPLAY, EGL_NO_SYNC_KHR);
+#endif
 }
 
 static void CPCamBufferQueue_getCropRect(JNIEnv* env, jobject thiz,
