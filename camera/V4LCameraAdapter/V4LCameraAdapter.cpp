@@ -37,11 +37,10 @@
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <linux/videodev.h>
-
-#include <ui/GraphicBuffer.h>
-#include <ui/GraphicBufferMapper.h>
-
 #include <cutils/properties.h>
+
+#include "DecoderFactory.h"
+
 #define UNLIKELY( exp ) (__builtin_expect( (exp) != 0, false ))
 static int mDebugFps = 0;
 
@@ -55,11 +54,6 @@ namespace Camera {
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 
-//define this macro to save first few raw frames when starting the preview.
-//#define SAVE_RAW_FRAMES 1
-//#define DUMP_CAPTURE_FRAME 1
-//#define PPM_PER_FRAME_CONVERSION 1
-
 //Proto Types
 static void convertYUV422i_yuyvTouyvy(uint8_t *src, uint8_t *dest, size_t size );
 static void convertYUV422ToNV12Tiler(unsigned char *src, unsigned char *dest, int width, int height );
@@ -68,13 +62,39 @@ static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int wid
 android::Mutex gV4LAdapterLock;
 char device[15];
 
+static void debugShowFPS()
+{
+    static int mFrameCount = 0;
+    static int mLastFrameCount = 0;
+    static nsecs_t mLastFpsTime = 0;
+    static float mFps = 0;
+    if(mDebugFps) {
+        mFrameCount++;
+        if ((mFrameCount % 30 == 0)) {
+            nsecs_t now = systemTime();
+            nsecs_t diff = now - mLastFpsTime;
+            mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
+            mLastFpsTime = now;
+            mLastFrameCount = mFrameCount;
+            CAMHAL_LOGE("Camera %d Frames, %f FPS", mFrameCount, mFps);
+        }
+    }
+}
+
 
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
 
 /*--------------------V4L wrapper functions -------------------------------*/
+
+bool V4LCameraAdapter::isNeedToUseDecoder() const {
+    return mPixelFormat != V4L2_PIX_FMT_YUYV;
+}
+
 status_t V4LCameraAdapter::v4lIoctl (int fd, int req, void* argp) {
     status_t ret = NO_ERROR;
     errno = 0;
+
+    android::AutoMutex lock(mV4LLock);
 
     do {
         ret = ioctl (fd, req, argp);
@@ -85,6 +105,11 @@ status_t V4LCameraAdapter::v4lIoctl (int fd, int req, void* argp) {
 
 status_t V4LCameraAdapter::v4lInitMmap(int& count) {
     status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    int width, height;
+    mParams.getPreviewSize(&width, &height);
 
     //First allocate adapter internal buffers at V4L level for USB Cam
     //These are the buffers from which we will copy the data into overlay buffers
@@ -100,6 +125,10 @@ status_t V4LCameraAdapter::v4lInitMmap(int& count) {
     }
 
     count = mVideoInfo->rb.count;
+
+    //Since we will do mapping of new In buffers - clear input MediaBuffer storage
+    mInBuffers.clear();
+
     for (int i = 0; i < count; i++) {
 
         memset (&mVideoInfo->buf, 0, sizeof (struct v4l2_buffer));
@@ -126,7 +155,26 @@ status_t V4LCameraAdapter::v4lInitMmap(int& count) {
             CAMHAL_LOGEB("Unable to map buffer [%d]. (%s)", i, strerror(errno));
             return -1;
         }
+
+        MediaBuffer* buffer = new MediaBuffer(i, mVideoInfo->mem[i], mVideoInfo->buf.length);
+        mInBuffers.push_back(buffer);
     }
+
+    if (isNeedToUseDecoder()) {
+        mDecoder->registerInputBuffers(&mInBuffers);
+        DecoderParameters params;
+        params.width = width;
+        params.height = height;
+        params.inputBufferCount = count;
+        params.outputBufferCount = count;
+        mDecoder->configure(params);
+    }
+
+
+
+
+    LOG_FUNCTION_NAME_EXIT;
+
     return ret;
 }
 
@@ -151,9 +199,14 @@ status_t V4LCameraAdapter::v4lStartStreaming () {
     status_t ret = NO_ERROR;
     enum v4l2_buf_type bufType;
 
+    LOG_FUNCTION_NAME;
+
     if (!mVideoInfo->isStreaming) {
         bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
+        ret = applyFpsValue();
+        if (ret != NO_ERROR) {
+            return ret;
+        }
         ret = v4lIoctl (mCameraHandle, VIDIOC_STREAMON, &bufType);
         if (ret < 0) {
             CAMHAL_LOGEB("StartStreaming: Unable to start capture: %s", strerror(errno));
@@ -161,12 +214,16 @@ status_t V4LCameraAdapter::v4lStartStreaming () {
         }
         mVideoInfo->isStreaming = true;
     }
+
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
 status_t V4LCameraAdapter::v4lStopStreaming (int nBufferCount) {
     status_t ret = NO_ERROR;
     enum v4l2_buf_type bufType;
+
+    LOG_FUNCTION_NAME;
 
     if (mVideoInfo->isStreaming) {
         bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -199,11 +256,14 @@ status_t V4LCameraAdapter::v4lStopStreaming (int nBufferCount) {
         }
     }
 EXIT:
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
 status_t V4LCameraAdapter::v4lSetFormat (int width, int height, uint32_t pix_format) {
     status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
 
     mVideoInfo->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     ret = v4lIoctl(mCameraHandle, VIDIOC_G_FMT, &mVideoInfo->format);
@@ -214,7 +274,7 @@ status_t V4LCameraAdapter::v4lSetFormat (int width, int height, uint32_t pix_for
     mVideoInfo->width = width;
     mVideoInfo->height = height;
     mVideoInfo->framesizeIn = (width * height << 1);
-    mVideoInfo->formatIn = DEFAULT_PIXEL_FORMAT;
+    mVideoInfo->formatIn = pix_format;
 
     mVideoInfo->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     mVideoInfo->format.fmt.pix.width = width;
@@ -228,6 +288,9 @@ status_t V4LCameraAdapter::v4lSetFormat (int width, int height, uint32_t pix_for
     }
     v4lIoctl(mCameraHandle, VIDIOC_G_FMT, &mVideoInfo->format);
     CAMHAL_LOGDB("VIDIOC_G_FMT : WxH = %dx%d", mVideoInfo->format.fmt.pix.width, mVideoInfo->format.fmt.pix.height);
+    CAMHAL_LOGD("### Using: WxH = %dx%d  pixelformat=0x%x  ", mVideoInfo->format.fmt.pix.width, mVideoInfo->format.fmt.pix.height, mVideoInfo->format.fmt.pix.pixelformat);
+    CAMHAL_LOGD("### Using: bytesperline=%d sizeimage=%d colorspace=0x%x", mVideoInfo->format.fmt.pix.bytesperline, mVideoInfo->format.fmt.pix.sizeimage, mVideoInfo->format.fmt.pix.colorspace);
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
@@ -238,10 +301,12 @@ status_t V4LCameraAdapter::restartPreview ()
     int height = 0;
     struct v4l2_streamparm streamParams;
 
+    LOG_FUNCTION_NAME;
+
     //configure for preview size and pixel format.
     mParams.getPreviewSize(&width, &height);
 
-    ret = v4lSetFormat (width, height, DEFAULT_PIXEL_FORMAT);
+    ret = v4lSetFormat (width, height, mPixelFormat);
     if (ret < 0) {
         CAMHAL_LOGEB("v4lSetFormat Failed: %s", strerror(errno));
         goto EXIT;
@@ -253,25 +318,14 @@ status_t V4LCameraAdapter::restartPreview ()
         goto EXIT;
     }
 
-    //set frame rate
-    streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-    streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
-    streamParams.parm.capture.timeperframe.denominator = FPS_PERIOD;
-    streamParams.parm.capture.timeperframe.numerator= 1;
-    ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
-    if (ret < 0) {
-        CAMHAL_LOGEB("VIDIOC_S_PARM Failed: %s", strerror(errno));
-        goto EXIT;
-    }
-
     for (int i = 0; i < mPreviewBufferCountQueueable; i++) {
 
-        mVideoInfo->buf.index = i;
-        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+        v4l2_buffer buf;
+        buf.index = i;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
 
-        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
+        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &buf);
         if (ret < 0) {
             CAMHAL_LOGEA("VIDIOC_QBUF Failed");
             goto EXIT;
@@ -282,6 +336,7 @@ status_t V4LCameraAdapter::restartPreview ()
     ret = v4lStartStreaming();
     CAMHAL_LOGDA("Ready for preview....");
 EXIT:
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
@@ -291,6 +346,9 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
     char value[PROPERTY_VALUE_MAX];
 
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
+
     property_get("debug.camera.showfps", value, "0");
     mDebugFps = atoi(value);
 
@@ -303,7 +361,7 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
         goto EXIT;
     }
 
-    if ((mCameraHandle = open(device, O_RDWR) ) == -1) {
+    if ((mCameraHandle = open(device, O_RDWR | O_NONBLOCK) ) == -1) {
         CAMHAL_LOGEB("Error while opening handle to V4L2 Camera: %s", strerror(errno));
         ret = BAD_VALUE;
         goto EXIT;
@@ -342,73 +400,121 @@ status_t V4LCameraAdapter::fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::F
 {
     status_t ret = NO_ERROR;
     int idx = 0;
+
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
 
     if ( frameType == CameraFrame::IMAGE_FRAME) { //(1 > mCapturedFrames)
         // Signal end of image capture
         if ( NULL != mEndImageCaptureCallback) {
             CAMHAL_LOGDB("===========Signal End Image Capture==========");
+            mLock.unlock();
             mEndImageCaptureCallback(mEndCaptureData);
+            mLock.lock();
         }
-        goto EXIT;
-    }
-    if ( !mVideoInfo->isStreaming ) {
-        goto EXIT;
+        return ret;
     }
 
-    idx = mPreviewBufs.valueFor(frameBuf);
+    if ( !mVideoInfo->isStreaming ) {
+        return ret;
+    }
+
+    for (int xx = 0; xx < NB_BUFFER; xx++){
+        if (mPreviewBufs[xx] == frameBuf){
+            idx = xx;
+            break;
+        }
+    }
+    if (idx == NB_BUFFER){
+        CAMHAL_LOGEB("Wrong index  = %d. What do i do? What do i do?",idx);
+        return ret;
+    }
     if(idx < 0) {
         CAMHAL_LOGEB("Wrong index  = %d",idx);
-        goto EXIT;
+        return ret;
+    }
+    if (isNeedToUseDecoder()) {
+        for (int i = 0; i < mOutBuffers.size(); i++) {
+            android::sp<MediaBuffer>& outBuffer = mOutBuffers.editItemAt(i);
+            CameraBuffer* buffer = static_cast<CameraBuffer*>(outBuffer->buffer);
+            if (buffer == frameBuf) {
+                mDecoder->queueOutputBuffer(outBuffer->bufferId);
+                break;
+            }
+        }
+
+        int inIndex = -1;
+        ret = mDecoder->dequeueInputBuffer(inIndex);
+
+        if (ret == NO_ERROR) {
+            ret = returnBufferToV4L(inIndex);
+        }
+
+    } else {
+        v4l2_buffer buf;
+        buf.index = idx;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        CAMHAL_LOGD("Will return buffer to V4L with id=%d", idx);
+        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &buf);
+        if (ret < 0) {
+           CAMHAL_LOGEA("VIDIOC_QBUF Failed");
+           goto EXIT;
+        }
+
+        nQueued++;
     }
 
-    mVideoInfo->buf.index = idx;
-    mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
-
-    ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
-    if (ret < 0) {
-       CAMHAL_LOGEA("VIDIOC_QBUF Failed");
-       goto EXIT;
-    }
-     nQueued++;
 EXIT:
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 
 }
 
+status_t V4LCameraAdapter::applyFpsValue() {
+    struct v4l2_streamparm streamParams;
+    status_t ret = NO_ERROR;
+    streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+    streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
+    streamParams.parm.capture.timeperframe.denominator = mFrameRate / CameraHal::VFR_SCALE;
+    streamParams.parm.capture.timeperframe.numerator= 1;
+    ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
+    if (ret < 0) {
+        CAMHAL_LOGEB(" VIDIOC_S_PARM Failed: %s", strerror(errno));
+        return ret;
+    }
+    int actualFps = streamParams.parm.capture.timeperframe.denominator / streamParams.parm.capture.timeperframe.numerator;
+    CAMHAL_LOGDB("Actual FPS set is : %d.", actualFps);
+    return NO_ERROR;
+}
+
 status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params)
 {
     status_t ret = NO_ERROR;
     int width, height;
-    struct v4l2_streamparm streamParams;
+    int minFps = 0, maxFps = 0;
 
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     if(!mPreviewing && !mCapturing) {
         params.getPreviewSize(&width, &height);
-        CAMHAL_LOGDB("Width * Height %d x %d format 0x%x", width, height, DEFAULT_PIXEL_FORMAT);
-
-        ret = v4lSetFormat( width, height, DEFAULT_PIXEL_FORMAT);
+        CAMHAL_LOGDB("Width * Height %d x %d format 0x%x", width, height, mPixelFormat);
+        ret = v4lSetFormat( width, height, mPixelFormat);
         if (ret < 0) {
             CAMHAL_LOGEB(" VIDIOC_S_FMT Failed: %s", strerror(errno));
             goto EXIT;
         }
-        //set frame rate
-        // Now its fixed to 30 FPS
-        streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-        streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
-        streamParams.parm.capture.timeperframe.denominator = FPS_PERIOD;
-        streamParams.parm.capture.timeperframe.numerator= 1;
-        ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
-        if (ret < 0) {
-            CAMHAL_LOGEB(" VIDIOC_S_PARM Failed: %s", strerror(errno));
-            goto EXIT;
+
+        params.getPreviewFpsRange(&minFps, &maxFps);
+        CAMHAL_LOGD("Current fps is %d new fps is (%d,%d)", mFrameRate, minFps, maxFps);
+        if (maxFps != mFrameRate) {
+            mFrameRate = maxFps;
         }
-        int actualFps = streamParams.parm.capture.timeperframe.denominator / streamParams.parm.capture.timeperframe.numerator;
-        CAMHAL_LOGDB("Actual FPS set is : %d.", actualFps);
+
     }
 
     // Udpate the current parameter set
@@ -424,6 +530,7 @@ void V4LCameraAdapter::getParameters(android::CameraParameters& params)
 {
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
     // Return the current parameter set
     params = mParams;
 
@@ -485,6 +592,17 @@ status_t V4LCameraAdapter::UseBuffersCapture(CameraBuffer *bufArr, int num) {
         CAMHAL_LOGDB("capture- buff [%d] = 0x%x ",i, mCaptureBufs.keyAt(i));
     }
 
+    mCaptureBuffersAvailable.clear();
+    for (int i = 0; i < mCaptureBufferCountQueueable; i++ ) {
+        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
+    }
+
+    // initial ref count for undeqeueued buffers is 1 since buffer provider
+    // is still holding on to it
+    for (int i = mCaptureBufferCountQueueable; i < num; i++ ) {
+        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
+    }
+
     // Update the preview buffer count
     mCaptureBufferCount = num;
 EXIT:
@@ -504,13 +622,20 @@ status_t V4LCameraAdapter::UseBuffersPreview(CameraBuffer *bufArr, int num)
     }
 
     ret = v4lInitMmap(num);
+
+    mOutBuffers.clear();
+
     if (ret == NO_ERROR) {
         for (int i = 0; i < num; i++) {
             //Associate each Camera internal buffer with the one from Overlay
-            mPreviewBufs.add(&bufArr[i], i);
-            CAMHAL_LOGDB("Preview- buff [%d] = 0x%x ",i, mPreviewBufs.keyAt(i));
+            mPreviewBufs[i] = &bufArr[i];
+            MediaBuffer* buffer = new MediaBuffer(i, mPreviewBufs[i]);
+            mOutBuffers.push_back(buffer);
+            CAMHAL_LOGDB("Preview- buff [%d] = 0x%x length=%d",i, mPreviewBufs[i], mFrameQueue.valueFor(mPreviewBufs[i])->mLength);
         }
-
+        if (isNeedToUseDecoder()) {
+            mDecoder->registerOutputBuffers(&mOutBuffers);
+        }
         // Update the preview buffer count
         mPreviewBufferCount = num;
     }
@@ -531,7 +656,7 @@ status_t V4LCameraAdapter::takePicture() {
 
     LOG_FUNCTION_NAME;
 
-    android::AutoMutex lock(mCaptureBufsLock);
+    android::AutoMutex lock(mLock);
 
     if(mCapturing) {
         CAMHAL_LOGEA("Already Capture in Progress...");
@@ -554,7 +679,7 @@ status_t V4LCameraAdapter::takePicture() {
     CAMHAL_LOGDB("Image Capture Size WxH = %dx%d",width,height);
     yuv422i_buff_size = width * height * 2;
 
-    ret = v4lSetFormat (width, height, DEFAULT_PIXEL_FORMAT);
+    ret = v4lSetFormat (width, height, DEFAULT_CAPTURE_FORMAT);
     if (ret < 0) {
         CAMHAL_LOGEB("v4lSetFormat Failed: %s", strerror(errno));
         goto EXIT;
@@ -568,11 +693,12 @@ status_t V4LCameraAdapter::takePicture() {
 
     for (int i = 0; i < mCaptureBufferCountQueueable; i++) {
 
-       mVideoInfo->buf.index = i;
-       mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+       v4l2_buffer buf;
+       buf.index = i;
+       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+       buf.memory = V4L2_MEMORY_MMAP;
 
-       ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
+       ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &buf);
        if (ret < 0) {
            CAMHAL_LOGEA("VIDIOC_QBUF Failed");
            ret = BAD_VALUE;
@@ -590,7 +716,9 @@ status_t V4LCameraAdapter::takePicture() {
     CAMHAL_LOGDA("Streaming started for Image Capture");
 
     //get the frame and send to encode as JPG
-    fp = this->GetFrame(index);
+    int filledLen;
+    CAMHAL_LOGD("*********Will dequeue frame for Image Capture***********");
+    fp = this->GetFrame(index, filledLen);
     if(!fp) {
         CAMHAL_LOGEA("!!! Captured frame is NULL !!!!");
         ret = BAD_VALUE;
@@ -599,7 +727,7 @@ status_t V4LCameraAdapter::takePicture() {
 
     CAMHAL_LOGDA("::Capture Frame received from V4L::");
     buffer = mCaptureBufs.keyAt(index);
-    CAMHAL_LOGVB("## captureBuf[%d] = 0x%x, yuv422i_buff_size=%d", index, buffer->opaque, yuv422i_buff_size);
+    CAMHAL_LOGVB("## captureBuf[%d] = 0x%x, yuv422i_buff_size=%d fill_length=%d", index, buffer->opaque, yuv422i_buff_size, filledLen);
 
     //copy the yuv422i data to the image buffer.
     memcpy(buffer->opaque, fp, yuv422i_buff_size);
@@ -659,6 +787,8 @@ status_t V4LCameraAdapter::stopImageCapture()
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     //Release image buffers
     if ( NULL != mReleaseImageBuffersCallback ) {
         mReleaseImageBuffersCallback(mReleaseData);
@@ -686,7 +816,8 @@ status_t V4LCameraAdapter::startPreview()
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    android::AutoMutex lock(mPreviewBufsLock);
+
+    android::AutoMutex lock(mLock);
 
     if(mPreviewing) {
         ret = BAD_VALUE;
@@ -695,18 +826,25 @@ status_t V4LCameraAdapter::startPreview()
 
     for (int i = 0; i < mPreviewBufferCountQueueable; i++) {
 
-        mVideoInfo->buf.index = i;
-        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+        v4l2_buffer buf;
+        buf.index = i;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
 
-        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
+        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &buf);
         if (ret < 0) {
             CAMHAL_LOGEA("VIDIOC_QBUF Failed");
             goto EXIT;
         }
         nQueued++;
     }
-
+    if (isNeedToUseDecoder()) {
+        for (int i = 0; i < mPreviewBufferCountQueueable; i++) {
+           mDecoder->queueOutputBuffer(i);
+           CAMHAL_LOGV("Queued output buffer with id=%d ", i);
+        }
+        mDecoder->start();
+    }
     ret = v4lStartStreaming();
 
     // Create and start preview thread for receiving buffers from V4L Camera
@@ -730,13 +868,19 @@ status_t V4LCameraAdapter::stopPreview()
     int ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    android::AutoMutex lock(mStopPreviewLock);
+
+    android::AutoMutex lock(mLock);
 
     if(!mPreviewing) {
         return NO_INIT;
     }
     mPreviewing = false;
-
+    if (isNeedToUseDecoder()) {
+        android::AutoMutex lock(mStopLock);
+        mStopCondition.waitRelative(mStopLock, 100000000);
+        mDecoder->stop();
+        mDecoder->flush();
+    }
     ret = v4lStopStreaming(mPreviewBufferCount);
     if (ret < 0) {
         CAMHAL_LOGEB("StopStreaming: FAILED: %s", strerror(errno));
@@ -746,36 +890,89 @@ status_t V4LCameraAdapter::stopPreview()
     nDequeued = 0;
     mFramesWithEncoder = 0;
 
-    mPreviewBufs.clear();
+    mLock.unlock();
 
     mPreviewThread->requestExitAndWait();
     mPreviewThread.clear();
+
 
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
-char * V4LCameraAdapter::GetFrame(int &index)
+
+void saveFile(unsigned char* buff, int buff_size) {
+    static int      counter = 1;
+    int             fd = -1;
+    char            fn[256];
+
+    LOG_FUNCTION_NAME;
+    if (counter > 30) {
+        return;
+    }
+    //dump nv12 buffer
+    counter++;
+    sprintf(fn, "/data/tmp/dump_%03d.h264", counter);
+    CAMHAL_LOGEB("Dumping h264 frame to a file : %s.", fn);
+
+    fd = open(fn, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
+    if(fd < 0) {
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        return;
+    }
+
+    write(fd, buff, buff_size );
+    close(fd);
+
+    LOG_FUNCTION_NAME_EXIT;
+}
+
+char * V4LCameraAdapter::GetFrame(int &index, int &filledLen)
 {
     int ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
-    mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+    v4l2_buffer buf;
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
 
     /* DQ */
-    ret = v4lIoctl(mCameraHandle, VIDIOC_DQBUF, &mVideoInfo->buf);
+    // Some V4L drivers, notably uvc, protect each incoming call with
+    // a driver-wide mutex.  If we use poll() or blocking VIDIOC_DQBUF ioctl
+    // here then we sometimes would run into a deadlock on VIDIO_QBUF ioctl.
+    while(true) {
+      if(!mVideoInfo->isStreaming) {
+        return NULL;
+      }
+
+      ret = v4lIoctl(mCameraHandle, VIDIOC_DQBUF, &buf);
+      if((ret == 0) || (errno != EAGAIN)) {
+        break;
+      }
+    }
+
     if (ret < 0) {
         CAMHAL_LOGEA("GetFrame: VIDIOC_DQBUF Failed");
         return NULL;
     }
-    nDequeued++;
 
-    index = mVideoInfo->buf.index;
+    index = buf.index;
+    filledLen = buf.bytesused;
 
+    android::sp<MediaBuffer>& inBuffer = mInBuffers.editItemAt(index);
+    {
+        android::AutoMutex bufferLock(inBuffer->getLock());
+        inBuffer->setTimestamp(systemTime(SYSTEM_TIME_MONOTONIC));
+        inBuffer->filledLen = buf.bytesused;
+    }
+    debugShowFPS();
     LOG_FUNCTION_NAME_EXIT;
-    return (char *)mVideoInfo->mem[mVideoInfo->buf.index];
+    return (char *)mVideoInfo->mem[index];
 }
+
+
+
+
 
 //API to get the frame size required to be allocated. This size is used to override the size passed
 //by camera service when VSTAB/VNF is turned ON for example
@@ -784,9 +981,15 @@ status_t V4LCameraAdapter::getFrameSize(size_t &width, size_t &height)
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     // Just return the current preview size, nothing more to do here.
-    mParams.getPreviewSize(( int * ) &width,
-                           ( int * ) &height);
+        mParams.getPreviewSize(( int * ) &width,( int * ) &height);
+
+    // TODO: This will reside until correct port reconfiguration handling will done.
+    if (isNeedToUseDecoder()) {
+        mDecoder->getPaddedDimensions(width, height);
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -795,11 +998,12 @@ status_t V4LCameraAdapter::getFrameSize(size_t &width, size_t &height)
 
 status_t V4LCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t bufferCount)
 {
+    android::AutoMutex lock(mLock);
     // We don't support meta data, so simply return
     return NO_ERROR;
 }
 
-status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t bufferCount)
+status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     int width = 0;
     int height = 0;
@@ -807,39 +1011,18 @@ status_t V4LCameraAdapter::getPictureBufferSize(CameraFrame *frame, size_t buffe
 
     LOG_FUNCTION_NAME;
 
-    if (frame == NULL) {
-       return BAD_VALUE;
-    }
+    android::AutoMutex lock(mLock);
 
     mParams.getPictureSize( &width, &height );
-    frame->mLength = width * height * bytesPerPixel;
-    frame->mWidth = width;
-    frame->mHeight = height;
-    frame->mAlignment = width * bytesPerPixel;
+    frame.mLength = width * height * bytesPerPixel;
+    frame.mWidth = width;
+    frame.mHeight = height;
+    frame.mAlignment = width * bytesPerPixel;
 
     CAMHAL_LOGDB("Picture size: W x H = %u x %u (size=%u bytes, alignment=%u bytes)",
-                 frame->mWidth, frame->mHeight, frame->mLength, frame->mAlignment);
+                 frame.mWidth, frame.mHeight, frame.mLength, frame.mAlignment);
     LOG_FUNCTION_NAME_EXIT;
     return NO_ERROR;
-}
-
-static void debugShowFPS()
-{
-    static int mFrameCount = 0;
-    static int mLastFrameCount = 0;
-    static nsecs_t mLastFpsTime = 0;
-    static float mFps = 0;
-    if(mDebugFps) {
-        mFrameCount++;
-        if (!(mFrameCount & 0x1F)) {
-            nsecs_t now = systemTime();
-            nsecs_t diff = now - mLastFpsTime;
-            mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
-            mLastFpsTime = now;
-            mLastFrameCount = mFrameCount;
-            CAMHAL_LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
-        }
-    }
 }
 
 status_t V4LCameraAdapter::recalculateFPS()
@@ -877,16 +1060,70 @@ void V4LCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
 {
     LOG_FUNCTION_NAME;
 
+    android::AutoMutex lock(mLock);
+
     LOG_FUNCTION_NAME_EXIT;
 }
 
+void V4LCameraAdapter::setupWorkingMode() {
+    char value[PROPERTY_VALUE_MAX];
+    int v4lMode = 0;
 
-V4LCameraAdapter::V4LCameraAdapter(size_t sensor_index)
+    property_get("camera.v4l.mode", value, "3");
+    v4lMode = atoi(value);
+
+    if (mDecoder) {
+        delete mDecoder;
+        mDecoder = NULL;
+    }
+
+    switch (v4lMode) {
+        case 0 : {
+            mPixelFormat = V4L2_PIX_FMT_MJPEG;
+            mCameraHal->setExternalLocking(true);
+            mDecoder = DecoderFactory::createDecoderByType(DecoderType_MJPEG, false);
+            CAMHAL_LOGI("Using V4L preview format: V4L2_PIX_FMT_MJPEG with HW decoding");
+            break;
+        }
+
+        case 1 : {
+            mPixelFormat = V4L2_PIX_FMT_MJPEG;
+            mCameraHal->setExternalLocking(false);
+            mDecoder = DecoderFactory::createDecoderByType(DecoderType_MJPEG, true);
+            CAMHAL_LOGI("Using V4L preview format: V4L2_PIX_FMT_MJPEG with SW decoding");
+            break;
+        }
+
+        case 2 : {
+            // This is WA for Kernel 3.0 - till correct h264 parsing come.
+            mPixelFormat = 0;//V4L2_PIX_FMT_H264
+            mCameraHal->setExternalLocking(true);
+            mDecoder = DecoderFactory::createDecoderByType(DecoderType_H264, false);
+            CAMHAL_LOGI("Using V4L preview format: V4L2_PIX_FMT_H264");
+            break;
+        }
+        default:
+        case 3 : {
+            mCameraHal->setExternalLocking(false);
+            mPixelFormat = V4L2_PIX_FMT_YUYV;
+            CAMHAL_LOGI("Using V4L preview format: V4L2_PIX_FMT_YUYV");
+        }
+
+    }
+}
+
+V4LCameraAdapter::V4LCameraAdapter(size_t sensor_index, CameraHal* hal)
+    :mPixelFormat(DEFAULT_PIXEL_FORMAT), mFrameRate(0), mCameraHal(hal)
 {
     LOG_FUNCTION_NAME;
 
     // Nothing useful to do in the constructor
     mFramesWithEncoder = 0;
+    mDecoder = 0;
+    nQueued = 0;
+    nDequeued = 0;
+
+    setupWorkingMode();
 
     LOG_FUNCTION_NAME_EXIT;
 }
@@ -903,6 +1140,11 @@ V4LCameraAdapter::~V4LCameraAdapter()
         free(mVideoInfo);
         mVideoInfo = NULL;
       }
+
+    delete mDecoder;
+
+    mInBuffers.clear();
+    mOutBuffers.clear();
 
     LOG_FUNCTION_NAME_EXIT;
 }
@@ -1075,36 +1317,73 @@ static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int wid
     LOG_FUNCTION_NAME_EXIT;
 }
 
-#ifdef SAVE_RAW_FRAMES
-void saveFile(unsigned char* buff, int buff_size) {
-    static int      counter = 1;
-    int             fd = -1;
-    char            fn[256];
 
-    LOG_FUNCTION_NAME;
-    if (counter > 3) {
-        return;
-    }
-    //dump nv12 buffer
-    counter++;
-    sprintf(fn, "/data/misc/camera/raw/nv12_dump_%03d.yuv", counter);
-    CAMHAL_LOGEB("Dumping nv12 frame to a file : %s.", fn);
 
-    fd = open(fn, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
-    if(fd < 0) {
-        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
-        return;
-    }
 
-    write(fd, buff, buff_size );
-    close(fd);
-
-    LOG_FUNCTION_NAME_EXIT;
-}
-#endif
 
 /* Preview Thread */
 // ---------------------------------------------------------------------------
+
+void V4LCameraAdapter::returnOutputBuffer(int index)
+{
+    LOG_FUNCTION_NAME;
+
+    size_t width, height;
+    int stride = 4096;
+    CameraFrame frame;
+
+    getFrameSize(width, height);
+
+    android::Mutex::Autolock slock(mSubscriberLock);
+
+    android::sp<MediaBuffer>& buffer = mOutBuffers.editItemAt(index);
+
+    CameraBuffer* cbuffer = static_cast<CameraBuffer*>(buffer->buffer);
+
+    frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
+    frame.mBuffer = cbuffer;
+    if (isNeedToUseDecoder()) {
+        //We always get NV12 on out, when using decoder.
+        frame.mLength = height * stride * 3 / 2;
+    } else {
+        frame.mLength = CameraHal::calculateBufferSize(mParams.getPreviewFormat(), width, height);
+    }
+    frame.mAlignment = stride;
+    frame.mOffset = buffer->getOffset();
+    frame.mTimestamp = buffer->getTimestamp();
+    frame.mFrameMask = (unsigned int)CameraFrame::PREVIEW_FRAME_SYNC;
+
+    if (mRecording)
+    {
+        frame.mFrameMask |= (unsigned int)CameraFrame::VIDEO_FRAME_SYNC;
+        mFramesWithEncoder++;
+    }
+
+    int ret = setInitFrameRefCount(frame.mBuffer, frame.mFrameMask);
+    if (ret != NO_ERROR) {
+        CAMHAL_LOGDB("Error in setInitFrameRefCount %d", ret);
+    } else {
+        ret = sendFrameToSubscribers(&frame);
+    }
+    //debugShowFPS();
+    LOG_FUNCTION_NAME_EXIT;
+}
+
+status_t V4LCameraAdapter::returnBufferToV4L(int id) {
+    status_t ret = NO_ERROR;
+    v4l2_buffer buf;
+    buf.index = id;
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+
+    ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &buf);
+    if (ret < 0) {
+       CAMHAL_LOGEA("VIDIOC_QBUF Failed 0x%x", ret);
+       return FAILED_TRANSACTION;
+    }
+
+    return NO_ERROR;
+}
 
 int V4LCameraAdapter::previewThread()
 {
@@ -1113,36 +1392,65 @@ int V4LCameraAdapter::previewThread()
     CameraFrame frame;
     void *y_uv[2];
     int index = 0;
+    int filledLen = 0;
     int stride = 4096;
     char *fp = NULL;
 
     mParams.getPreviewSize(&width, &height);
 
-    if (mPreviewing) {
-
-        fp = this->GetFrame(index);
-        if(!fp) {
-            ret = BAD_VALUE;
-            goto EXIT;
+    {
+        android::AutoMutex lock(mLock);
+        if (!mPreviewing) {
+            //If stop preview is called - it can now go on.
+            android::AutoMutex stopLock(mStopLock);
+            mStopCondition.signal();
+            return ret;
         }
-        CameraBuffer *buffer = mPreviewBufs.keyAt(index);
-        CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(buffer);
-        if (!lframe) {
-            ret = BAD_VALUE;
-            goto EXIT;
-        }
+    }
 
-        debugShowFPS();
-
+    {
+        android::Mutex::Autolock lock(mSubscriberLock);
         if ( mFrameSubscribers.size() == 0 ) {
-            ret = BAD_VALUE;
-            goto EXIT;
+            return BAD_VALUE;
         }
-        y_uv[0] = (void*) lframe->mYuv[0];
-        //y_uv[1] = (void*) lframe->mYuv[1];
-        //y_uv[1] = (void*) (lframe->mYuv[0] + height*stride);
-        convertYUV422ToNV12Tiler ( (unsigned char*)fp, (unsigned char*)y_uv[0], width, height);
-        CAMHAL_LOGVB("##...index= %d.;camera buffer= 0x%x; y= 0x%x; UV= 0x%x.",index, buffer, y_uv[0], y_uv[1] );
+    }
+
+    if (isNeedToUseDecoder()){
+
+        CAMHAL_LOGV("########### Decoder ###########");
+        int inIndex = -1, outIndex = -1;
+
+        if (GetFrame(index, filledLen) != NULL) {
+            CAMHAL_LOGD("Dequeued buffer from V4L with ID=%d", index);
+            mDecoder->queueInputBuffer(index);
+        }
+
+        while (NO_ERROR == mDecoder->dequeueInputBuffer(inIndex)) {
+            returnBufferToV4L(inIndex);
+        }
+
+        while (NO_ERROR == mDecoder->dequeueOutputBuffer(outIndex)) {
+            returnOutputBuffer(outIndex);
+        }
+
+        CAMHAL_LOGV("########### End Decode ###########");
+        goto EXIT;
+    }
+    else
+    {
+        fp = GetFrame(index, filledLen);
+
+        if(!fp) {
+           ret = BAD_VALUE;
+           goto EXIT;
+        }
+        CAMHAL_LOGD("GOT IN frame with ID=%d",index);
+
+        CameraBuffer *buffer = mPreviewBufs[index];
+        if (mPixelFormat == V4L2_PIX_FMT_YUYV) {
+            convertYUV422ToNV12Tiler(reinterpret_cast<unsigned char*>(fp), reinterpret_cast<unsigned char*>(buffer->mapped), width, height);
+        }
+        CAMHAL_LOGVB("##...index= %d.;camera buffer= 0x%x; mapped= 0x%x.",index, buffer, buffer->mapped);
 
 #ifdef SAVE_RAW_FRAMES
         unsigned char* nv12_buff = (unsigned char*) malloc(width*height*3/2);
@@ -1151,6 +1459,8 @@ int V4LCameraAdapter::previewThread()
         saveFile( nv12_buff, ((width*height)*3/2) );
         free (nv12_buff);
 #endif
+
+        android::Mutex::Autolock lock(mSubscriberLock);
 
         frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
         frame.mBuffer = buffer;
@@ -1173,6 +1483,7 @@ int V4LCameraAdapter::previewThread()
             ret = sendFrameToSubscribers(&frame);
         }
     }
+
 EXIT:
 
     return ret;
@@ -1208,14 +1519,14 @@ void detectVideoDevice(char** video_device_list, int& num_device) {
     }
 }
 
-extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t sensor_index)
+extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t sensor_index, CameraHal* hal)
 {
     CameraAdapter *adapter = NULL;
     android::AutoMutex lock(gV4LAdapterLock);
 
     LOG_FUNCTION_NAME;
 
-    adapter = new V4LCameraAdapter(sensor_index);
+    adapter = new V4LCameraAdapter(sensor_index, hal);
     if ( adapter ) {
         CAMHAL_LOGDB("New V4L Camera adapter instance created for sensor %d",sensor_index);
     } else {

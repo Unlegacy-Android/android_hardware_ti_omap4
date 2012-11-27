@@ -43,11 +43,12 @@ static const char PARAM_SEP[] = ",";
 //Camera defaults
 const char V4LCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
 const char V4LCameraAdapter::DEFAULT_PICTURE_SIZE[] = "640x480";
-const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv422i-yuyv";
+const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv420sp";
 const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
 const char V4LCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
+const char V4LCameraAdapter::DEFAULT_FRAMERATE_RANGE[] = "30000,30000";
 const char * V4LCameraAdapter::DEFAULT_VSTAB = android::CameraParameters::FALSE;
 const char * V4LCameraAdapter::DEFAULT_VNF = android::CameraParameters::FALSE;
 
@@ -81,8 +82,7 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
     params->set(CameraProperties::JPEG_QUALITY, "90");
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, "50");
-    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "(30000,30000)");
-    params->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
+    params->set(CameraProperties::FRAMERATE_RANGE, DEFAULT_FRAMERATE_RANGE);
     params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, "none");
     params->set(CameraProperties::SUPPORTED_EXPOSURE_MODES, "auto");
     params->set(CameraProperties::SUPPORTED_ISO_VALUES, "auto");
@@ -94,6 +94,12 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SENSOR_ORIENTATION, "0");
     params->set(CameraProperties::VSTAB, DEFAULT_VSTAB);
     params->set(CameraProperties::VNF, DEFAULT_VNF);
+
+    //For compatibility
+    params->set(CameraProperties::SUPPORTED_ZOOM_RATIOS,"0");
+    params->set(CameraProperties::SUPPORTED_ZOOM_STAGES, "0");
+    params->set(CameraProperties::ZOOM, "0");
+    params->set(CameraProperties::ZOOM_SUPPORTED, "true");
 
 
     LOG_FUNCTION_NAME_EXIT;
@@ -115,6 +121,8 @@ status_t V4LCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
         }
     }
     strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
+    strncat (supported, PARAM_SEP, 1 );
+    strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420SP, MAX_PROP_VALUE_LENGTH - 1);
     params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     return NO_ERROR;
 }
@@ -154,11 +162,11 @@ status_t V4LCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params, V4L_TI_CAPTYPE &caps) {
 
     char supported[MAX_PROP_VALUE_LENGTH];
-    char temp[10];
+    char temp[MAX_PROP_VALUE_LENGTH];
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulFrameRateCount; i++) {
-        snprintf (temp, 10, "%d", caps.ulFrameRates[i] );
+        snprintf (temp, sizeof(temp) - 1, "%d", caps.ulFrameRates[i] );
         if (supported[0] != '\0') {
             strncat(supported, PARAM_SEP, 1);
         }
@@ -166,6 +174,17 @@ status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params
     }
 
     params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
+
+    memset(supported, 0, sizeof(supported));
+
+    for (int i = caps.ulFrameRateCount - 1; i >= 0 ; i--) {
+        if ( supported[0] ) strncat(supported, PARAM_SEP, 1);
+        snprintf(temp, sizeof(temp) - 1, "(%d,%d)", caps.ulFrameRates[i] * CameraHal::VFR_SCALE, caps.ulFrameRates[i] *  CameraHal::VFR_SCALE);
+        strcat(supported, temp);
+    }
+
+    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, supported);
+
     return NO_ERROR;
 }
 
@@ -262,7 +281,7 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
         frmSizeEnum.index = i;
         //Check for frame sizes for default pixel format
         //TODO: Check for frame sizes for all supported pixel formats
-        frmSizeEnum.pixel_format = V4L2_PIX_FMT_YUYV;
+        frmSizeEnum.pixel_format = DEFAULT_PIXEL_FORMAT;
         status = ioctl (handle, VIDIOC_ENUM_FRAMESIZES, &frmSizeEnum);
         if(frmSizeEnum.type != V4L2_FRMSIZE_TYPE_DISCRETE) {
             break;
@@ -300,7 +319,7 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
         for ( i = 0; status == NO_ERROR; i++) {
             frmIvalEnum.index = i;
             //Check for supported frame rates for the default pixel format.
-            frmIvalEnum.pixel_format = V4L2_PIX_FMT_YUYV;
+            frmIvalEnum.pixel_format = DEFAULT_PIXEL_FORMAT;
             frmIvalEnum.width = caps.tPreviewRes[j].width;
             frmIvalEnum.height = caps.tPreviewRes[j].height;
 

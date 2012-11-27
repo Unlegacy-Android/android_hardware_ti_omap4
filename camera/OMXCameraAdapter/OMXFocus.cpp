@@ -200,7 +200,7 @@ status_t OMXCameraAdapter::doAutoFocus()
             }
 
             // configure focus timeout based on capture mode
-            timeout = (mCapMode == VIDEO_MODE) ?
+            timeout = (mCapMode == VIDEO_MODE) || (mCapMode == VIDEO_MODE_HQ) ?
                             ( ( nsecs_t ) AF_VIDEO_CALLBACK_TIMEOUT * 1000 ) :
                             ( ( nsecs_t ) AF_IMAGE_CALLBACK_TIMEOUT * 1000 );
 
@@ -714,17 +714,10 @@ status_t OMXCameraAdapter::setTouchFocus()
 
     OMX_ALGOAREASTYPE *focusAreas;
     OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
-    MemoryManager memMgr;
     CameraBuffer *bufferlist;
     int areasSize = 0;
 
     LOG_FUNCTION_NAME;
-
-    ret = memMgr.initialize();
-    if ( ret != OK ) {
-        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
-        return ret;
-    }
 
     if ( OMX_StateInvalid == mComponentState )
         {
@@ -736,7 +729,7 @@ status_t OMXCameraAdapter::setTouchFocus()
         {
 
         areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-        bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+        bufferlist = mMemMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
         focusAreas = (OMX_ALGOAREASTYPE*) bufferlist[0].opaque;
 
         OMXCameraPortParameters * mPreviewData = NULL;
@@ -822,7 +815,7 @@ status_t OMXCameraAdapter::setTouchFocus()
     EXIT:
         if (NULL != bufferlist)
             {
-            memMgr.freeBufferList (bufferlist);
+            mMemMgr.freeBufferList (bufferlist);
             }
         }
 

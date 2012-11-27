@@ -66,80 +66,6 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
     return pixFormat;
 }
 
-const char* DisplayAdapter::getPixFormatConstant(const char* parameters_format) const
-{
-    const char* pixFormat;
-
-    if ( parameters_format != NULL )
-    {
-        if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-        {
-            CAMHAL_LOGVA("CbYCrY format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV422I;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-                strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-        {
-            // TODO(XXX): We are treating YV12 the same as YUV420SP
-            CAMHAL_LOGVA("YUV420SP format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-        {
-            CAMHAL_LOGVA("RGB565 format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_RGB565;
-        }
-        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0)
-        {
-            CAMHAL_LOGVA("BAYER format selected");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
-        }
-        else
-        {
-            CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
-            pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-    }
-    else
-    {
-        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
-        pixFormat = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
-    }
-
-    return pixFormat;
-}
-
-size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int height) const
-{
-    int buf_size;
-
-    if ( parameters_format != NULL ) {
-        if (strcmp(parameters_format,
-                  android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if((strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) ||
-                (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0)) {
-            buf_size = width * height * 3 / 2;
-        }
-        else if(strcmp(parameters_format,
-                      android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if (strcmp(parameters_format,
-                  android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
-            buf_size = width * height * 2;
-        } else {
-            CAMHAL_LOGEA("Invalid format");
-            buf_size = 0;
-        }
-    } else {
-        CAMHAL_LOGEA("Preview format is NULL");
-        buf_size = 0;
-    }
-
-    return buf_size;
-}
 /*--------------------ANativeWindowDisplayAdapter Class STARTS here-----------------------------*/
 
 
@@ -149,7 +75,8 @@ size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int 
 ANativeWindowDisplayAdapter::ANativeWindowDisplayAdapter():mDisplayThread(NULL),
                                         mDisplayState(ANativeWindowDisplayAdapter::DISPLAY_INIT),
                                         mDisplayEnabled(false),
-                                        mBufferCount(0)
+                                        mBufferCount(0),
+                                        mUseExternalBufferLocking(false)
 
 
 
@@ -600,6 +527,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeued);
+    mPixelFormat = CameraHal::getPixelFormatConstant(format);
 
     for ( i=0; i < mBufferCount; i++ )
     {
@@ -623,6 +551,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         CAMHAL_LOGDB("got handle %p", handle);
         mBuffers[i].opaque = (void *)handle;
         mBuffers[i].type = CAMERA_BUFFER_ANW;
+        mBuffers[i].format = mPixelFormat;
         mFramesWithCameraAdapterMap.add(handle, i);
 
         // Tag remaining preview buffers as preview frames
@@ -631,7 +560,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
                             CameraFrame::PREVIEW_FRAME_SYNC);
         }
 
-        bytes =  getBufSize(format, width, height);
+        bytes = CameraHal::calculateBufferSize(format, width, height);
 
     }
 
@@ -651,6 +580,9 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
         mBuffers[i].mapped = y_uv[0];
         mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
+        if (mUseExternalBufferLocking) {
+            mapper.unlock(*handle);
+        }
     }
 
     // return the rest of the buffers back to ANativeWindow
@@ -678,7 +610,6 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mFirstInit = true;
-    mPixelFormat = getPixFormatConstant(format);
     mFrameWidth = width;
     mFrameHeight = height;
 
@@ -854,8 +785,10 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
                  continue;
              }
 
-             // unlock buffer before giving it up
-             mapper.unlock(*handle);
+             if (!mUseExternalBufferLocking) {
+                 // unlock buffer before giving it up
+                 mapper.unlock(*handle);
+             }
 
              ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
              if ( NO_INIT == ret ) {
@@ -1091,13 +1024,27 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     }
 
     for ( i = 0; i < mBufferCount; i++ )
-        {
+    {
         if ( dispFrame.mBuffer == &mBuffers[i] )
-            {
+        {
             break;
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    if ( mMeasureStandby ) {
+        CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
+        mMeasureStandby = false;
+    } else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) {
+        CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
+        mShotToShot = true;
+    } else if ( mShotToShot ) {
+        CameraHal::PPM("Shot to shot: ", &mStartCapture);
+        mShotToShot = false;
+    }
+
+#endif
 
     android::AutoMutex lock(mLock);
 
@@ -1107,48 +1054,32 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
     {
-        uint32_t xOff = (dispFrame.mOffset% PAGE_SIZE);
-        uint32_t yOff = (dispFrame.mOffset / PAGE_SIZE);
+        uint32_t xOff, yOff;
+
+        CameraHal::getXYFromOffset(&xOff, &yOff, dispFrame.mOffset, PAGE_SIZE, mPixelFormat);
 
         // Set crop only if current x and y offsets do not match with frame offsets
-        if((mXOff!=xOff) || (mYOff!=yOff))
-        {
-            CAMHAL_LOGDB("Offset %d xOff = %d, yOff = %d", dispFrame.mOffset, xOff, yOff);
-            uint8_t bytesPerPixel;
-            ///Calculate bytes per pixel based on the pixel format
-            if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
-                {
-                bytesPerPixel = 1;
-                }
-            else
-                {
-                bytesPerPixel = 1;
-            }
+        if ((mXOff != xOff) || (mYOff != yOff)) {
+            CAMHAL_LOGDB("offset = %u left = %d top = %d right = %d bottom = %d",
+                          dispFrame.mOffset, xOff, yOff ,
+                          xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            CAMHAL_LOGVB(" crop.left = %d crop.top = %d crop.right = %d crop.bottom = %d",
-                          xOff/bytesPerPixel, yOff , (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
             // We'll ignore any errors here, if the surface is
             // already invalid, we'll know soon enough.
-            mANativeWindow->set_crop(mANativeWindow, xOff/bytesPerPixel, yOff,
-                                     (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
+            mANativeWindow->set_crop(mANativeWindow, xOff, yOff,
+                                     xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            ///Update the current x and y offsets
+            // Update the current x and y offsets
             mXOff = xOff;
             mYOff = yOff;
         }
 
         {
             buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
-            // unlock buffer before sending to display
-            mapper.unlock(*handle);
+            if (!mUseExternalBufferLocking) {
+                // unlock buffer before sending to display
+                mapper.unlock(*handle);
+            }
             ret = mANativeWindow->enqueue_buffer(mANativeWindow, handle);
         }
         if ( NO_ERROR != ret ) {
@@ -1163,33 +1094,14 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
         Utils::Message msg;
         mDisplayQ.put(&msg);
 
-
-#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
-
-        if ( mMeasureStandby )
-            {
-            CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
-            mMeasureStandby = false;
-            }
-        else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType)
-            {
-            CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
-            mShotToShot = true;
-            }
-        else if ( mShotToShot )
-            {
-            CameraHal::PPM("Shot to shot: ", &mStartCapture);
-            mShotToShot = false;
-        }
-#endif
-
     }
     else
     {
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
-
-        // unlock buffer before giving it up
-        mapper.unlock(*handle);
+        if (!mUseExternalBufferLocking) {
+            // unlock buffer before giving it up
+            mapper.unlock(*handle);
+        }
 
         // cancel buffer and dequeue another one
         ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
@@ -1259,23 +1171,24 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     if (i == mBufferCount) {
         CAMHAL_LOGEB("Failed to find handle %p", buf);
     }
+    if (!mUseExternalBufferLocking) {
+        // lock buffer before sending to FrameProvider for filling
+        bounds.left = 0;
+        bounds.top = 0;
+        bounds.right = mFrameWidth;
+        bounds.bottom = mFrameHeight;
 
-    // lock buffer before sending to FrameProvider for filling
-    bounds.left = 0;
-    bounds.top = 0;
-    bounds.right = mFrameWidth;
-    bounds.bottom = mFrameHeight;
-
-    int lock_try_count = 0;
-    while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
-      if (++lock_try_count > LOCK_BUFFER_TRIES){
-        if ( NULL != mErrorNotifier.get() ){
-          mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
+        int lock_try_count = 0;
+        while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
+          if (++lock_try_count > LOCK_BUFFER_TRIES){
+            if ( NULL != mErrorNotifier.get() ){
+              mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
+            }
+            return false;
+          }
+          CAMHAL_LOGEA("Gralloc Lock FrameReturn Error: Sleeping 15ms");
+          usleep(15000);
         }
-        return false;
-      }
-      CAMHAL_LOGEA("Gralloc Lock FrameReturn Error: Sleeping 15ms");
-      usleep(15000);
     }
 
     {
@@ -1327,6 +1240,7 @@ void ANativeWindowDisplayAdapter::frameCallbackRelay(CameraFrame* caFrame)
 void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
 {
     ///Call queueBuffer of overlay in the context of the callback thread
+
     DisplayFrame df;
     df.mBuffer = caFrame->mBuffer;
     df.mType = (CameraFrame::FrameType) caFrame->mFrameType;
@@ -1338,6 +1252,10 @@ void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
     PostFrame(df);
 }
 
+void ANativeWindowDisplayAdapter::setExternalLocking(bool extBuffLocking)
+{
+    mUseExternalBufferLocking = extBuffLocking;
+}
 
 /*--------------------ANativeWindowDisplayAdapter Class ENDS here-----------------------------*/
 

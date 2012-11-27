@@ -68,18 +68,25 @@
 #define KEY_MECHANICAL_MISALIGNMENT_CORRECTION "mechanical-misalignment-correction"
 
 //TI extensions for enable/disable algos
-#define KEY_ALGO_FIXED_GAMMA            "ti-algo-fixed-gamma"
+#define KEY_ALGO_EXTERNAL_GAMMA         "ti-algo-external-gamma"
 #define KEY_ALGO_NSF1                   "ti-algo-nsf1"
 #define KEY_ALGO_NSF2                   "ti-algo-nsf2"
 #define KEY_ALGO_SHARPENING             "ti-algo-sharpening"
 #define KEY_ALGO_THREELINCOLORMAP       "ti-algo-threelinecolormap"
 #define KEY_ALGO_GIC                    "ti-algo-gic"
 
+#define KEY_TAP_OUT_SURFACES            "tap-out"
+#define KEY_TAP_IN_SURFACE              "tap-in"
+
+#define KEY_GAMMA_TABLE                 "gamma-table"
+
 #define BRACKETING_IDX_DEFAULT          0
 #define BRACKETING_IDX_STREAM           1
 #define BRACKETING_STREAM_BUFFERS       9
 
 #define SDCARD_PATH "/sdcard/"
+#define SECONDARY_SENSOR "_SEC"
+#define S3D_SENSOR "_S3D"
 
 #define MAX_BURST   15
 #define BURST_INC     5
@@ -213,6 +220,8 @@ typedef struct buffer_info {
     int width;
     int height;
     int format;
+    size_t offset;
+    Rect crop;
     sp<GraphicBuffer> buf;
 } buffer_info_t;
 
@@ -224,6 +233,12 @@ typedef struct param_NamedExpBracketList_t {
     const char *value;
 } param_NamedExpBracketList;
 
+typedef struct param_GammaTblList_t {
+    const char *desc;
+    const char *r;
+    const char *g;
+    const char *b;
+} param_GammaTblList;
 
 char * get_cycle_cmd(const char *aSrc);
 void trim_script_cmd(char *cmd);
@@ -232,6 +247,8 @@ status_t dump_mem_status();
 int openCamera();
 int closeCamera();
 void createBufferOutputSource();
+void createBufferInputSource();
+void requestBufferSourceReset();
 void initDefaults();
 void setDefaultExpGainPreset(ShotParameters &params, int idx);
 void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain);
@@ -263,6 +280,7 @@ int getSupportedParametersNames(int width, int height, param_Array array[], int 
 int checkSupportedParamScript(char **array, int size, char *param);
 int checkSupportedParamScriptLayout(char **array, int size, char *param,int *index);
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num);
+int checkSupportedParamScriptResol(param_Array **array, int size, int w, int h, int *num);
 int getSupportedParametersfps(char* parameters, int *optionsCount);
 int checkSupportedParamScriptfpsConst(int *array, int size, char *param, int *num);
 int checkSupportedParamScriptfpsRange(char **array, int size, char *param, int *num);
@@ -313,6 +331,7 @@ public:
                 uint8_t *mappedBuffer;
                 unsigned int count;
                 unsigned int slot;
+                Rect crop;
             };
         public:
             Defer(BufferSourceThread* bst) :
@@ -344,7 +363,8 @@ public:
                 if (!mExiting) {
                     DeferContainer defer = mDeferQueue.itemAt(0);
                     printf ("=== handling buffer %d\n", defer.count);
-                    mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
+                    mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer,
+                                       defer.count, defer.crop);
                     defer.graphicBuffer->unlock();
                     mDeferQueue.removeAt(0);
                     mBST->onHandled(defer.graphicBuffer, defer.slot);
@@ -352,12 +372,14 @@ public:
                 }
                 return false;
             }
-            void add(sp<GraphicBuffer> &gbuf, unsigned int count, unsigned int slot = 0) {
+            void add(sp<GraphicBuffer> &gbuf, const Rect &crop,
+                     unsigned int count, unsigned int slot = 0) {
                 Mutex::Autolock lock(mFrameQueueMutex);
                 DeferContainer defer;
                 defer.graphicBuffer = gbuf;
                 defer.count = count;
                 defer.slot = slot;
+                defer.crop = crop;
                 gbuf->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &defer.mappedBuffer);
                 mDeferQueue.add(defer);
                 mFrameQueueCondition.signal();
@@ -393,13 +415,13 @@ public:
 
     virtual bool threadLoop() { return false;}
     virtual void requestExit() {};
-    virtual void setBuffer() {};
+    virtual void setBuffer(android::ShotParameters &params) {};
     virtual void onHandled(sp<GraphicBuffer> &g, unsigned int slot) {};
 
-    bool toggleStreamCapture(int expBracketIdx) {
+    bool setStreamCapture(bool restart, int expBracketIdx) {
         Mutex::Autolock lock(mToggleStateMutex);
         mExpBracketIdx = expBracketIdx;
-        mRestartCapture = !mRestartCapture;
+        mRestartCapture = restart;
         return mRestartCapture;
     }
 
@@ -418,7 +440,8 @@ public:
         return !mReturnedBuffers.isEmpty();
     }
 
-    void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
+    void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int, const Rect &);
+    Rect getCrop(sp<GraphicBuffer> &buffer, const float *mtx);
     void showMetadata(sp<IMemory> data);
 protected:
     void restartCapture() {
@@ -427,6 +450,7 @@ protected:
             ShotParameters shotParams;
             calcNextSingleExpGainPreset(mExpBracketIdx, mExp, mGain),
             setSingleExpGainPreset(shotParams, mExpBracketIdx, mExp, mGain);
+            shotParams.set(ShotParameters::KEY_BURST, 1);
             mCamera->takePictureWithParameters(0, shotParams.flatten());
         }
     }
@@ -450,16 +474,19 @@ private:
 class BufferSourceInput : public RefBase {
 public:
     BufferSourceInput(sp<Camera> camera) : mCamera(camera) {
+        mTapOut = new BufferSourceThread(camera);
+        mTapOut->run();
     }
 
     virtual ~BufferSourceInput() {
+        mTapOut->requestExit();
+        mTapOut.clear();
     }
 
-    virtual void init() = 0;
-
-    virtual void setInput(buffer_info_t, const char *format);
+    virtual void setInput(buffer_info_t, const char *format, ShotParameters &params);
 
 protected:
+    sp<BufferSourceThread> mTapOut;
     sp<ANativeWindow> mWindowTapIn;
     sp<Camera> mCamera;
 };

@@ -24,11 +24,19 @@
 #include "CameraHal.h"
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"
+#include "Decoder_libjpeg.h"
+#include "FrameDecoder.h"
+
 
 namespace Ti {
 namespace Camera {
 
+#ifndef V4L2_PIX_FMT_H264
+#define V4L2_PIX_FMT_H264 0
+#endif
+
 #define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
+#define DEFAULT_CAPTURE_FORMAT V4L2_PIX_FMT_YUYV
 
 #define NB_BUFFER 10
 #define DEVICE "/dev/videoxx"
@@ -99,7 +107,7 @@ public:
 
 public:
 
-    V4LCameraAdapter(size_t sensor_index);
+    V4LCameraAdapter(size_t sensor_index, CameraHal* hal);
     ~V4LCameraAdapter();
 
 
@@ -116,6 +124,8 @@ public:
 
     static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
 
+    void setupWorkingMode();
+
 protected:
 
 //----------Parent class method implementation------------------------------------
@@ -127,7 +137,7 @@ protected:
     virtual status_t useBuffers(CameraMode mode, CameraBuffer *bufArr, int num, size_t length, unsigned int queueable);
     virtual status_t fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
-    virtual status_t getPictureBufferSize(CameraFrame *frame, size_t bufferCount);
+    virtual status_t getPictureBufferSize(CameraFrame &frame, size_t bufferCount);
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
     virtual void onOrientationEvent(uint32_t orientation, uint32_t tilt);
 //-----------------------------------------------------------------------------
@@ -153,11 +163,9 @@ private:
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();
 
-    char * GetFrame(int &index);
+    char * GetFrame(int &index, int &filledLen);
 
     int previewThread();
-
-public:
 
 private:
     //capabilities data
@@ -175,6 +183,7 @@ private:
     static const char DEFAULT_PICTURE_FORMAT[];
     static const char DEFAULT_PICTURE_SIZE[];
     static const char DEFAULT_FOCUS_MODE[];
+    static const char DEFAULT_FRAMERATE_RANGE[];
     static const char * DEFAULT_VSTAB;
     static const char * DEFAULT_VNF;
 
@@ -193,23 +202,23 @@ private:
     status_t v4lStopStreaming(int nBufferCount);
     status_t v4lSetFormat(int, int, uint32_t);
     status_t restartPreview();
-
+    status_t applyFpsValue();
+    status_t returnBufferToV4L(int id);
+    void returnOutputBuffer(int index);
+    bool isNeedToUseDecoder() const;
 
     int mPreviewBufferCount;
     int mPreviewBufferCountQueueable;
     int mCaptureBufferCount;
     int mCaptureBufferCountQueueable;
-    android::KeyedVector<CameraBuffer *, int> mPreviewBufs;
+    CameraBuffer *mPreviewBufs[NB_BUFFER];
     android::KeyedVector<CameraBuffer *, int> mCaptureBufs;
-    mutable android::Mutex mPreviewBufsLock;
-    mutable android::Mutex mCaptureBufsLock;
-    mutable android::Mutex mStopPreviewLock;
 
     android::CameraParameters mParams;
 
     bool mPreviewing;
     bool mCapturing;
-    android::Mutex mLock;
+    mutable android::Mutex mLock;
 
     int mFrameCount;
     int mLastFrameCount;
@@ -229,7 +238,21 @@ private:
 
     int nQueued;
     int nDequeued;
+    int mQueuedOutputBuffers;
 
+    FrameDecoder* mDecoder;
+    android::Vector< android::sp<MediaBuffer> > mInBuffers;
+    android::Vector< android::sp<MediaBuffer> > mOutBuffers;
+
+    android::Mutex mV4LLock;
+
+    int mPixelFormat;
+    int mFrameRate;
+
+    android::Mutex mStopLock;
+    android::Condition mStopCondition;
+
+    CameraHal* mCameraHal;
 };
 
 } // namespace Camera

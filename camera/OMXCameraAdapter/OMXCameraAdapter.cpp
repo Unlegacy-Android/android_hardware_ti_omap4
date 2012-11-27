@@ -82,6 +82,13 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mPending3Asettings = 0;//E3AsettingsAll;
     mPendingCaptureSettings = 0;
     mPendingPreviewSettings = 0;
+    mPendingReprocessSettings = 0;
+
+    ret = mMemMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
 
     if ( 0 != mInitSem.Count() )
         {
@@ -213,8 +220,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mVstabEnabled = false;
     mVnfEnabled = false;
     mBurstFrames = 1;
-    mBurstFramesAccum = 0;
-    mCapturedFrames = 0;
     mFlushShotConfigQueue = false;
     mPictureQuality = 100;
     mCurrentZoomIdx = 0;
@@ -253,6 +258,10 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mGPSData.mTimeStampValid = false;
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
+
+    mCapturedFrames = 0;
+    mBurstFramesAccum = 0;
+    mBurstFramesQueued = 0;
 
     //update the mDeviceOrientation with the sensor mount orientation.
     //So that the face detect will work before onOrientationEvent()
@@ -368,12 +377,13 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mParameters3A.ManualGain = 0;
     mParameters3A.ManualGainRight = 0;
 
-    mParameters3A.AlgoFixedGamma = OMX_TRUE;
+    mParameters3A.AlgoExternalGamma = OMX_FALSE;
     mParameters3A.AlgoNSF1 = OMX_TRUE;
     mParameters3A.AlgoNSF2 = OMX_TRUE;
     mParameters3A.AlgoSharpening = OMX_TRUE;
     mParameters3A.AlgoThreeLinColorMap = OMX_TRUE;
     mParameters3A.AlgoGIC = OMX_TRUE;
+    memset(&mParameters3A.mGammaTable, 0, sizeof(mParameters3A.mGammaTable));
 
     LOG_FUNCTION_NAME_EXIT;
     return Utils::ErrorUtils::omxToAndroidError(eError);
@@ -455,17 +465,6 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
     isCaptureFrame = (CameraFrame::IMAGE_FRAME == frameType) ||
                      (CameraFrame::RAW_FRAME == frameType);
 
-    if ( isCaptureFrame && (NO_ERROR == ret) ) {
-        // In CP_CAM mode, end image capture will be signalled when application starts preview
-        if ((1 > mCapturedFrames) && !mBracketingEnabled && (mCapMode != CP_CAM)) {
-            // Signal end of image capture
-            if ( NULL != mEndImageCaptureCallback) {
-                mEndImageCaptureCallback(mEndCaptureData);
-            }
-            return NO_ERROR;
-        }
-    }
-
     if ( NO_ERROR == ret )
         {
         port = getPortParams(frameType);
@@ -481,7 +480,14 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
             if ((CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf) {
                 if ( isCaptureFrame && !mBracketingEnabled ) {
                     android::AutoMutex lock(mBurstLock);
-                    if (mBurstFramesQueued >= mBurstFramesAccum) {
+                    if ((1 > mCapturedFrames) && !mBracketingEnabled && (mCapMode != CP_CAM)) {
+                        // Signal end of image capture
+                        if ( NULL != mEndImageCaptureCallback) {
+                            mEndImageCaptureCallback(mEndCaptureData);
+                        }
+                        port->mStatus[i] = OMXCameraPortParameters::IDLE;
+                        return NO_ERROR;
+                    } else if (mBurstFramesQueued >= mBurstFramesAccum) {
                         port->mStatus[i] = OMXCameraPortParameters::IDLE;
                         return NO_ERROR;
                     }
@@ -820,7 +826,8 @@ void OMXCameraAdapter::getParameters(android::CameraParameters& params)
            params.set(android::CameraParameters::KEY_FLASH_MODE, valstr);
 
        if ((mParameters3A.Focus == OMX_IMAGE_FocusControlAuto) &&
-           (mCapMode != OMXCameraAdapter::VIDEO_MODE)) {
+           ( (mCapMode != OMXCameraAdapter::VIDEO_MODE) &&
+             (mCapMode != OMXCameraAdapter::VIDEO_MODE_HQ) ) ) {
            valstr = android::CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE;
        } else {
            valstr = getLUTvalue_OMXtoHAL(mParameters3A.Focus, FocusLUT);
@@ -1377,9 +1384,9 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, CameraBuffer * bufArr, in
             break;
 
         case CAMERA_IMAGE_CAPTURE:
-            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mMaxQueueable = queueable;
             ret = UseBuffersCapture(bufArr, num);
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mNumBufs = num;
             break;
 
         case CAMERA_VIDEO:
@@ -1982,7 +1989,8 @@ status_t OMXCameraAdapter::UseBuffersPreview(CameraBuffer * bufArr, int num)
             }
         }
 
-        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+        if( (mCapMode == OMXCameraAdapter::VIDEO_MODE) ||
+            (mCapMode == OMXCameraAdapter::VIDEO_MODE_HQ) ) {
 
             if (mPendingPreviewSettings & SetVNF) {
                 mPendingPreviewSettings &= ~SetVNF;
@@ -2291,7 +2299,7 @@ status_t OMXCameraAdapter::startPreview()
 #ifdef CAMERAHAL_DEBUG
         {
         android::AutoMutex locker(mBuffersWithDucatiLock);
-        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pAppPrivate,1);
+        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pBuffer,1);
         }
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
@@ -2491,6 +2499,7 @@ status_t OMXCameraAdapter::stopPreview() {
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
+    mPendingReprocessSettings = 0;
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
@@ -2729,7 +2738,7 @@ status_t OMXCameraAdapter::takePicture()
 
     LOG_FUNCTION_NAME;
 
-    {
+    if (mNextState != REPROCESS_STATE) {
         android::AutoMutex lock(mFrameCountMutex);
         if (mFrameCount < 1) {
             // first frame may time some time to come...so wait for an adequate amount of time
@@ -2826,7 +2835,8 @@ status_t OMXCameraAdapter::getFrameSize(size_t &width, size_t &height)
             }
         }
 
-        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+        if((mCapMode == OMXCameraAdapter::VIDEO_MODE) ||
+           (mCapMode == OMXCameraAdapter::VIDEO_MODE_HQ) ) {
 
             if (mPendingPreviewSettings & SetVNF) {
                 mPendingPreviewSettings &= ~SetVNF;
@@ -3374,8 +3384,7 @@ status_t OMXCameraAdapter::storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader)
     if ( UNLIKELY( mDebugProfile ) ) {
 
         platformPrivate =  static_cast<OMX_TI_PLATFORMPRIVATE *> (pBuffHeader->pPlatformPrivate);
-        extraData = getExtradata(static_cast<OMX_OTHER_EXTRADATATYPE *> (platformPrivate->pMetaDataBuffer),
-                platformPrivate->nMetaDataSize,
+        extraData = getExtradata(platformPrivate->pMetaDataBuffer,
                 static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData));
 
         if ( NULL != extraData ) {
@@ -3483,7 +3492,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         //            if we are waiting for a snapshot and in video mode...go ahead and send
         //            this frame as a snapshot
         if( mWaitingForSnapshot &&  (mCapturedFrames > 0) &&
-            (snapshotFrame || (mCapMode == VIDEO_MODE)))
+            (snapshotFrame || (mCapMode == VIDEO_MODE) || (mCapMode == VIDEO_MODE_HQ ) ))
             {
             typeOfFrame = CameraFrame::SNAPSHOT_FRAME;
             mask = (unsigned int)CameraFrame::SNAPSHOT_FRAME;
@@ -3513,13 +3522,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         //CAMHAL_LOGV("FBD pBuffer = 0x%x", pBuffHeader->pBuffer);
 
         if( mWaitingForSnapshot )
-          {
-            if (!mBracketingEnabled &&
-                 ((HIGH_SPEED == mCapMode) || (VIDEO_MODE == mCapMode)) )
-              {
-                notifyShutterSubscribers();
-              }
-          }
+            {
+            if ( !mBracketingEnabled &&
+                 ((HIGH_SPEED == mCapMode) ||
+                  (VIDEO_MODE == mCapMode) ||
+                  (VIDEO_MODE_HQ == mCapMode)) )
+                {
+                    notifyShutterSubscribers();
+                }
+            }
 
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
         mFramesWithDisplay++;
@@ -4394,6 +4405,19 @@ public:
             if ( NO_ERROR != err ) {
                 return err;
             }
+
+#ifdef CAMERAHAL_OMAP5_CAPTURE_MODES
+
+            CAMHAL_LOGD("Camera mode: VIDEO HQ ");
+            properties->setMode(MODE_VIDEO_HIGH_QUALITY);
+            err = fetchCapabiltiesForMode(OMX_CaptureHighQualityVideo,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
+#endif
 
         }
 

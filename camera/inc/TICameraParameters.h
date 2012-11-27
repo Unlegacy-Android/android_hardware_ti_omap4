@@ -135,6 +135,7 @@ static const char HIGH_QUALITY_MODE[];
 static const char HIGH_QUALITY_ZSL_MODE[];
 static const char CP_CAM_MODE[];
 static const char VIDEO_MODE[];
+static const char VIDEO_MODE_HQ[];
 static const char EXPOSURE_BRACKETING[];
 static const char ZOOM_BRACKETING[];
 static const char TEMP_BRACKETING[];
@@ -244,12 +245,15 @@ static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[];
 static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION[];
 
 //TI extensions for enable/disable algos
-static const char KEY_ALGO_FIXED_GAMMA[];
+static const char KEY_ALGO_EXTERNAL_GAMMA[];
 static const char KEY_ALGO_NSF1[];
 static const char KEY_ALGO_NSF2[];
 static const char KEY_ALGO_SHARPENING[];
 static const char KEY_ALGO_THREELINCOLORMAP[];
 static const char KEY_ALGO_GIC[];
+
+//Gamma table
+static const char KEY_GAMMA_TABLE[];
 
 };
 

@@ -38,6 +38,10 @@ ifdef TI_CAMERAHAL_PROFILING
     CAMERAHAL_CFLAGS += -DCAMERAHAL_OMX_PROFILING
 endif
 
+ifeq ($(findstring omap5, $(TARGET_BOARD_PLATFORM)),omap5)
+    CAMERAHAL_CFLAGS += -DCAMERAHAL_OMAP5_CAPTURE_MODES
+endif
+
 ifeq ($(ENHANCED_DOMX),true)
     CAMERAHAL_CFLAGS += -DENHANCED_DOMX
 endif
@@ -71,11 +75,16 @@ TI_CAMERAHAL_COMMON_SRC := \
     BaseCameraAdapter.cpp \
     MemoryManager.cpp \
     Encoder_libjpeg.cpp \
+    Decoder_libjpeg.cpp \
     SensorListener.cpp  \
     NV12_resize.cpp \
     CameraParameters.cpp \
     TICameraParameters.cpp \
-    CameraHalCommon.cpp
+    CameraHalCommon.cpp \
+    FrameDecoder.cpp \
+    SwFrameDecoder.cpp \
+    OmxFrameDecoder.cpp \
+    DecoderFactory.cpp
 
 TI_CAMERAHAL_OMX_SRC := \
     OMXCameraAdapter/OMX3A.cpp \

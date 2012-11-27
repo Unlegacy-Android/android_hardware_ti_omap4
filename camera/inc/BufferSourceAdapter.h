@@ -37,32 +37,54 @@ class BufferSourceAdapter : public DisplayAdapter
 {
 // private types
 private:
+    ///Constant declarations
+    static const int NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+
+
     // helper class to return frame in different thread context
     class ReturnFrame : public android::Thread {
     public:
         ReturnFrame(BufferSourceAdapter* __this) : mBufferSourceAdapter(__this) {
-            mWaitForSignal.Create(0);
+            android::AutoMutex lock(mReturnFrameMutex);
             mDestroying = false;
+            mFrameCount = 0;
         }
 
         ~ReturnFrame() {
-            mDestroying = true;
-            mWaitForSignal.Release();
+            android::AutoMutex lock(mReturnFrameMutex);
          }
 
         void signal() {
-            mWaitForSignal.Signal();
+            android::AutoMutex lock(mReturnFrameMutex);
+            mFrameCount++;
+            mReturnFrameCondition.signal();
+        }
+
+        virtual void requestExit() {
+            Thread::requestExit();
+
+            android::AutoMutex lock(mReturnFrameMutex);
+            mDestroying = true;
+            mReturnFrameCondition.signal();
         }
 
         virtual bool threadLoop() {
-            mWaitForSignal.Wait();
-            if (!mDestroying) mBufferSourceAdapter->handleFrameReturn();
+            android::AutoMutex lock(mReturnFrameMutex);
+            if ( 0 >= mFrameCount ) {
+                mReturnFrameCondition.wait(mReturnFrameMutex);
+            }
+            if (!mDestroying) {
+                mBufferSourceAdapter->handleFrameReturn();
+                mFrameCount--;
+            }
             return true;
         }
 
     private:
         BufferSourceAdapter* mBufferSourceAdapter;
-        Utils::Semaphore mWaitForSignal;
+        android::Condition mReturnFrameCondition;
+        android::Mutex mReturnFrameMutex;
+        int mFrameCount;
         bool mDestroying;
     };
 
@@ -74,6 +96,17 @@ private:
         }
 
         ~QueueFrame() {
+         }
+
+        void addFrame(CameraFrame *frame) {
+            android::AutoMutex lock(mFramesMutex);
+            mFrames.add(new CameraFrame(*frame));
+            mFramesCondition.signal();
+        }
+
+        virtual void requestExit() {
+            Thread::requestExit();
+
             mDestroying = true;
 
             android::AutoMutex lock(mFramesMutex);
@@ -83,12 +116,6 @@ private:
                 frame->mMetaData.clear();
                 delete frame;
             }
-            mFramesCondition.signal();
-         }
-
-        void addFrame(CameraFrame *frame) {
-            android::AutoMutex lock(mFramesMutex);
-            mFrames.add(new CameraFrame(*frame));
             mFramesCondition.signal();
         }
 
@@ -106,6 +133,12 @@ private:
             if (frame) {
                 mBufferSourceAdapter->handleFrameCallback(frame);
                 frame->mMetaData.clear();
+
+                if (frame->mFrameType != CameraFrame::REPROCESS_INPUT_FRAME) {
+                    // signal return frame thread that it can dequeue a buffer now
+                    mBufferSourceAdapter->mReturnFrame->signal();
+                }
+
                 delete frame;
             }
 
@@ -149,6 +182,11 @@ public:
     virtual int freeBufferList(CameraBuffer * buflist);
     virtual int maxQueueableBuffers(unsigned int& queueable);
     virtual int minUndequeueableBuffers(int& unqueueable);
+    virtual bool match(const char * str);
+
+    virtual CameraBuffer * getBuffers(bool reset = false);
+    virtual unsigned int getSize();
+    virtual int getBufferCount();
 
     static void frameCallback(CameraFrame* caFrame);
     void addFrame(CameraFrame* caFrame);

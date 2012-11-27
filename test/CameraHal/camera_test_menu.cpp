@@ -88,6 +88,7 @@ bool vnftoggle = false;
 bool faceDetectToggle = false;
 bool metaDataToggle = false;
 bool shotConfigFlush = false;
+bool streamCapture = false;
 int saturation = 0;
 int zoomIDX = 0;
 int videoCodecIDX = 0;
@@ -95,7 +96,8 @@ int audioCodecIDX = 0;
 int outputFormatIDX = 0;
 int contrast = 0;
 int brightness = 0;
-unsigned int burst = 9;
+unsigned int burst = 0;
+unsigned int burstCount = 0;
 int sharpness = 0;
 int iso_mode = 0;
 int capture_mode = 0;
@@ -265,7 +267,7 @@ param_NamedExpBracketList_t expBracketing[] = {
   },
 };
 
-const char *tempBracketing[] = {"disable", "enable"};
+const char *tempBracketing[] = {"false", "true"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *afTimeout[] = {"enable", "disable" };
 
@@ -520,18 +522,104 @@ bool firstTime = true;
 bool firstTimeStereo = true;
 
 //TI extensions for enable/disable algos
-const char *algoFixedGamma[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoExternalGamma[] = {CameraParameters::FALSE, CameraParameters::TRUE};
 const char *algoNSF1[] = {CameraParameters::FALSE, CameraParameters::TRUE};
 const char *algoNSF2[] = {CameraParameters::FALSE, CameraParameters::TRUE};
 const char *algoSharpening[] = {CameraParameters::FALSE, CameraParameters::TRUE};
 const char *algoThreeLinColorMap[] = {CameraParameters::FALSE, CameraParameters::TRUE};
 const char *algoGIC[] = {CameraParameters::FALSE, CameraParameters::TRUE};
-int algoFixedGammaIDX = 1;
+int algoExternalGammaIDX = 0;
 int algoNSF1IDX = 1;
 int algoNSF2IDX = 1;
 int algoSharpeningIDX = 1;
 int algoThreeLinColorMapIDX = 1;
 int algoGICIDX = 1;
+
+/** Buffer source reset */
+bool bufferSourceInputReset = false;
+bool bufferSourceOutputReset = false;
+
+/** Gamma table */
+const char *gammaTbl22 = "("
+    "0:8,8:12,20:8,28:8,36:8,44:12,56:8,64:8,72:8,80:12,92:4,96:8,104:4,108:8,116:8,124:8,"
+    "132:4,136:8,144:4,148:8,156:4,160:8,168:4,172:4,176:4,180:8,188:4,192:8,200:4,204:4,208:4,212:4,"
+    "216:4,220:4,224:4,228:8,236:4,240:4,244:4,248:4,252:4,256:4,260:4,264:4,268:0,268:4,272:4,276:4,"
+    "280:4,284:4,288:4,292:4,296:4,300:4,304:0,304:4,308:4,312:4,316:4,320:4,324:0,324:4,328:4,332:4,"
+    "336:0,336:4,340:4,344:4,348:0,348:4,352:4,356:4,360:0,360:4,364:4,368:4,372:0,372:4,376:0,376:4,"
+    "380:4,384:4,388:0,388:4,392:0,392:4,396:4,400:4,404:0,404:4,408:0,408:4,412:0,412:4,416:4,420:4,"
+    "424:0,424:4,428:0,428:4,432:0,432:4,436:4,440:4,444:0,444:4,448:0,448:4,452:0,452:4,456:0,456:4,"
+    "460:0,460:4,464:0,464:4,468:4,472:4,476:0,476:4,480:0,480:4,484:0,484:4,488:0,488:4,492:0,492:4,"
+    "496:0,496:4,500:0,500:4,504:0,504:4,508:0,508:4,512:0,512:4,516:0,516:4,520:0,520:4,524:0,524:4,"
+    "528:0,528:4,532:0,532:4,536:0,536:4,540:0,540:4,544:0,544:4,548:0,548:4,552:0,552:4,556:0,556:4,"
+    "560:0,560:4,564:0,564:4,568:0,568:4,572:0,572:4,576:0,576:4,580:0,580:0,580:0,580:4,584:0,584:4,"
+    "588:0,588:4,592:0,592:4,596:0,596:4,600:0,600:4,604:0,604:4,608:0,608:0,608:0,608:4,612:0,612:4,"
+    "616:0,616:4,620:0,620:4,624:0,624:4,628:0,628:4,632:0,632:0,632:0,632:4,636:0,636:4,640:0,640:4,"
+    "644:0,644:4,648:0,648:0,648:0,648:4,652:0,652:4,656:0,656:4,660:0,660:4,664:0,664:0,664:0,664:4,"
+    "668:0,668:4,672:0,672:4,676:0,676:4,680:0,680:0,680:0,680:4,684:0,684:4,688:0,688:4,692:0,692:0,"
+    "692:0,692:4,696:0,696:4,700:0,700:4,704:0,704:0,704:0,704:4,708:0,708:4,712:0,712:4,716:0,716:0,"
+    "716:0,716:4,720:0,720:4,724:0,724:0,724:0,724:4,728:0,728:4,732:0,732:4,736:0,736:0,736:0,736:4,"
+    "740:0,740:4,744:0,744:0,744:0,744:4,748:0,748:4,752:0,752:0,752:0,752:4,756:0,756:4,760:0,760:4,"
+    "764:0,764:0,764:0,764:4,768:0,768:4,772:0,772:0,772:0,772:4,776:0,776:4,780:0,780:0,780:0,780:4,"
+    "784:0,784:4,788:0,788:0,788:0,788:4,792:0,792:4,796:0,796:0,796:0,796:4,800:0,800:0,800:0,800:4,"
+    "804:0,804:4,808:0,808:0,808:0,808:4,812:0,812:4,816:0,816:0,816:0,816:4,820:0,820:4,824:0,824:0,"
+    "824:0,824:4,828:0,828:0,828:0,828:4,832:0,832:4,836:0,836:0,836:0,836:4,840:0,840:4,844:0,844:0,"
+    "844:0,844:4,848:0,848:0,848:0,848:4,852:0,852:4,856:0,856:0,856:0,856:4,860:0,860:0,860:0,860:4,"
+    "864:0,864:4,868:0,868:0,868:0,868:4,872:0,872:0,872:0,872:4,876:0,876:0,876:0,876:4,880:0,880:4,"
+    "884:0,884:0,884:0,884:4,888:0,888:0,888:0,888:4,892:0,892:4,896:0,896:0,896:0,896:4,900:0,900:0,"
+    "900:0,900:4,904:0,904:0,904:0,904:4,908:0,908:4,912:0,912:0,912:0,912:4,916:0,916:0,916:0,916:4,"
+    "920:0,920:0,920:0,920:4,924:0,924:0,924:0,924:4,928:0,928:4,932:0,932:0,932:0,932:4,936:0,936:0,"
+    "936:0,936:4,940:0,940:0,940:0,940:4,944:0,944:0,944:0,944:4,948:0,948:0,948:0,948:4,952:0,952:0,"
+    "952:0,952:4,956:0,956:4,960:0,960:0,960:0,960:4,964:0,964:0,964:0,964:4,968:0,968:0,968:0,968:4,"
+    "972:0,972:0,972:0,972:4,976:0,976:0,976:0,976:4,980:0,980:0,980:0,980:4,984:0,984:0,984:0,984:4,"
+    "988:0,988:0,988:0,988:4,992:0,992:0,992:0,992:4,996:0,996:0,996:0,996:4,1000:0,1000:0,1000:0,1000:4,"
+    "1004:0,1004:0,1004:0,1004:4,1008:0,1008:0,1008:0,1008:4,1012:0,1012:4,1016:0,1016:0,1016:0,1016:4,1020:0,1020:0"
+    ")";
+const char *gammaTbl0 = "("
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,"
+    "4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0,4:0"
+    ")";
+const param_GammaTblList_t manualGammaModes[] = {
+    {"Off",     NULL,       NULL,       NULL},
+    {"White",   gammaTbl22, gammaTbl22, gammaTbl22},
+    {"Yellow",  gammaTbl22, gammaTbl22, gammaTbl0},
+    {"Cyan",    gammaTbl0,  gammaTbl22, gammaTbl22},
+    {"Green",   gammaTbl0,  gammaTbl22, gammaTbl0},
+    {"Magenta", gammaTbl22, gammaTbl0,  gammaTbl22},
+    {"Red",     gammaTbl22, gammaTbl0,  gammaTbl0},
+    {"Blue",    gammaTbl0,  gammaTbl0,  gammaTbl22},
+    {"Black",   gammaTbl0,  gammaTbl0,  gammaTbl0}
+};
+int manualGammaModeIDX = 0;
 
 /** Calculate delay from a reference time */
 unsigned long long timeval_delay(const timeval *ref) {
@@ -561,8 +649,10 @@ void my_raw_callback(const sp<IMemory>& mem) {
     if (mem == NULL)
         goto out;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
+        //Start preview after capture.
+        camera->startPreview();
+    }
 
     fn[0] = 0;
     sprintf(fn, "%s/img%03d.raw", images_dir_path, counter);
@@ -691,8 +781,16 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
 
     LOG_FUNCTION_NAME;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam")) {
+        if(burstCount > 1) {
+            burstCount --;
+            // Restart preview if taking a single capture
+            // or after the last iteration of burstCount
+        } else if(burstCount == 0 || burstCount == 1) {
+            camera->startPreview();
+            burstCount = burst;
+        }
+    }
 
     if (mem == NULL)
         goto out;
@@ -1002,6 +1100,8 @@ int configureRecorder() {
 
     char videoFile[384],vbit_string[50];
     videoFd = -1;
+    struct CameraInfo cameraInfo;
+    camera->getCameraInfo(camera_index, &cameraInfo);
 
     if ( ( NULL == recorder.get() ) || ( NULL == camera.get() ) ) {
         printf("invalid recorder and/or camera references\n");
@@ -1064,10 +1164,16 @@ int configureRecorder() {
 
     recording_counter++;
 
-    if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
-        printf("error while configuring video size\n");
-
-        return -1;
+    if (cameraInfo.orientation == 90 || cameraInfo.orientation == 270 ) {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->width) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
+    } else {
+        if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->width, Vcapture_Array[VcaptureSizeIDX]->height) < 0 ) {
+            printf("error while configuring video size\n");
+            return -1;
+        }
     }
 
     if ( recorder->setVideoEncoder(videoCodecs[videoCodecIDX].type) < 0 ) {
@@ -1167,6 +1273,8 @@ int openCamera() {
     layoutstr = new char[256];
     capturelayoutstr = new char[256];
 
+    requestBufferSourceReset();
+
     printf("openCamera(camera_index=%d)\n", camera_index);
     camera = Camera::connect(camera_index);
 
@@ -1215,6 +1323,10 @@ int closeCamera() {
 }
 
 void createBufferOutputSource() {
+    if(bufferSourceOutputThread.get() && bufferSourceOutputReset) {
+        bufferSourceOutputThread->requestExit();
+        bufferSourceOutputThread.clear();
+    }
     if(!bufferSourceOutputThread.get()) {
 #ifdef ANDROID_API_JB_OR_LATER
         bufferSourceOutputThread = new BQ_BufferSourceThread(123, camera);
@@ -1223,6 +1335,26 @@ void createBufferOutputSource() {
 #endif
         bufferSourceOutputThread->run();
     }
+    bufferSourceOutputReset = false;
+}
+
+void createBufferInputSource() {
+    if (bufferSourceInput.get() && bufferSourceInputReset) {
+        bufferSourceInput.clear();
+    }
+    if (!bufferSourceInput.get()) {
+#ifdef ANDROID_API_JB_OR_LATER
+        bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+        bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
+    }
+    bufferSourceInputReset = false;
+}
+
+void requestBufferSourceReset() {
+    bufferSourceInputReset = true;
+    bufferSourceOutputReset = true;
 }
 
 int startPreview() {
@@ -1287,7 +1419,11 @@ int startPreview() {
              params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
         }
 
-        params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
+        if ((cameraInfo.orientation == 90 || cameraInfo.orientation == 270) && recordingMode) {
+            params.setPreviewSize(previewHeight, previewWidth);
+        } else {
+            params.setPreviewSize(previewWidth, previewHeight);
+        }
         params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
 
         // calculate display orientation from sensor orientation
@@ -1298,6 +1434,11 @@ int startPreview() {
         } else {  // back-facing
             orientation = (cameraInfo.orientation - dinfo.orientation + 360) % 360;
         }
+
+        if(!strcmp(params.get(KEY_MODE), "video-mode") ) {
+            orientation = 0;
+        }
+
         camera->sendCommand(CAMERA_CMD_SET_DISPLAY_ORIENTATION, orientation, 0);
 
         camera->setParameters(params.flatten());
@@ -1308,6 +1449,12 @@ int startPreview() {
     camera->startPreview();
     previewRunning = true;
     reSizePreview = false;
+
+    const char *format = params.getPictureFormat();
+    if((NULL != format) && isRawPixelFormat(format)) {
+        createBufferOutputSource();
+        createBufferInputSource();
+    }
 
     return 0;
 }
@@ -1983,9 +2130,13 @@ int deleteAllocatedMemory() {
     delete [] layoutstr;
     delete [] capturelayoutstr;
 
+    // Release buffer sources if any
     if (bufferSourceOutputThread.get()) {
         bufferSourceOutputThread->requestExit();
         bufferSourceOutputThread.clear();
+    }
+    if ( bufferSourceInput.get() ) {
+        bufferSourceInput.clear();
     }
 
     return 0;
@@ -2047,6 +2198,15 @@ void stopPreview() {
 
 void initDefaults() {
 
+    struct CameraInfo cameraInfo;
+
+    camera->getCameraInfo(camera_index, &cameraInfo);
+    if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+        rotation = cameraInfo.orientation;
+    } else {  // back-facing
+        rotation = cameraInfo.orientation;
+    }
+
     antibanding_mode = getDefaultParameter("off", numAntibanding, antiband);
     focus_mode = getDefaultParameter("auto", numfocus, focus);
     fpsRangeIdx = getDefaultParameter("5000,30000", rangeCnt, fps_range_str);
@@ -2064,6 +2224,7 @@ void initDefaults() {
     caf_mode = 0;
 
     shotConfigFlush = false;
+    streamCapture = false;
     vstabtoggle = false;
     vnftoggle = false;
     AutoExposureLocktoggle = false;
@@ -2072,7 +2233,6 @@ void initDefaults() {
     metaDataToggle = false;
     expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
-    rotation = 0;
     previewRotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
@@ -2104,12 +2264,14 @@ void initDefaults() {
     manualExp = manualExpMin;
     manualGain = manualGainMin;
 
-    algoFixedGammaIDX = 1;
+    algoExternalGammaIDX = 0;
     algoNSF1IDX = 1;
     algoNSF2IDX = 1;
     algoSharpeningIDX = 1;
     algoThreeLinColorMapIDX = 1;
     algoGICIDX = 1;
+
+    manualGammaModeIDX = 0;
 
     params.set(params.KEY_VIDEO_STABILIZATION, params.FALSE);
     params.set("vnf", params.FALSE);
@@ -2156,7 +2318,11 @@ void initDefaults() {
 }
 
 void setDefaultExpGainPreset(ShotParameters &params, int idx) {
-    setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    if ( ((int)ARRAY_SIZE(expBracketing) > idx) && (0 <= idx) ) {
+        setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    } else {
+        printf("setDefaultExpGainPreset: Index (%d) is out of range 0 ~ %u\n", idx, ARRAY_SIZE(expBracketing) - 1);
+    }
 }
 
 void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) {
@@ -2169,7 +2335,7 @@ void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) 
     if (PARAM_EXP_BRACKET_VALUE_REL == expBracketing[idx].value_type) {
         val.appendFormat("%+d", exp);
     } else {
-        val.appendFormat("%u", (unsigned int) abs);
+        val.appendFormat("%u", (unsigned int) exp);
     }
 
     if (PARAM_EXP_BRACKET_PARAM_PAIR == expBracketing[idx].param_type) {
@@ -2205,6 +2371,7 @@ void setExpGainPreset(ShotParameters &params, const char *input, bool force, par
         printf("relative EV input: \"%s\"\nnumber of relative EV values: %d (%s)\n",
                input, i, flush ? "reset" : "append");
         burst = i;
+        burstCount = i;
         params.set(ShotParameters::KEY_BURST, burst);
         params.set(ShotParameters::KEY_EXP_COMPENSATION, input);
         params.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
@@ -2220,6 +2387,7 @@ void setExpGainPreset(ShotParameters &params, const char *input, bool force, par
         printf("absolute exposure,gain input: \"%s\"\nNumber of brackets: %d (%s)\n",
                input, i, flush ? "reset" : "append");
         burst = i;
+        burstCount = i;
         params.set(ShotParameters::KEY_BURST, burst);
         params.set(ShotParameters::KEY_EXP_GAIN_PAIRS, input);
         params.remove(ShotParameters::KEY_EXP_COMPENSATION);
@@ -2356,12 +2524,13 @@ int menu_algo() {
 
     if (print_menu) {
         printf("\n\n== ALGO ENABLE/DISABLE MENU ============\n\n");
-        printf("   a.                      Fixed Gamma: %s\n", algoFixedGamma[algoFixedGammaIDX]);
+        printf("   a.                   External Gamma: %s\n", algoExternalGamma[algoExternalGammaIDX]);
         printf("   s.                             NSF1: %s\n", algoNSF1[algoNSF1IDX]);
         printf("   d.                             NSF2: %s\n", algoNSF2[algoNSF2IDX]);
         printf("   f.                       Sharpening: %s\n", algoSharpening[algoSharpeningIDX]);
         printf("   g.                 Color Conversion: %s\n", algoThreeLinColorMap[algoThreeLinColorMapIDX]);
         printf("   h.      Green Inballance Correction: %s\n", algoGIC[algoGICIDX]);
+        printf("   j.               Manual gamma table: %s\n", manualGammaModes[manualGammaModeIDX].desc);
         printf("\n");
         printf("   q. Return to main menu\n");
         printf("\n");
@@ -2377,9 +2546,9 @@ int menu_algo() {
 
         case 'a':
         case 'A':
-            algoFixedGammaIDX++;
-            algoFixedGammaIDX %= ARRAY_SIZE(algoFixedGamma);
-            params.set(KEY_ALGO_FIXED_GAMMA, (algoFixedGamma[algoFixedGammaIDX]));
+            algoExternalGammaIDX++;
+            algoExternalGammaIDX %= ARRAY_SIZE(algoExternalGamma);
+            params.set(KEY_ALGO_EXTERNAL_GAMMA, (algoExternalGamma[algoExternalGammaIDX]));
 
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
@@ -2441,6 +2610,29 @@ int menu_algo() {
 
             break;
 
+        case 'j':
+        case 'J':
+            manualGammaModeIDX++;
+            manualGammaModeIDX %= ARRAY_SIZE(manualGammaModes);
+            if ( (NULL != manualGammaModes[manualGammaModeIDX].r) &&
+                 (NULL != manualGammaModes[manualGammaModeIDX].g) &&
+                 (NULL != manualGammaModes[manualGammaModeIDX].b) ) {
+                String8 Val;
+                Val.append(manualGammaModes[manualGammaModeIDX].r);
+                Val.append(",");
+                Val.append(manualGammaModes[manualGammaModeIDX].g);
+                Val.append(",");
+                Val.append(manualGammaModes[manualGammaModeIDX].b);
+                params.set(KEY_GAMMA_TABLE, Val);
+            } else {
+                params.remove(KEY_GAMMA_TABLE);
+            }
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
         case 'Q':
         case 'q':
             return -1;
@@ -2460,6 +2652,8 @@ int functional_menu() {
     int j = 0;
     int k = 0;
     const char *valstr = NULL;
+    struct CameraInfo cameraInfo;
+    bool queueEmpty = true;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -2660,13 +2854,7 @@ int functional_menu() {
             } else {
                 stopPreview();
             }
-            if (bufferSourceOutputThread.get()) {
-                bufferSourceOutputThread->requestExit();
-                bufferSourceOutputThread.clear();
-            }
-            if ( bufferSourceInput.get() ) {
-                bufferSourceInput.clear();
-            }
+
             break;
 
         case '3':
@@ -2713,6 +2901,9 @@ int functional_menu() {
 
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
+
+            requestBufferSourceReset();
+
             break;
 
         case 'l':
@@ -2847,7 +3038,13 @@ int functional_menu() {
             printf("numpreviewFormat %d\n", numpictureFormat);
             params.setPictureFormat(pictureFormatArray[pictureFormat]);
 
-            if ( hardwareActive )
+            queueEmpty = true;
+            if ( bufferSourceOutputThread.get() ) {
+                if ( 0 < bufferSourceOutputThread->hasBuffer() ) {
+                    queueEmpty = false;
+                }
+            }
+            if ( hardwareActive && queueEmpty )
                 camera->setParameters(params.flatten());
 
             break;
@@ -2964,6 +3161,8 @@ int functional_menu() {
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
 
+            requestBufferSourceReset();
+
             break;
 
         case 'K':
@@ -3026,6 +3225,7 @@ int functional_menu() {
             } else {
                 burst += BURST_INC;
             }
+            burstCount = burst;
             params.set(KEY_TI_BURST, burst);
 
             if ( hardwareActive )
@@ -3054,17 +3254,43 @@ int functional_menu() {
                 ippIDX = 3;
                 params.set(KEY_IPP, ipp_mode[ippIDX]);
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             } else if ( !strcmp(modevalues[capture_mode], "video-mode") ) {
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::TRUE);
+                camera->getCameraInfo(camera_index, &cameraInfo);
+                previewRotation = ((360-cameraInfo.orientation)%360);
+                if (previewRotation >= 0 || previewRotation <=360) {
+                    params.set(KEY_SENSOR_ORIENTATION, previewRotation);
+                }
             } else {
                 ippIDX = ippIDX_old;
                 params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                previewRotation = 0;
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
             }
 
             params.set(KEY_MODE, (modevalues[capture_mode]));
 
-            if ( hardwareActive )
+            if ( hardwareActive ) {
+                if (previewRunning) {
+                    stopPreview();
+                }
                 camera->setParameters(params.flatten());
+                // Get parameters from capabilities for the new capture mode
+                params = camera->getParameters();
+                getSizeParametersFromCapabilities();
+                getParametersFromCapabilities();
+                // Set framerate 30fps and 12MP capture resolution if available for the new capture mode.
+                // If not available set framerate and capture mode under index 0 from fps_const_str and capture_Array.
+                frameRateIDX = getDefaultParameter("30000,30000", constCnt, fps_const_str);
+                captureSizeIDX = getDefaultParameterResol("12MP", numcaptureSize, capture_Array);
+                params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRateIDX]);
+                params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
+                camera->setParameters(params.flatten());
+            }
+
+            requestBufferSourceReset();
 
             break;
 
@@ -3389,77 +3615,66 @@ int functional_menu() {
         {
             int msgType = 0;
 
-            if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
-                createBufferOutputSource();
-                if (bufferSourceOutputThread.get()) {
-                    bufferSourceOutputThread->setBuffer();
-                }
-            } else {
-                msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                msgType |= CAMERA_MSG_RAW_BURST;
-#endif
-            }
-
             if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
                (0 != strcmp(videosnapshotstr, "true"))) {
                 printf("Video Snapshot is not supported\n");
-            } else {
-                gettimeofday(&picture_start, 0);
-                if ( hardwareActive ) {
-                    camera->setParameters(params.flatten());
-                    camera->takePictureWithParameters(msgType, shotParams.flatten());
+            } else if ( hardwareActive ) {
+                if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
+                    createBufferOutputSource();
+                    if (bufferSourceOutputThread.get()) {
+                        bufferSourceOutputThread->setBuffer(shotParams);
+                        bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
+                    }
+                } else {
+                    msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                              CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                    msgType |= CAMERA_MSG_RAW_BURST;
+#endif
                 }
+
+                gettimeofday(&picture_start, 0);
+                camera->setParameters(params.flatten());
+                camera->takePictureWithParameters(msgType, shotParams.flatten());
             }
             break;
         }
 
         case 'S':
         {
-            createBufferOutputSource();
-            if (bufferSourceOutputThread.get()) {
-                if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
-                    setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
-                    // Queue more frames initially
-                    shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
-                } else {
-                    setDefaultExpGainPreset(shotParams, expBracketIdx);
+            if (streamCapture) {
+                streamCapture = false;
+                setDefaultExpGainPreset(shotParams, expBracketIdx);
+                // Stop streaming
+                if (bufferSourceOutputThread.get()) {
+                    bufferSourceOutputThread->setStreamCapture(streamCapture, expBracketIdx);
                 }
+            } else {
+                streamCapture = true;
+                setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                // Queue more frames initially
+                shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
             }
             break;
         }
 
         case 'P':
         {
-            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE;
-#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-                msgType |= CAMERA_MSG_RAW_BURST;
-#endif
-            gettimeofday(&picture_start, 0);
-            if (!bufferSourceInput.get()) {
-#ifdef ANDROID_API_JB_OR_LATER
-                bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
-#else
-                bufferSourceInput = new ST_BufferSourceInput(1234, camera);
-#endif
-                bufferSourceInput->init();
-            }
+            int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+            ShotParameters reprocParams;
 
+            gettimeofday(&picture_start, 0);
+            createBufferInputSource();
             if (bufferSourceOutputThread.get() &&
                 bufferSourceOutputThread->hasBuffer())
             {
-                CameraParameters temp = params;
-                // Set pipeline to capture 2592x1944 JPEG
-                temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
-                temp.setPictureSize(2592, 1944);
-                if (hardwareActive) camera->setParameters(temp.flatten());
+                bufferSourceOutputThread->setStreamCapture(false, expBracketIdx);
+                if (hardwareActive) camera->setParameters(params.flatten());
 
                 if (bufferSourceInput.get()) {
                     buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat]);
-                    if (hardwareActive) camera->reprocess(msgType, String8());
+                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat], reprocParams);
+                    if (hardwareActive) camera->reprocess(msgType, reprocParams.flatten());
                 }
             }
             break;
@@ -3957,6 +4172,7 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             const char *config = cmd_args->script_file_name;
             char dir_name[40];
             size_t count = 0;
+            char *p;
 
             // remove just the '.txt' part of the config
             while ((config[count] != '.') && ((count + 1) < sizeof(dir_name))) {
@@ -3966,8 +4182,22 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             strncpy(dir_name, config, count);
 
             dir_name[count] = NULL;
+            p = dir_name;
+            while (*p != '\0') {
+                if (*p == '/') {
+                    printf("SDCARD_PATH is not added to the output directory.\n");
+                    // Needed when camera_test script is executed using the OTC
+                    strcpy(output_dir_path, "");
+                    break;
+                }
+            }
 
             strcat(output_dir_path, dir_name);
+            if (camera_index == 1) {
+                strcat(output_dir_path, SECONDARY_SENSOR);
+            }else if (camera_index == 2) {
+                strcat(output_dir_path, S3D_SENSOR);
+            }
         }
     }
 

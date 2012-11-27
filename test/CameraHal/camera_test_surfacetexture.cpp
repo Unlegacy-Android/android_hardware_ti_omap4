@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <climits>
+#include <math.h>
 
 #include <gui/SurfaceTexture.h>
 #include <gui/SurfaceTextureClient.h>
@@ -51,9 +52,9 @@
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
-#define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
 #define HAL_PIXEL_FORMAT_TI_Y8 0x103
 #define HAL_PIXEL_FORMAT_TI_Y16 0x104
+#define HAL_PIXEL_FORMAT_TI_UYVY 0x105
 
 using namespace android;
 
@@ -70,10 +71,11 @@ static size_t calcBufSize(int format, int width, int height)
     int buf_size;
 
     switch (format) {
-        case HAL_PIXEL_FORMAT_TI_NV12_1D:
+        case HAL_PIXEL_FORMAT_TI_NV12:
             buf_size = width * height * 3 /2;
             break;
         case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
             buf_size = width * height * 2;
             break;
         // add more formats later
@@ -85,20 +87,227 @@ static size_t calcBufSize(int format, int width, int height)
     return buf_size;
 }
 
+static unsigned int calcOffset(int format, unsigned int width, unsigned int top, unsigned int left)
+{
+    unsigned int bpp;
+
+    switch (format) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+            bpp = 1;
+            break;
+        case HAL_PIXEL_FORMAT_TI_UYVY:
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            bpp = 2;
+            break;
+        // add more formats later
+        default:
+            bpp = 1;
+            break;
+    }
+
+    return top * width + left * bpp;
+}
+
 static int getHalPixFormat(const char *format)
 {
-    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
     if ( NULL != format ) {
         if ( strcmp(format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0 ) {
             pixformat = HAL_PIXEL_FORMAT_TI_Y16;
         } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
-            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12;
+        } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV422I) == 0 ) {
+            pixformat = HAL_PIXEL_FORMAT_TI_UYVY;
         } else {
-            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12;
         }
     }
 
     return pixformat;
+}
+
+static int getUsageFromANW(int format)
+{
+    int usage = GRALLOC_USAGE_SW_READ_RARELY |
+                GRALLOC_USAGE_SW_WRITE_NEVER;
+
+    switch (format) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+        case HAL_PIXEL_FORMAT_TI_Y16:
+        case HAL_PIXEL_FORMAT_TI_UYVY:
+            // This usage flag indicates to gralloc we want the
+            // buffers to come from system heap
+            usage |= GRALLOC_USAGE_PRIVATE_0;
+            break;
+        default:
+            // No special flags needed
+            break;
+    }
+    return usage;
+}
+
+static status_t writeCroppedNV12(unsigned int offset,
+                                 unsigned int stride,
+                                 unsigned int bufWidth,
+                                 unsigned int bufHeight,
+                                 const Rect &crop,
+                                 int fd,
+                                 unsigned char *buffer)
+{
+    unsigned char *luma = NULL, *chroma = NULL, *src = NULL;
+    unsigned int uvoffset;
+    int write_size;
+
+    if (!buffer || !crop.isValid()) {
+        return BAD_VALUE;
+    }
+
+    src = buffer;
+    // offset to beginning of uv plane
+    uvoffset =  stride * bufHeight;
+    // offset to beginning of valid region of uv plane
+    uvoffset += (offset - (offset % stride)) / 2 + (offset % stride);
+
+    // start of valid luma region
+    luma = src + offset;
+    // start of valid chroma region
+    chroma = src + uvoffset;
+
+    // write luma line x line
+    unsigned int height = crop.height();
+    unsigned int width = crop.width();
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, luma, width)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        luma += stride;
+    }
+
+    // write chroma line x line
+    height /= 2;
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, chroma, width)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        chroma += stride;
+    }
+
+    return NO_ERROR;
+}
+
+static status_t writeCroppedUYVY(unsigned int offset,
+                                 unsigned int stride,
+                                 unsigned int bufWidth,
+                                 unsigned int bufHeight,
+                                 const Rect &crop,
+                                 int fd,
+                                 unsigned char *buffer)
+{
+    unsigned char *src = NULL;
+    int write_size;
+
+    if (!buffer || !crop.isValid()) {
+        return BAD_VALUE;
+    }
+
+    src = buffer + offset;
+    int height = crop.height();
+    int width = crop.width();
+    write_size = width*2;
+    for (unsigned int i = 0; i < height; i++) {
+        if (write_size != write(fd, src, width*2)) {
+            printf("Bad Write error (%d)%s\n",
+                    errno, strerror(errno));
+            return UNKNOWN_ERROR;
+        }
+        src += stride*2;
+    }
+
+    return NO_ERROR;
+}
+
+static status_t copyCroppedNV12(unsigned int offset,
+                                unsigned int strideSrc,
+                                unsigned int strideDst,
+                                unsigned int bufWidth,
+                                unsigned int bufHeight,
+                                const Rect &crop,
+                                void *bufferSrc,
+                                void *bufferDst)
+{
+    unsigned char *lumaSrc = NULL, *chromaSrc = NULL;
+    unsigned char *lumaDst = NULL, *chromaDst = NULL;
+    unsigned int uvoffset;
+    int write_size;
+
+    if (!bufferSrc || !bufferDst || !crop.isValid()) {
+        return BAD_VALUE;
+    }
+
+    uvoffset = strideSrc * crop.height();
+    uvoffset += (offset - (offset % strideSrc)) / 2 + (offset % strideSrc);
+
+    lumaSrc = static_cast<unsigned char *>(bufferSrc) + offset;
+    chromaSrc = static_cast<unsigned char *>(bufferSrc) + uvoffset;
+
+    int height = crop.height();
+    int width = crop.width();
+
+    uvoffset =  strideDst * height;
+
+    lumaDst = static_cast<unsigned char *>(bufferDst);
+    chromaDst = static_cast<unsigned char *>(bufferDst) + uvoffset;
+
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        memcpy(lumaDst, lumaSrc, width);
+        lumaSrc += strideSrc;
+        lumaDst += strideDst;
+    }
+
+    height /= 2;
+    write_size = width;
+    for (unsigned int i = 0; i < height; i++) {
+        memcpy(chromaDst, chromaSrc, width);
+        chromaSrc += strideSrc;
+        chromaDst += strideDst;
+    }
+
+    return NO_ERROR;
+}
+
+static status_t copyCroppedPacked16(unsigned int offset,
+                                    unsigned int stride,
+                                    unsigned int bufWidth,
+                                    unsigned int bufHeight,
+                                    const Rect &crop,
+                                    void *bufferSrc,
+                                    void *bufferDst)
+{
+    unsigned char *src = NULL, *dst = NULL;
+
+    if (!bufferSrc || !bufferDst || !crop.isValid()) {
+        return BAD_VALUE;
+    }
+
+    src = static_cast<unsigned char *>(bufferSrc) + offset;
+    dst = static_cast<unsigned char *>(bufferDst);
+
+    int height = crop.height();
+    int width = crop.width();
+    for (unsigned int i = 0; i < height; i++) {
+        memcpy(dst, src, width*2);
+        src += stride*2;
+        dst += width*2;
+    }
+
+    return NO_ERROR;
 }
 
 void GLSurface::initialize(int display) {
@@ -312,6 +521,17 @@ void SurfaceTextureBase::deinit() {
     mST.clear();
 }
 
+void SurfaceTextureBase::getId(const char **name) {
+    sp<ANativeWindow> windowTapOut = mSTC;
+
+    *name = NULL;
+    if (windowTapOut.get()) {
+        windowTapOut->perform(windowTapOut.get(), NATIVE_WINDOW_GET_ID, name);
+    }
+
+    windowTapOut.clear();
+}
+
 // SurfaceTexture with GL specific
 
 void SurfaceTextureGL::initialize(int display, int tex_id) {
@@ -405,9 +625,11 @@ void SurfaceTextureGL::drawTexture() {
 }
 
 // buffer source stuff
-void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t *buffer, unsigned int count) {
+void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t *buffer,
+                                        unsigned int count, const Rect &crop) {
     int size;
     buffer_info_t info;
+    unsigned int offset = 0;
     int fd = -1;
     char fn[256];
 
@@ -434,11 +656,18 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     info.height = graphic_buffer->getHeight();
     info.format = graphic_buffer->getPixelFormat();
     info.buf = graphic_buffer;
+    info.crop = crop;
 
     {
         Mutex::Autolock lock(mReturnedBuffersMutex);
         if (mReturnedBuffers.size() >= kReturnedBuffersMaxCapacity) mReturnedBuffers.removeAt(0);
     }
+
+    // re-calculate size and offset
+    size = calcBufSize((int) graphic_buffer->getPixelFormat(), crop.width(), crop.height());
+    offset = calcOffset((int) graphic_buffer->getPixelFormat(), info.width, crop.top, crop.left);
+
+    info.offset = offset;
     mReturnedBuffers.add(info);
 
     // Do not write buffer to file if we are streaming capture
@@ -448,11 +677,21 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
         sprintf(fn, "/sdcard/img%03d.raw", count);
         fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
         if (fd >= 0) {
-            if (size != write(fd, buffer, size)) {
+            if (HAL_PIXEL_FORMAT_TI_NV12 == info.format) {
+                writeCroppedNV12(offset, info.width, info.width, info.height,
+                                 crop, fd, buffer);
+            } else if (HAL_PIXEL_FORMAT_TI_UYVY == info.format) {
+                writeCroppedUYVY(offset, info.width, info.width, info.height,
+                                 crop, fd, buffer);
+            } else if (size != write(fd, buffer + offset, size)) {
                 printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
             }
-            printf("%s: buffer=%08X, size=%d stored at %s\n",
-                        __FUNCTION__, (int)buffer, info.size, fn);
+            printf("%s: buffer=%08X, size=%d stored at %s\n"
+                   "\tRect: top[%d] left[%d] right[%d] bottom[%d] width[%d] height[%d] offset[%d] stride[%d]\n",
+                        __FUNCTION__, (int)buffer, size, fn,
+                        crop.top, crop.left, crop.right, crop.bottom,
+                        crop.width(), crop.height(),
+                        offset, info.width);
             close(fd);
         } else {
             printf("error opening or creating %s\n", fn);
@@ -460,82 +699,171 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     }
 }
 
-void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
+Rect BufferSourceThread::getCrop(sp<GraphicBuffer> &graphic_buffer, const float *mtx) {
+    Rect crop(graphic_buffer->getWidth(), graphic_buffer->getHeight());
+
+    // calculate crop rectangle from tranformation matrix
+    float sx, sy, tx, ty, h, w;
+    unsigned int rect_x, rect_y;
+    /*   sx, 0, 0, 0,
+         0, sy, 0, 0,
+         0, 0, 1, 0,
+         tx, ty, 0, 1 */
+
+    sx = mtx[0];
+    sy = mtx[5];
+    tx = mtx[12];
+    ty = mtx[13];
+    w = float(graphic_buffer->getWidth());
+    h = float(graphic_buffer->getHeight());
+
+    unsigned int bottom = (unsigned int)(h - (ty * h + 1));
+    unsigned int left = (unsigned int)(tx * w -1);
+    rect_y = (unsigned int)(fabsf(sy) * h);
+    rect_x = (unsigned int)(fabsf(sx) * w);
+
+    // handle v-flip
+    if (sy < 0.0f) {
+        bottom = h - bottom;
+    }
+
+    // handle h-flip
+    if (sx < 0.0f) {
+        left = w - left;
+    }
+
+    unsigned int top = bottom - rect_y;
+    unsigned int right = left + rect_x;
+
+    Rect updatedCrop(left, top, right, bottom);
+    if (updatedCrop.isValid()) {
+        crop = updatedCrop;
+    } else {
+        printf("Crop for buffer %d is not valid: "
+               "left=%u, top=%u, right=%u, bottom=%u. "
+               "Will use default.\n",
+               mCounter,
+               left, top, right, bottom);
+    }
+
+    return crop;
+}
+
+void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, ShotParameters &params) {
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
-    void *data = NULL;
-    void *input = NULL;
-    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12;
+    size_t tapInMinUndequeued = 0;
 
     int aligned_width, aligned_height;
-    aligned_width = ALIGN_UP(bufinfo.width, ALIGN_WIDTH);
-    aligned_height = bufinfo.height; //aligned_width * bufinfo.height / bufinfo.width;
-    // aligned_height = ALIGN_DOWN(aligned_height, ALIGN_HEIGHT);
-    printf("aligned width: %d height: %d", aligned_width, aligned_height);
 
-    Rect bounds(bufinfo.width, bufinfo.height);
+    pixformat = bufinfo.format;
+
+    // Aligning is not needed for Bayer
+    if ( ( pixformat == HAL_PIXEL_FORMAT_TI_Y16 ) ||
+         ( pixformat == HAL_PIXEL_FORMAT_TI_UYVY ) ) {
+        aligned_width = bufinfo.crop.right - bufinfo.crop.left;
+    } else {
+        aligned_width = ALIGN_UP(bufinfo.crop.right - bufinfo.crop.left, ALIGN_WIDTH);
+    }
+    aligned_height = bufinfo.crop.bottom - bufinfo.crop.top;
+    printf("aligned width: %d height: %d \n", aligned_width, aligned_height);
 
     if (mWindowTapIn.get() == 0) {
         return;
     }
 
-    if ( NULL != format ) {
-        pixformat = getHalPixFormat(format);
-    }
-
     native_window_set_usage(mWindowTapIn.get(),
-                            GRALLOC_USAGE_SW_READ_RARELY |
-                            GRALLOC_USAGE_SW_WRITE_NEVER);
-    native_window_set_buffer_count(mWindowTapIn.get(), 1);
+                            getUsageFromANW(pixformat));
+    mWindowTapIn->perform(mWindowTapIn.get(),
+                          NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
+                          &tapInMinUndequeued);
+    native_window_set_buffer_count(mWindowTapIn.get(), tapInMinUndequeued);
     native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
+
+    // if buffer dimensions are the same as the aligned dimensions, then we can
+    // queue the buffer directly to tapin surface. if the dimensions are different
+    // then the aligned ones, then we have to copy the buffer into our own buffer
+    // to make sure the stride of the buffer is correct
+    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height) ||
+        ( pixformat == HAL_PIXEL_FORMAT_TI_Y16 ) ||
+        ( pixformat == HAL_PIXEL_FORMAT_TI_UYVY) ) {
+        void *dest[3] = { 0 };
+        void *src[3] = { 0 };
+        Rect bounds(aligned_width, aligned_height);
+
 #ifdef ANDROID_API_JB_MR1_OR_LATER
-    mWindowTapIn->dequeueBuffer_DEPRECATED(mWindowTapIn.get(), &anb);
+        mWindowTapIn->dequeueBuffer_DEPRECATED(mWindowTapIn.get(), &anb);
 #else
-    mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
+        mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
 #endif
-    mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
-    // copy buffer to input buffer if available
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
-    }
-    if (input) {
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
-            memcpy(data, input, size);
-        } else {
-            if (bufinfo.width == aligned_width) {
-                memcpy(data, input, bufinfo.size);
-            } else {
-                // need to copy line by line to adjust for stride
-                uint8_t *dst = (uint8_t*) data;
-                uint8_t *src = (uint8_t*) input;
-                // hrmm this copy only works for NV12 and YV12
-                // copy Y first
-                for (int i = 0; i < aligned_height; i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width;
-                    src += bufinfo.width;
-                }
-                // copy UV plane
-                for (int i = 0; i < (aligned_height / 2); i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width ;
-                    src += bufinfo.width ;
-                }
+        mapper.lock(anb->handle, GRALLOC_USAGE_SW_WRITE_OFTEN, bounds, dest);
+        // copy buffer to input buffer if available
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_OFTEN, src);
+        }
+        if (src[0]) {
+            switch (pixformat) {
+                case HAL_PIXEL_FORMAT_TI_Y16:
+                case HAL_PIXEL_FORMAT_TI_UYVY:
+                    copyCroppedPacked16(bufinfo.offset,
+                                        bufinfo.width,
+                                        bufinfo.width,
+                                        bufinfo.height,
+                                        bufinfo.crop,
+                                        src[0],
+                                        dest[0]);
+                    break;
+                case HAL_PIXEL_FORMAT_TI_NV12:
+                    copyCroppedNV12(bufinfo.offset,
+                                    bufinfo.width,
+                                    aligned_width,
+                                    bufinfo.width,
+                                    bufinfo.height,
+                                    bufinfo.crop,
+                                    src[0],
+                                    dest[0]);
+                    break;
+                default:
+                    printf("Pixel format 0x%x not supported\n", pixformat);
+                    exit(1);
+                    break;
             }
         }
-    }
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->unlock();
-    }
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->unlock();
+        }
 
-    mapper.unlock(anb->handle);
+        mapper.unlock(anb->handle);
+    } else {
+        mWindowTapIn->perform(mWindowTapIn.get(), NATIVE_WINDOW_ADD_BUFFER_SLOT, &bufinfo.buf);
+        anb = bufinfo.buf->getNativeBuffer();
+    }
 
 #ifdef ANDROID_API_JB_MR1_OR_LATER
     mWindowTapIn->queueBuffer_DEPRECATED(mWindowTapIn.get(), anb);
 #else
     mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
+#endif
+
+#ifndef ANDROID_API_JB_OR_LATER
+    {
+        sp<ANativeWindow> windowTapIn = mWindowTapIn;
+        const char* id = NULL;
+
+        if (windowTapIn.get()) {
+            windowTapIn->perform(windowTapIn.get(), NATIVE_WINDOW_GET_ID, &id);
+        }
+
+        if (id) {
+            params.set(KEY_TAP_IN_SURFACE, id);
+        } else {
+            params.remove(KEY_TAP_IN_SURFACE);
+        }
+
+        windowTapIn.clear();
+    }
 #endif
 }
 
