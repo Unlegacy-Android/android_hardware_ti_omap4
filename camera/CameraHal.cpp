@@ -107,6 +107,41 @@ static int dummy_get_current_size(preview_stream_ops_t*,
 }
 #endif
 
+
+CameraHal::SocFamily CameraHal::getSocFamily() {
+    static const struct {
+        const char *name;
+        const CameraHal::SocFamily value;
+    } socFamilyArray[] = {
+        {"OMAP4430", SocFamily_Omap4430},
+        {"OMAP4460", SocFamily_Omap4460},
+        {"OMAP4470", SocFamily_Omap4470}
+    };
+    // lets get the soc family string from sysfs
+    static const char *sysfsNode = "/sys/board_properties/soc/family";
+    FILE *sysfsFd = fopen(sysfsNode, "r");
+    static const int bufSize = 128;
+    char buf[bufSize];
+    if (sysfsFd == NULL) {
+        CAMHAL_LOGEA("'%s' Not Available", sysfsNode);
+        return SocFamily_Undefined;
+    }
+    const char *res = fgets(buf, bufSize, sysfsFd);
+    fclose(sysfsFd);
+    if (res == NULL) {
+        CAMHAL_LOGEA("Error reading '%s'", sysfsNode);
+        return SocFamily_Undefined;
+    }
+    // translate it to CameraHal::SocFamily enum
+    for (int i = 0; i < SocFamily_ElementCount; ++i) {
+        if (strncmp(socFamilyArray[i].name, buf, strlen(socFamilyArray[i].name)) == 0) {
+            return socFamilyArray[i].value;
+        }
+    }
+    return SocFamily_Undefined;
+}
+
+
 #ifdef OMAP_ENHANCEMENT
 static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
 #ifdef OMAP_ENHANCEMENT_CPCAM
@@ -400,15 +435,10 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 // make sure we support vstab...if we don't and application is trying to set
                 // vstab then return an error
                 if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
-                           android::CameraParameters::TRUE) == 0) {
-                    CAMHAL_LOGDB("VSTAB %s", valstr);
-                    mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION, valstr);
-                } else if (strcmp(valstr, android::CameraParameters::TRUE) == 0) {
+                           android::CameraParameters::TRUE) != 0 &&
+                    strcmp(valstr, android::CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGEB("ERROR: Invalid VSTAB: %s", valstr);
                     return BAD_VALUE;
-                } else {
-                    mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
-                                    android::CameraParameters::FALSE);
                 }
             }
 
@@ -2691,24 +2721,35 @@ bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
         restartPreviewRequired = true;
     }
 
-    // set VSTAB. restart is required if vstab value has changed
-    if ( (valstrRemote = params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) != NULL ) {
-        // make sure we support vstab
-        if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
-                   android::CameraParameters::TRUE) == 0) {
-            valstr = mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
-            // vstab value has changed
-            if ((valstr != NULL) &&
-                 strcmp(valstr, valstrRemote) != 0) {
-                restartPreviewRequired = true;
-            }
-            mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
-                            valstrRemote);
+    // set VSTAB, restart is required if VSTAB value has changed
+    int prevWidth, prevHeight;
+    params.getPreviewSize(&prevWidth, &prevHeight);
+    valstr = mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
+    if (prevWidth == 1920 &&
+        (mSocFamily == SocFamily_Omap4430 || mSocFamily == SocFamily_Omap4460)) {
+        // forcibly set to false because of not enough memory for needed buffer size in this case
+        CAMHAL_LOGDA("Forcing VSTAB off");
+        if (strcmp(valstr, android::CameraParameters::FALSE) != 0) {
+            restartPreviewRequired = true;
         }
-    } else if (mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) {
-        // vstab was configured but now unset
-        restartPreviewRequired = true;
-        mParameters.remove(android::CameraParameters::KEY_VIDEO_STABILIZATION);
+        mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
+                        android::CameraParameters::FALSE);
+    } else {
+        if ((valstrRemote = params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) != NULL) {
+            // make sure we support vstab
+            if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
+                       android::CameraParameters::TRUE) == 0) {
+                if (strcmp(valstr, valstrRemote) != 0) {
+                    restartPreviewRequired = true;
+                }
+                mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
+                                valstrRemote);
+            }
+        } else if (mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) {
+            // vstab was configured but now unset
+            restartPreviewRequired = true;
+            mParameters.remove(android::CameraParameters::KEY_VIDEO_STABILIZATION);
+        }
     }
 
     // Set VNF
@@ -3927,6 +3968,7 @@ status_t  CameraHal::dump(int fd) const
 
  */
 CameraHal::CameraHal(int cameraId)
+    : mSocFamily(getSocFamily())
 {
     LOG_FUNCTION_NAME;
 
