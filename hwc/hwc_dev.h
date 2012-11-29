@@ -21,7 +21,9 @@
 #include <stdbool.h>
 
 #include <hardware/hwcomposer.h>
+#ifdef OMAP_ENHANCEMENT_S3D
 #include <ui/S3DFormat.h>
+#endif
 
 #include <linux/bltsville.h>
 #include <video/dsscomp.h>
@@ -65,11 +67,12 @@ struct omap_hwc_ext {
     uint32_t yres;
     float m[2][3];                      /* external transformation matrix */
     hwc_rect_t mirror_region;           /* region of screen to mirror */
-
+#ifdef OMAP_ENHANCEMENT_S3D
     bool s3d_enabled;
     bool s3d_capable;
     enum S3DLayoutType s3d_type;
     enum S3DLayoutOrder s3d_order;
+#endif
 };
 typedef struct omap_hwc_ext omap_hwc_ext_t;
 
@@ -100,7 +103,9 @@ struct counts {
     uint32_t NV12;
     uint32_t dockable;
     uint32_t protected;
+#ifdef OMAP_ENHANCEMENT_S3D
     uint32_t s3d;
+#endif
 
     uint32_t max_hw_overlays;
     uint32_t max_scaling_overlays;
@@ -148,10 +153,10 @@ struct omap_hwc_device {
     int ext_ovls_wanted;         /* # of overlays that should be on external display for current composition */
     int last_ext_ovls;           /* # of overlays on external/internal display for last composition */
     int last_int_ovls;
-
+#ifdef OMAP_ENHANCEMENT_S3D
     enum S3DLayoutType s3d_input_type;
     enum S3DLayoutOrder s3d_input_order;
-
+#endif
     enum bltmode blt_mode;
     enum bltpolicy blt_policy;
 
