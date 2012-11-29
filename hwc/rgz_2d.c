@@ -28,32 +28,17 @@
 #include <video/dsscomp.h>
 #include <video/omap_hwc.h>
 
-#ifndef RGZ_TEST_INTEGRATION
 #include <cutils/log.h>
 #include <cutils/properties.h>
 #include <hardware/hwcomposer.h>
-#include "hal_public.h"
-#else
-#include "hwcomposer.h"
-#include "buffer_handle.h"
-#define ALIGN(x,a) (((x) + (a) - 1L) & ~((a) - 1L))
-#define HW_ALIGN   32
-#endif
 
-#include "rgz_2d.h"
+#include "hwc_dev.h"
 
-#ifdef RGZ_TEST_INTEGRATION
-extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);
-#define BVDUMP(p,t,parms) BVDump(p, t, parms)
-#define HANDLE_TO_BUFFER(h) handle_to_buffer(h)
-#define HANDLE_TO_STRIDE(h) handle_to_stride(h)
-#else
 static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define BVDUMP(p,t,parms)
 #define HANDLE_TO_BUFFER(h) NULL
 /* Needs to be meaningful for TILER & GFX buffers and NV12 */
 #define HANDLE_TO_STRIDE(h) rgz_handle_to_stride(h)
-#endif
 #define DSTSTRIDE(dstgeom) dstgeom->virtstride
 
 /* Borrowed macros from hwc.c vvv - consider sharing later */
@@ -75,19 +60,16 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define is_OPAQUE(format) ((format) == HAL_PIXEL_FORMAT_RGB_565 || (format) == HAL_PIXEL_FORMAT_RGBX_8888 || (format) == HAL_PIXEL_FORMAT_BGRX_8888)
 
 /* OUTP the means for grabbing diagnostic data */
-#ifndef RGZ_TEST_INTEGRATION
 #define OUTP ALOGI
 #define OUTE ALOGE
-#else
-#define OUTP(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
-#define OUTE OUTP
-#define ALOGD_IF(debug, ...) { if (debug) OUTP(__VA_ARGS__); }
-#endif
 
 #define IS_BVCMD(params) (params->op == RGZ_OUT_BVCMD_REGION || params->op == RGZ_OUT_BVCMD_PAINT)
 
-/* Number of framebuffers to track */
-#define RGZ_NUM_FB 2
+#define RECT_INTERSECTS(a, b) (((a).bottom > (b).top) && ((a).top < (b).bottom) && ((a).right > (b).left) && ((a).left < (b).right))
+
+/* Buffer indexes used to distinguish background and layers with the clear fb hint */
+#define RGZ_BACKGROUND_BUFFIDX -2
+#define RGZ_CLEARHINT_BUFFIDX -1
 
 struct rgz_blts {
     struct rgz_blt_entry bvcmds[RGZ_MAX_BLITS];
@@ -100,16 +82,16 @@ static void rgz_blts_init(struct rgz_blts *blts);
 static void rgz_blts_free(struct rgz_blts *blts);
 static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts, rgz_out_params_t *params);
 static int rgz_blts_bvdirect(rgz_t* rgz, struct rgz_blts *blts, rgz_out_params_t *params);
-static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect);
+static void rgz_get_src_rect(hwc_layer_1_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect);
 static int hal_to_ocd(int color);
 static int rgz_get_orientation(unsigned int transform);
 static int rgz_get_flip_flags(unsigned int transform, int use_src2_flags);
-static int rgz_hwc_scaled(hwc_layer_t *layer);
+static int rgz_hwc_scaled(hwc_layer_1_t *layer);
 
 int debug = 0;
 struct rgz_blts blts;
 /* Represents a screen sized background layer */
-static hwc_layer_t bg_layer;
+static hwc_layer_1_t bg_layer;
 
 static void svgout_header(int htmlw, int htmlh, int coordw, int coordh)
 {
@@ -169,7 +151,7 @@ static int get_layer_ops(blit_hregion_t *hregion, int subregion, int *bottom)
         if (!empty_rect(&hregion->blitrects[l][subregion])) {
             ops++;
             *bottom = l;
-            hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
+            hwc_layer_1_t *layer = &hregion->rgz_layers[l]->hwc_layer;
             IMG_native_handle_t *h = (IMG_native_handle_t *)layer->handle;
             if ((layer->blending != HWC_BLENDING_PREMULT) || is_OPAQUE(h->iFormat))
                 break;
@@ -228,7 +210,7 @@ static void rgz_out_svg(rgz_t *rgz, rgz_out_params_t *params)
 }
 
 /* XXX duplicate of hwc.c version */
-static void dump_layer(hwc_layer_t const* l, int iserr)
+static void dump_layer(hwc_layer_1_t const* l, int iserr)
 {
 #define FMT(f) ((f) == HAL_PIXEL_FORMAT_TI_NV12 ? "NV12" : \
                 (f) == HAL_PIXEL_FORMAT_BGRX_8888 ? "xRGB32" : \
@@ -261,7 +243,7 @@ static void dump_all(rgz_layer_t *rgz_layers, unsigned int layerno, unsigned int
 {
     unsigned int i;
     for (i = 0; i < layerno; i++) {
-        hwc_layer_t *l = rgz_layers[i].hwc_layer;
+        hwc_layer_1_t *l = &rgz_layers[i].hwc_layer;
         OUTE("Layer %d", i);
         dump_layer(l, errlayer == i);
     }
@@ -270,17 +252,18 @@ static void dump_all(rgz_layer_t *rgz_layers, unsigned int layerno, unsigned int
 static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
 {
     int rv = 0;
-    unsigned int i;
+    int i;
     (void)rgz;
 
     rgz_blts_init(&blts);
 
     /* Begin from index 1 to remove the background layer from the output */
-    for (i = 1; i < rgz->rgz_layerno; i++) {
-        rv = rgz_hwc_layer_blit(params, &rgz->rgz_layers[i]);
+    rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
+    for (i = 1; i < cur_fb_state->rgz_layerno; i++) {
+        rv = rgz_hwc_layer_blit(params, &cur_fb_state->rgz_layers[i]);
         if (rv) {
             OUTE("bvdirect_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->rgz_layers, rgz->rgz_layerno, i);
+            dump_all(cur_fb_state->rgz_layers, cur_fb_state->rgz_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
@@ -305,7 +288,7 @@ static int rgz_is_blending_disabled(rgz_out_params_t *params)
     return params->data.bvc.noblend;
 }
 
-static void rgz_get_displayframe_rect(hwc_layer_t *layer, blit_rect_t *res_rect)
+static void rgz_get_displayframe_rect(hwc_layer_1_t *layer, blit_rect_t *res_rect)
 {
     res_rect->left = layer->displayFrame.left;
     res_rect->top = layer->displayFrame.top;
@@ -313,8 +296,149 @@ static void rgz_get_displayframe_rect(hwc_layer_t *layer, blit_rect_t *res_rect)
     res_rect->right = layer->displayFrame.right;
 }
 
+/*
+ * Returns a clock-wise rotated view of the inner rectangle relative to
+ * the outer rectangle. The inner rectangle must be contained in the outer
+ * rectangle and coordinates must be relative to the top,left corner of the outer
+ * rectangle.
+ */
+static void rgz_get_rotated_view(blit_rect_t *outer_rect, blit_rect_t *inner_rect,
+    blit_rect_t *res_rect, int orientation)
+{
+    int outer_width = WIDTH(*outer_rect);
+    int outer_height = HEIGHT(*outer_rect);
+    int inner_width = WIDTH(*inner_rect);
+    int inner_height = HEIGHT(*inner_rect);
+    int delta_top = inner_rect->top - outer_rect->top;
+    int delta_left = inner_rect->left - outer_rect->left;
+
+    /* Normalize the angle */
+    orientation = (orientation % 360) + 360;
+
+    /*
+     * Calculate the top,left offset of the inner rectangle inside the outer
+     * rectangle depending on the tranformation value.
+     */
+    switch(orientation % 360) {
+        case 0:
+            res_rect->left = delta_left;
+            res_rect->top = delta_top;
+            break;
+        case 180:
+            res_rect->left = outer_width - inner_width - delta_left;
+            res_rect->top = outer_height - inner_height - delta_top;
+            break;
+        case 90:
+            res_rect->left = outer_height - inner_height - delta_top;
+            res_rect->top = delta_left;
+            break;
+        case 270:
+            res_rect->left = delta_top;
+            res_rect->top = outer_width - inner_width - delta_left;
+            break;
+        default:
+            OUTE("Invalid transform value %d", orientation);
+    }
+
+    if (orientation % 180)
+        swap(inner_width, inner_height);
+
+    res_rect->right = res_rect->left + inner_width;
+    res_rect->bottom = res_rect->top + inner_height;
+}
+
+static void rgz_get_src_rect(hwc_layer_1_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect)
+{
+    if (rgz_hwc_scaled(layer)) {
+        /*
+         * If the layer is scaled we use the whole cropping rectangle from the
+         * source and just move the clipping rectangle for the region we want to
+         * blit, this is done to prevent any artifacts when blitting subregions of
+         * a scaled layer.
+         */
+        res_rect->top = layer->sourceCrop.top;
+        res_rect->left = layer->sourceCrop.left;
+        res_rect->bottom = layer->sourceCrop.bottom;
+        res_rect->right = layer->sourceCrop.right;
+        return;
+    }
+
+    blit_rect_t display_frame;
+    rgz_get_displayframe_rect(layer, &display_frame);
+
+    /*
+     * Get the rotated subregion rectangle with respect to the display frame.
+     * In order to get this correctly we need to take in account the HWC
+     * orientation is clock-wise so to return to the 0 degree view we need to
+     * rotate counter-clock wise the orientation. For example, if the
+     * orientation is 90 we need to rotate -90 to return to a 0 degree view.
+     */
+    int src_orientation = 0 - rgz_get_orientation(layer->transform);
+    rgz_get_rotated_view(&display_frame, subregion_rect, res_rect, src_orientation);
+
+    /*
+     * In order to translate the resulting rectangle relative to the cropping
+     * rectangle the only thing left is account for the offset (result is already
+     * rotated).
+     */
+    res_rect->left += layer->sourceCrop.left;
+    res_rect->right += layer->sourceCrop.left;
+    res_rect->top += layer->sourceCrop.top;
+    res_rect->bottom += layer->sourceCrop.top;
+}
+
+/*
+ * Convert a destination geometry and rectangle to a specified rotated view.
+ * Since clipping rectangle is relative to the destination geometry it will be
+ * rotated as well.
+ */
+static void rgz_rotate_dst(struct rgz_blt_entry* e, int dst_orientation)
+{
+    struct bvsurfgeom *dstgeom = &e->dstgeom;
+    struct bvrect *dstrect = &e->bp.dstrect;
+    struct bvrect *cliprect = &e->bp.cliprect;
+
+    /*
+     * Create a rectangle that represents the destination geometry (outter
+     * rectangle), destination and clipping rectangles (inner rectangles).
+     */
+    blit_rect_t dstgeom_r;
+    dstgeom_r.top = dstgeom_r.left = 0;
+    dstgeom_r.bottom = dstgeom->height;
+    dstgeom_r.right = dstgeom->width;
+
+    blit_rect_t dstrect_r;
+    dstrect_r.top = dstrect->top;
+    dstrect_r.left = dstrect->left;
+    dstrect_r.bottom = dstrect->top + dstrect->height;
+    dstrect_r.right = dstrect->left + dstrect->width;
+
+    blit_rect_t cliprect_r;
+    cliprect_r.top = cliprect->top;
+    cliprect_r.left = cliprect->left;
+    cliprect_r.bottom = cliprect->top + cliprect->height;
+    cliprect_r.right = cliprect->left + cliprect->width;
+
+    /* Get the CW rotated view of the destination rectangle */
+    blit_rect_t res_rect;
+    rgz_get_rotated_view(&dstgeom_r, &dstrect_r, &res_rect, dst_orientation);
+    dstrect->left = res_rect.left;
+    dstrect->top = res_rect.top;
+    dstrect->width = WIDTH(res_rect);
+    dstrect->height = HEIGHT(res_rect);
+
+    rgz_get_rotated_view(&dstgeom_r, &cliprect_r, &res_rect, dst_orientation);
+    cliprect->left = res_rect.left;
+    cliprect->top = res_rect.top;
+    cliprect->width = WIDTH(res_rect);
+    cliprect->height = HEIGHT(res_rect);
+
+    if (dst_orientation % 180)
+        swap(e->dstgeom.width, e->dstgeom.height);
+}
+
 static void rgz_set_dst_data(rgz_out_params_t *params, blit_rect_t *subregion_rect,
-    struct rgz_blt_entry* e)
+    struct rgz_blt_entry* e, int dst_orientation)
 {
     struct bvsurfgeom *screen_geom;
     rgz_get_screen_info(params, &screen_geom);
@@ -324,19 +448,58 @@ static void rgz_set_dst_data(rgz_out_params_t *params, blit_rect_t *subregion_re
     e->dstgeom.format = screen_geom->format;
     e->dstgeom.width = screen_geom->width;
     e->dstgeom.height = screen_geom->height;
-    e->dstgeom.orientation = screen_geom->orientation;
+    e->dstgeom.orientation = dst_orientation;
     e->dstgeom.virtstride = DSTSTRIDE(screen_geom);
 
     e->bp.dstrect.left = subregion_rect->left;
     e->bp.dstrect.top = subregion_rect->top;
     e->bp.dstrect.width = WIDTH(*subregion_rect);
     e->bp.dstrect.height = HEIGHT(*subregion_rect);
+
+    /* Give a rotated buffer representation of the destination if requested */
+    if (e->dstgeom.orientation)
+        rgz_rotate_dst(e, dst_orientation);
+}
+
+/* Convert a source geometry and rectangle to a specified rotated view */
+static void rgz_rotate_src(struct rgz_blt_entry* e, int src_orientation, int is_src2)
+{
+    struct bvsurfgeom *srcgeom = is_src2 ? &e->src2geom : &e->src1geom;
+    struct bvrect *srcrect = is_src2 ? &e->bp.src2rect : &e->bp.src1rect;
+
+    /*
+     * Create a rectangle that represents the source geometry (outter rectangle),
+     * source rectangle (inner rectangle).
+     */
+    blit_rect_t srcgeom_r;
+    srcgeom_r.top = srcgeom_r.left = 0;
+    srcgeom_r.bottom = srcgeom->height;
+    srcgeom_r.right = srcgeom->width;
+
+    blit_rect_t srcrect_r;
+    srcrect_r.top = srcrect->top;
+    srcrect_r.left = srcrect->left;
+    srcrect_r.bottom = srcrect->top + srcrect->height;
+    srcrect_r.right = srcrect->left + srcrect->width;
+
+    /* Get the CW rotated view of the source rectangle */
+    blit_rect_t res_rect;
+    rgz_get_rotated_view(&srcgeom_r, &srcrect_r, &res_rect, src_orientation);
+
+    srcrect->left = res_rect.left;
+    srcrect->top = res_rect.top;
+    srcrect->width = WIDTH(res_rect);
+    srcrect->height = HEIGHT(res_rect);
+
+    if (src_orientation % 180)
+        swap(srcgeom->width, srcgeom->height);
 }
 
 static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
-    blit_rect_t *subregion_rect, struct rgz_blt_entry* e, int is_src2)
+    blit_rect_t *subregion_rect, struct rgz_blt_entry* e, int src_orientation,
+    int is_src2)
 {
-    hwc_layer_t *hwc_layer = rgz_layer->hwc_layer;
+    hwc_layer_1_t *hwc_layer = &rgz_layer->hwc_layer;
     struct bvbuffdesc *srcdesc = is_src2 ? &e->src2desc : &e->src1desc;
     struct bvsurfgeom *srcgeom = is_src2 ? &e->src2geom : &e->src1geom;
     struct bvrect *srcrect = is_src2 ? &e->bp.src2rect : &e->bp.src1rect;
@@ -349,10 +512,7 @@ static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
     srcgeom->format = hal_to_ocd(handle->iFormat);
     srcgeom->width = handle->iWidth;
     srcgeom->height = handle->iHeight;
-    srcgeom->orientation = rgz_get_orientation(hwc_layer->transform);
     srcgeom->virtstride = HANDLE_TO_STRIDE(handle);
-    if (hwc_layer->transform & HAL_TRANSFORM_ROT_90)
-        swap(srcgeom->width, srcgeom->height);
 
     /* Find out what portion of the src we want to use for the blit */
     blit_rect_t res_rect;
@@ -361,6 +521,13 @@ static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
     srcrect->top = res_rect.top;
     srcrect->width = WIDTH(res_rect);
     srcrect->height = HEIGHT(res_rect);
+
+    /* Give a rotated buffer representation of this source if requested */
+    if (src_orientation) {
+        srcgeom->orientation = src_orientation;
+        rgz_rotate_src(e, src_orientation, is_src2);
+    } else
+        srcgeom->orientation = 0;
 }
 
 /*
@@ -397,17 +564,22 @@ static void rgz_set_src2_is_dst(rgz_out_params_t *params, struct rgz_blt_entry* 
     e->bp.src2rect = e->bp.dstrect;
 }
 
+static int rgz_is_layer_nv12(hwc_layer_1_t *layer)
+{
+    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+    return is_NV12(handle->iFormat);
+}
+
 /*
  * Configure the scaling mode according to the layer format
  */
-static void rgz_cfg_scale_mode(struct rgz_blt_entry* e, hwc_layer_t *layer)
+static void rgz_cfg_scale_mode(struct rgz_blt_entry* e, hwc_layer_1_t *layer)
 {
     /*
      * TODO: Revisit scaling mode assignment later, output between GPU and GC320
      * seem different
      */
-    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
-    e->bp.scalemode = is_NV12(handle->iFormat) ? BVSCALE_9x9_TAP : BVSCALE_BILINEAR;
+    e->bp.scalemode = rgz_is_layer_nv12(layer) ? BVSCALE_9x9_TAP : BVSCALE_BILINEAR;
 }
 
 /*
@@ -417,7 +589,7 @@ static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
     blit_rect_t *subregion_rect, rgz_layer_t *rgz_src1)
 {
     struct rgz_blt_entry* e = rgz_blts_get(&blts, params);
-    hwc_layer_t *hwc_src1 = rgz_src1->hwc_layer;
+    hwc_layer_1_t *hwc_src1 = &rgz_src1->hwc_layer;
     e->bp.structsize = sizeof(struct bvbltparams);
     e->bp.op.rop = 0xCCCC; /* SRCCOPY */
     e->bp.flags = BVFLAG_CLIP | BVFLAG_ROP;
@@ -431,9 +603,21 @@ static struct rgz_blt_entry* rgz_hwc_subregion_copy(rgz_out_params_t *params,
     } else
         tmp_rect = *subregion_rect;
 
-    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
-    rgz_set_dst_data(params, &tmp_rect, e);
+    int src1_orientation = rgz_get_orientation(hwc_src1->transform);
+    int dst_orientation = 0;
+
+    if (rgz_is_layer_nv12(hwc_src1)) {
+        /*
+         * Leave NV12 as 0 degree and rotate destination instead, this is done
+         * because of a GC limitation. Rotate destination CW.
+         */
+        dst_orientation = 360 - src1_orientation;
+        src1_orientation = 0;
+    }
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
+    rgz_set_dst_data(params, &tmp_rect, e, dst_orientation);
 
     if((e->src1geom.format == OCDFMT_BGR124) ||
        (e->src1geom.format == OCDFMT_RGB124) ||
@@ -452,7 +636,7 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
     blit_rect_t *subregion_rect, rgz_layer_t *rgz_src1, rgz_layer_t *rgz_src2)
 {
     struct rgz_blt_entry* e = rgz_blts_get(&blts, params);
-    hwc_layer_t *hwc_src1 = rgz_src1->hwc_layer;
+    hwc_layer_1_t *hwc_src1 = &rgz_src1->hwc_layer;
     e->bp.structsize = sizeof(struct bvbltparams);
     e->bp.op.blend = BVBLEND_SRC1OVER;
     e->bp.flags = BVFLAG_CLIP | BVFLAG_BLEND;
@@ -466,20 +650,39 @@ static struct rgz_blt_entry* rgz_hwc_subregion_blend(rgz_out_params_t *params,
     } else
         tmp_rect = *subregion_rect;
 
-    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, 0);
-    rgz_set_dst_data(params, &tmp_rect, e);
+    int src1_orientation = rgz_get_orientation(hwc_src1->transform);
+    int dst_orientation = 0;
+
+    if (rgz_is_layer_nv12(hwc_src1)) {
+        /*
+         * Leave NV12 as 0 degree and rotate destination instead, this is done
+         * because of a GC limitation. Rotate destination CW.
+         */
+        dst_orientation = 360 - src1_orientation;
+        src1_orientation = 0;
+    }
+
+    rgz_set_src_data(params, rgz_src1, &tmp_rect, e, src1_orientation, 0);
     rgz_set_clip_rect(params, subregion_rect, e);
+    rgz_set_dst_data(params, &tmp_rect, e, dst_orientation);
 
     if (rgz_src2) {
         /*
          * NOTE: Due to an API limitation it's not possible to blend src1 and
          * src2 if both have scaling, hence only src1 is used for now
          */
-        hwc_layer_t *hwc_src2 = rgz_src2->hwc_layer;
+        hwc_layer_1_t *hwc_src2 = &rgz_src2->hwc_layer;
         if (rgz_hwc_scaled(hwc_src2))
             OUTE("src2 layer %p has scaling, this is not supported", hwc_src2);
+        /*
+         * We shouldn't receive a NV12 buffer as src2 at this point, this is an
+         * invalid parameter for the blend request
+         */
+        if (rgz_is_layer_nv12(hwc_src2))
+            OUTE("invalid input layer, src2 layer %p is NV12", hwc_src2);
         e->bp.flags |= rgz_get_flip_flags(hwc_src2->transform, 1);
-        rgz_set_src_data(params, rgz_src2, subregion_rect, e, 1);
+        int src2_orientation = rgz_get_orientation(hwc_src2->transform);
+        rgz_set_src_data(params, rgz_src2, subregion_rect, e, src2_orientation, 1);
     } else
         rgz_set_src2_is_dst(params, e);
 
@@ -525,24 +728,24 @@ static void rgz_out_clrdst(rgz_out_params_t *params, blit_rect_t *rect)
         clear_rect.bottom = screen_geom->height;
     }
 
-    rgz_set_dst_data(params, &clear_rect, e);
     rgz_set_clip_rect(params, &clear_rect, e);
+    rgz_set_dst_data(params, &clear_rect, e, 0);
 }
 
 static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
 {
     int rv = 0;
+    int i, j;
     params->data.bvc.out_blits = 0;
     params->data.bvc.out_nhndls = 0;
     rgz_blts_init(&blts);
     rgz_out_clrdst(params, NULL);
 
-    unsigned int i, j;
-
     /* Begin from index 1 to remove the background layer from the output */
-    for (i = 1, j = 0; i < rgz->rgz_layerno; i++) {
-        rgz_layer_t *rgz_layer = &rgz->rgz_layers[i];
-        hwc_layer_t *l = rgz_layer->hwc_layer;
+    rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
+    for (i = 1, j = 0; i < cur_fb_state->rgz_layerno; i++) {
+        rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[i];
+        hwc_layer_1_t *l = &rgz_layer->hwc_layer;
 
         //OUTP("blitting meminfo %d", rgz->rgz_layers[i].buffidx);
 
@@ -564,7 +767,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
         rv = rgz_hwc_layer_blit(params, rgz_layer);
         if (rv) {
             OUTE("bvcmd_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->rgz_layers, rgz->rgz_layerno, i);
+            dump_all(cur_fb_state->rgz_layers, cur_fb_state->rgz_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
@@ -588,7 +791,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     return rv;
 }
 
-static float getscalew(hwc_layer_t *layer)
+static float getscalew(hwc_layer_1_t *layer)
 {
     int w = WIDTH(layer->sourceCrop);
     int h = HEIGHT(layer->sourceCrop);
@@ -599,7 +802,7 @@ static float getscalew(hwc_layer_t *layer)
     return ((float)WIDTH(layer->displayFrame)) / (float)w;
 }
 
-static float getscaleh(hwc_layer_t *layer)
+static float getscaleh(hwc_layer_1_t *layer)
 {
     int w = WIDTH(layer->sourceCrop);
     int h = HEIGHT(layer->sourceCrop);
@@ -610,31 +813,21 @@ static float getscaleh(hwc_layer_t *layer)
     return ((float)HEIGHT(layer->displayFrame)) / (float)h;
 }
 
-static int rgz_bswap(int *a, int *b)
-{
-    if (*a > *b) {
-        int tmp = *b;
-        *b = *a;
-        *a = tmp;
-        return 1;
-    }
-    return 0;
-}
-
 /*
- * Simple bubble sort on an array
+ * Simple bubble sort on an array, ascending order
  */
 static void rgz_bsort(int *a, int len)
 {
-    int i, s;
-
-    do {
-        s=0;
-        for (i=0; i+1<len; i++) {
-            if (rgz_bswap(&a[i], &a[i+1]))
-                s = 1;
+    int i, j;
+    for (i = 0; i < len; i++) {
+        for (j = 0; j < i; j++) {
+            if (a[i] < a[j]) {
+                int temp = a[i];
+                a[i] = a[j];
+                a[j] = temp;
+            }
         }
-    } while (s);
+    }
 }
 
 /*
@@ -661,32 +854,7 @@ static int rgz_bunique(int *a, int len)
     return unique;
 }
 
-static int rgz_hwc_layer_sortbyy(rgz_layer_t *ra, int rsz, int *out, int *width, int screen_height)
-{
-    int outsz = 0;
-    int i;
-    *width = 0;
-    for (i = 0; i < rsz; i++) {
-        hwc_layer_t *layer = ra[i].hwc_layer;
-        /* Maintain regions inside display boundaries */
-        int top = layer->displayFrame.top;
-        int bottom = layer->displayFrame.bottom;
-        out[outsz++] = max(0, top);
-        out[outsz++] = min(bottom, screen_height);
-        int right = layer->displayFrame.right;
-        *width = *width > right ? *width : right;
-    }
-    rgz_bsort(out, outsz);
-    return outsz;
-}
-
-static int rgz_hwc_intersects(blit_rect_t *a, hwc_rect_t *b)
-{
-    return ((a->bottom > b->top) && (a->top < b->bottom) &&
-            (a->right > b->left) && (a->left < b->right));
-}
-
-static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
+static void rgz_gen_blitregions(rgz_t *rgz, blit_hregion_t *hregion, int screen_width)
 {
 /*
  * 1. Get the offsets (left/right positions) of each layer within the
@@ -699,13 +867,19 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
     int offsets[RGZ_SUBREGIONMAX];
     int noffsets=0;
     int l, r;
+
+    /*
+     * Add damaged region, then all layers. We are guaranteed to not go outside
+     * of offsets array boundaries at this point.
+     */
+    offsets[noffsets++] = rgz->damaged_area.left;
+    offsets[noffsets++] = rgz->damaged_area.right;
+
     for (l = 0; l < hregion->nlayers; l++) {
-        hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
+        hwc_layer_1_t *layer = &hregion->rgz_layers[l]->hwc_layer;
         /* Make sure the subregion is not outside the boundaries of the screen */
-        int left = layer->displayFrame.left;
-        int right = layer->displayFrame.right;
-        offsets[noffsets++] = max(0, left);
-        offsets[noffsets++] = min(right, screen_width);
+        offsets[noffsets++] = max(0, layer->displayFrame.left);
+        offsets[noffsets++] = min(layer->displayFrame.right, screen_width);
     }
     rgz_bsort(offsets, noffsets);
     noffsets = rgz_bunique(offsets, noffsets);
@@ -721,8 +895,8 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
         ALOGD_IF(debug, "                sub l %d r %d",
             subregion.left, subregion.right);
         for (l = 0; l < hregion->nlayers; l++) {
-            hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
-            if (rgz_hwc_intersects(&subregion, &layer->displayFrame)) {
+            hwc_layer_1_t *layer = &hregion->rgz_layers[l]->hwc_layer;
+            if (RECT_INTERSECTS(subregion, layer->displayFrame)) {
 
                 hregion->blitrects[l][r] = subregion;
 
@@ -736,7 +910,7 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
     }
 }
 
-static int rgz_hwc_scaled(hwc_layer_t *layer)
+static int rgz_hwc_scaled(hwc_layer_1_t *layer)
 {
     int w = WIDTH(layer->sourceCrop);
     int h = HEIGHT(layer->sourceCrop);
@@ -747,7 +921,7 @@ static int rgz_hwc_scaled(hwc_layer_t *layer)
     return WIDTH(layer->displayFrame) != w || HEIGHT(layer->displayFrame) != h;
 }
 
-static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
+static int rgz_in_valid_hwc_layer(hwc_layer_1_t *layer)
 {
     IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
     if ((layer->flags & HWC_SKIP_LAYER) || !handle)
@@ -792,35 +966,227 @@ static void rgz_delete_region_data(rgz_t *rgz){
     rgz->state &= ~RGZ_REGION_DATA;
 }
 
-static void rgz_handle_dirty_region(rgz_t *rgz, int reset_counters)
+static rgz_fb_state_t* get_prev_fb_state(rgz_t *rgz)
 {
-    unsigned int i;
-    for (i = 0; i < rgz->rgz_layerno; i++) {
-        rgz_layer_t *rgz_layer = &rgz->rgz_layers[i];
-        void *new_handle;
+    return &rgz->fb_states[rgz->fb_state_idx];
+}
 
-        /*
-         * We don't care about the handle for background and layers with the
-         * clear fb hint, but we want to maintain a layer state for dirty
-         * region handling.
-         */
-        if (i == 0 || rgz_layer->buffidx == -1)
-            new_handle = (void*)0x1;
-        else
-            new_handle = (void*)rgz_layer->hwc_layer->handle;
+static rgz_fb_state_t* get_next_fb_state(rgz_t *rgz)
+{
+    rgz->fb_state_idx = (rgz->fb_state_idx + 1) % RGZ_NUM_FB;
+    return &rgz->fb_states[rgz->fb_state_idx];
+}
 
-        if (reset_counters || new_handle != rgz_layer->dirty_hndl) {
-            rgz_layer->dirty_count = RGZ_NUM_FB;
-            rgz_layer->dirty_hndl = new_handle;
-        } else
-            rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
+static void rgz_add_to_damaged_area(rgz_in_params_t *params, rgz_layer_t *rgz_layer,
+    blit_rect_t *damaged_area)
+{
+    struct bvsurfgeom *screen_geom = params->data.hwc.dstgeom;
+    hwc_layer_1_t *layer = &rgz_layer->hwc_layer;
 
+    blit_rect_t screen_rect;
+    screen_rect.left = screen_rect.top = 0;
+    screen_rect.right = screen_geom->width;
+    screen_rect.bottom = screen_geom->height;
+
+    /* Ignore the layer rectangle if it doesn't intersect the screen */
+    if (!RECT_INTERSECTS(screen_rect, layer->displayFrame))
+        return;
+
+    /* Clip the layer rectangle to the screen geometry */
+    blit_rect_t layer_rect;
+    rgz_get_displayframe_rect(layer, &layer_rect);
+    layer_rect.left = max(0, layer_rect.left);
+    layer_rect.top = max(0, layer_rect.top);
+    layer_rect.right = min(screen_rect.right, layer_rect.right);
+    layer_rect.bottom = min(screen_rect.bottom, layer_rect.bottom);
+
+    /* Then add the rectangle to the damage area */
+    if (empty_rect(damaged_area)) {
+        /* Adding for the first time */
+        damaged_area->left = layer_rect.left;
+        damaged_area->top = layer_rect.top;
+        damaged_area->right = layer_rect.right;
+        damaged_area->bottom = layer_rect.bottom;
+    } else {
+        /* Grow current damaged area */
+        damaged_area->left = min(damaged_area->left, layer_rect.left);
+        damaged_area->top = min(damaged_area->top, layer_rect.top);
+        damaged_area->right = max(damaged_area->right, layer_rect.right);
+        damaged_area->bottom = max(damaged_area->bottom, layer_rect.bottom);
     }
+}
+
+/* Search a layer with the specified identity in the passed array */
+static rgz_layer_t* rgz_find_layer(rgz_layer_t *rgz_layers, int rgz_layerno,
+    uint32_t layer_identity)
+{
+    int i;
+    for (i = 0; i < rgz_layerno; i++) {
+        rgz_layer_t *rgz_layer = &rgz_layers[i];
+        /* Ignore background layer, it has no identity */
+        if (rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX)
+            continue;
+        if (rgz_layer->identity == layer_identity)
+            return rgz_layer;
+    }
+    return NULL;
+}
+
+/* Determines if two layers with the same identity have changed its own window content */
+static int rgz_has_layer_content_changed(rgz_layer_t *cur_rgz_layer, rgz_layer_t *prev_rgz_layer)
+{
+    hwc_layer_1_t *cur_hwc_layer = &cur_rgz_layer->hwc_layer;
+    hwc_layer_1_t *prev_hwc_layer = &prev_rgz_layer->hwc_layer;
+
+    /* The background has no identity and never changes */
+    if (cur_rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX &&
+        prev_rgz_layer->buffidx == RGZ_BACKGROUND_BUFFIDX)
+        return 0;
+
+    if (cur_rgz_layer->identity != prev_rgz_layer->identity) {
+        OUTE("%s: Invalid input, layer identities differ (current=%d, prev=%d)",
+            __func__, cur_rgz_layer->identity, prev_rgz_layer->identity);
+        return 1;
+    }
+
+    /* If the layer has the clear fb hint we don't care about the content */
+    if (cur_rgz_layer->buffidx == RGZ_CLEARHINT_BUFFIDX &&
+        prev_rgz_layer->buffidx == RGZ_CLEARHINT_BUFFIDX)
+        return 0;
+
+    /* Check if the layer content has changed */
+    if (cur_hwc_layer->handle != prev_hwc_layer->handle ||
+        cur_hwc_layer->transform != prev_hwc_layer->transform ||
+        cur_hwc_layer->sourceCrop.top != prev_hwc_layer->sourceCrop.top ||
+        cur_hwc_layer->sourceCrop.left != prev_hwc_layer->sourceCrop.left ||
+        cur_hwc_layer->sourceCrop.bottom != prev_hwc_layer->sourceCrop.bottom ||
+        cur_hwc_layer->sourceCrop.right != prev_hwc_layer->sourceCrop.right)
+        return 1;
+
+    return 0;
+}
+
+/* Determines if two layers with the same identity have changed their screen position */
+static int rgz_has_layer_frame_moved(rgz_layer_t *cur_rgz_layer, rgz_layer_t *target_rgz_layer)
+{
+    hwc_layer_1_t *cur_hwc_layer = &cur_rgz_layer->hwc_layer;
+    hwc_layer_1_t *target_hwc_layer = &target_rgz_layer->hwc_layer;
+
+    if (cur_rgz_layer->identity != target_rgz_layer->identity) {
+        OUTE("%s: Invalid input, layer identities differ (current=%d, target=%d)",
+            __func__, cur_rgz_layer->identity, target_rgz_layer->identity);
+        return 1;
+    }
+
+    if (cur_hwc_layer->displayFrame.top != target_hwc_layer->displayFrame.top ||
+        cur_hwc_layer->displayFrame.left != target_hwc_layer->displayFrame.left ||
+        cur_hwc_layer->displayFrame.bottom != target_hwc_layer->displayFrame.bottom ||
+        cur_hwc_layer->displayFrame.right != target_hwc_layer->displayFrame.right)
+        return 1;
+
+    return 0;
+}
+
+static void rgz_handle_dirty_region(rgz_t *rgz, rgz_in_params_t *params,
+    rgz_fb_state_t* prev_fb_state, rgz_fb_state_t* target_fb_state)
+{
+    /* Reset damaged area */
+    bzero(&rgz->damaged_area, sizeof(rgz->damaged_area));
+
+    int i;
+    rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
+
+    for (i = 0; i < cur_fb_state->rgz_layerno; i++) {
+        rgz_layer_t *cur_rgz_layer = &cur_fb_state->rgz_layers[i];
+        rgz_layer_t *prev_rgz_layer = NULL;
+        int layer_changed = 0;
+
+        if (i == 0) {
+            /*
+             * Background is always zero, no need to search for it. If the previous state
+             * is empty reset the dirty count for the background layer.
+             */
+            if (prev_fb_state->rgz_layerno)
+                prev_rgz_layer = &prev_fb_state->rgz_layers[0];
+        } else {
+            /* Find out if this layer was present in the previous frame */
+            prev_rgz_layer = rgz_find_layer(prev_fb_state->rgz_layers,
+                prev_fb_state->rgz_layerno, cur_rgz_layer->identity);
+        }
+
+        /* Check if the layer is new or if the content changed from the previous frame */
+        if (prev_rgz_layer && !rgz_has_layer_content_changed(cur_rgz_layer, prev_rgz_layer)) {
+            /* Copy previous dirty count */
+            cur_rgz_layer->dirty_count = prev_rgz_layer->dirty_count;
+            cur_rgz_layer->dirty_count -= cur_rgz_layer->dirty_count ? 1 : 0;
+        } else
+            cur_rgz_layer->dirty_count = RGZ_NUM_FB;
+
+        /* If the layer is new, redraw the layer area */
+        if (!prev_rgz_layer) {
+            rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+            continue;
+        }
+
+        /* Nothing more to do with the background layer */
+        if (i == 0)
+            continue;
+
+        /* Find out if the layer is present in the target frame */
+        rgz_layer_t *target_rgz_layer = rgz_find_layer(target_fb_state->rgz_layers,
+                target_fb_state->rgz_layerno, cur_rgz_layer->identity);
+
+        if (target_rgz_layer) {
+            /* Find out if the window size and position are different from the target frame */
+            if (rgz_has_layer_frame_moved(cur_rgz_layer, target_rgz_layer)) {
+                /*
+                 * Redraw both layer areas. This will effectively clear the area where
+                 * this layer was in the target frame and force to draw the new layer
+                 * location.
+                 */
+                rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+                rgz_add_to_damaged_area(params, target_rgz_layer, &rgz->damaged_area);
+                cur_rgz_layer->dirty_count = RGZ_NUM_FB;
+            }
+        } else {
+            /* If the layer is not in the target just draw it's new location */
+            rgz_add_to_damaged_area(params, cur_rgz_layer, &rgz->damaged_area);
+        }
+    }
+
+    /*
+     * Add to damage area layers missing from the target frame to the current frame
+     * ignoring the background
+     */
+    for (i = 1; i < target_fb_state->rgz_layerno; i++) {
+        rgz_layer_t *target_rgz_layer = &target_fb_state->rgz_layers[i];
+
+        rgz_layer_t *cur_rgz_layer = rgz_find_layer(cur_fb_state->rgz_layers,
+            cur_fb_state->rgz_layerno, target_rgz_layer->identity);
+
+        /* Layers present in the target have been handled already in the loop above */
+        if (cur_rgz_layer)
+            continue;
+
+        /* The target layer is not present in the current frame, redraw its area */
+        rgz_add_to_damaged_area(params, target_rgz_layer, &rgz->damaged_area);
+    }
+}
+
+/* Adds the background layer in first the position of the passed fb state */
+static void rgz_add_background_layer(rgz_fb_state_t *fb_state)
+{
+    rgz_layer_t *rgz_layer = &fb_state->rgz_layers[0];
+    rgz_layer->hwc_layer = bg_layer;
+    rgz_layer->buffidx = RGZ_BACKGROUND_BUFFIDX;
+    /* Set dummy handle to maintain dirty region state */
+    rgz_layer->hwc_layer.handle = (void*) 0x1;
 }
 
 static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 {
-    hwc_layer_t *layers = p->data.hwc.layers;
+    hwc_layer_1_t *layers = p->data.hwc.layers;
+    hwc_layer_extended_t *extlayers = p->data.hwc.extlayers;
     int layerno = p->data.hwc.layerno;
 
     rgz->state &= ~RGZ_STATE_INIT;
@@ -837,15 +1203,6 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
      */
     int l, memidx = 0;
     for (l = 0; l < layerno; l++) {
-        /*
-         * Workaround: If a NV12 layer is present in the list, don't even try
-         * to blit. There is a performance degradation while playing video and
-         * using GC at the same time.
-         */
-        IMG_native_handle_t *handle = (IMG_native_handle_t *)layers[l].handle;
-        if (!(layers[l].flags & HWC_SKIP_LAYER) && handle && is_NV12(handle->iFormat))
-            return -1;
-
         if (layers[l].compositionType == HWC_OVERLAY)
             memidx++;
     }
@@ -856,16 +1213,17 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
      * Insert the background layer at the beginning of the list, maintain a
      * state for dirty region handling
      */
-    rgz_layer_t *rgz_layer = &rgz->rgz_layers[0];
-    rgz_layer->hwc_layer = &bg_layer;
+    rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
+    rgz_add_background_layer(cur_fb_state);
 
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
             candidates++;
             if (rgz_in_valid_hwc_layer(&layers[l]) &&
                     possible_blit < RGZ_INPUT_MAXLAYERS) {
-                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
-                rgz_layer->hwc_layer = &layers[l];
+                rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
+                rgz_layer->hwc_layer = layers[l];
+                rgz_layer->identity = extlayers[l].identity;
                 rgz_layer->buffidx = memidx++;
                 possible_blit++;
             }
@@ -879,9 +1237,12 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                  * Use only the layer rectangle as an input to regionize when the clear
                  * fb hint is present, mark this layer to identify it.
                  */
-                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
-                rgz_layer->buffidx = -1;
-                rgz_layer->hwc_layer = &layers[l];
+                rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
+                rgz_layer->hwc_layer = layers[l];
+                rgz_layer->identity = extlayers[l].identity;
+                rgz_layer->buffidx = RGZ_CLEARHINT_BUFFIDX;
+                /* Set dummy handle to maintain dirty region state */
+                rgz_layer->hwc_layer.handle = (void*) 0x1;
                 possible_blit++;
             }
         }
@@ -891,46 +1252,68 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-    unsigned int blit_layers = possible_blit + 1; /* Account for background layer */
-    int reset_dirty_counters = rgz->rgz_layerno != blit_layers ? 1 : 0;
-    /*
-     * The layers we are going to blit differ in number from the previous frame,
-     * we can't trust anymore the region data, calculate it again
-     */
-    if (reset_dirty_counters)
-        rgz_delete_region_data(rgz);
-
     rgz->state |= RGZ_STATE_INIT;
-    rgz->rgz_layerno = blit_layers;
+    cur_fb_state->rgz_layerno = possible_blit + 1; /* Account for background layer */
 
-    rgz_handle_dirty_region(rgz, reset_dirty_counters);
+    /* Get the target and previous frame geometries */
+    rgz_fb_state_t* prev_fb_state = get_prev_fb_state(rgz);
+    rgz_fb_state_t* target_fb_state = get_next_fb_state(rgz);
+
+    /* Modifiy dirty counters and create the damaged region */
+    rgz_handle_dirty_region(rgz, p, prev_fb_state, target_fb_state);
+
+    /* Copy the current geometry to use it in the next frame */
+    memcpy(target_fb_state->rgz_layers, cur_fb_state->rgz_layers, sizeof(rgz_layer_t) * cur_fb_state->rgz_layerno);
+    target_fb_state->rgz_layerno = cur_fb_state->rgz_layerno;
 
     return RGZ_ALL;
 }
 
 static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 {
+    int i, j;
     int yentries[RGZ_SUBREGIONMAX];
     int dispw;  /* widest layer */
     int screen_width = p->data.hwc.dstgeom->width;
     int screen_height = p->data.hwc.dstgeom->height;
+    rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
 
     if (!(rgz->state & RGZ_STATE_INIT)) {
         OUTE("rgz_process started with bad state");
         return -1;
     }
 
-    /* If there is already region data avoid parsing it again */
-    if (rgz->state & RGZ_REGION_DATA) {
-        return 0;
+    /*
+     * Figure out if there is enough space to store the top-bottom coordinates
+     * of each layer including the damaged area
+     */
+    if (((cur_fb_state->rgz_layerno + 1) * 2) > RGZ_SUBREGIONMAX) {
+        OUTE("%s: Not enough space to store top-bottom coordinates of each layer (max %d, needed %d*2)",
+            __func__, RGZ_SUBREGIONMAX, cur_fb_state->rgz_layerno + 1);
+        return -1;
     }
 
-    int layerno = rgz->rgz_layerno;
+    /* Delete the previous region data */
+    rgz_delete_region_data(rgz);
 
-    /* Find the horizontal regions */
-    rgz_layer_t *rgz_layers = rgz->rgz_layers;
-    int ylen = rgz_hwc_layer_sortbyy(rgz_layers, layerno, yentries, &dispw, screen_height);
+    /*
+     * Find the horizontal regions, add damaged area first which is already
+     * inside display boundaries
+     */
+    int ylen = 0;
+    yentries[ylen++] = rgz->damaged_area.top;
+    yentries[ylen++] = rgz->damaged_area.bottom;
+    dispw = rgz->damaged_area.right;
 
+    /* Add the top and bottom coordinates of each layer */
+    for (i = 0; i < cur_fb_state->rgz_layerno; i++) {
+        hwc_layer_1_t *layer = &cur_fb_state->rgz_layers[i].hwc_layer;
+        /* Maintain regions inside display boundaries */
+        yentries[ylen++] = max(0, layer->displayFrame.top);
+        yentries[ylen++] = min(layer->displayFrame.bottom, screen_height);
+        dispw = dispw > layer->displayFrame.right ? dispw : layer->displayFrame.right;
+    }
+    rgz_bsort(yentries, ylen);
     ylen = rgz_bunique(yentries, ylen);
 
     /* at this point we have an array of horizontal regions */
@@ -943,8 +1326,9 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     }
     rgz->hregions = hregions;
 
-    ALOGD_IF(debug, "Allocated %d regions (sz = %d), layerno = %d", rgz->nhregions, rgz->nhregions * sizeof(blit_hregion_t), layerno);
-    int i, j;
+    ALOGD_IF(debug, "Allocated %d regions (sz = %d), layerno = %d", rgz->nhregions,
+        rgz->nhregions * sizeof(blit_hregion_t), cur_fb_state->rgz_layerno);
+
     for (i = 0; i < rgz->nhregions; i++) {
         hregions[i].rect.top = yentries[i];
         hregions[i].rect.bottom = yentries[i+1];
@@ -952,23 +1336,23 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         hregions[i].rect.left = 0;
         hregions[i].rect.right = dispw > screen_width ? screen_width : dispw;
         hregions[i].nlayers = 0;
-        for (j = 0; j < layerno; j++) {
-            hwc_layer_t *layer = rgz_layers[j].hwc_layer;
-            if (rgz_hwc_intersects(&hregions[i].rect, &layer->displayFrame)) {
+        for (j = 0; j < cur_fb_state->rgz_layerno; j++) {
+            hwc_layer_1_t *layer = &cur_fb_state->rgz_layers[j].hwc_layer;
+            if (RECT_INTERSECTS(hregions[i].rect, layer->displayFrame)) {
                 int l = hregions[i].nlayers++;
-                hregions[i].rgz_layers[l] = &rgz_layers[j];
+                hregions[i].rgz_layers[l] = &cur_fb_state->rgz_layers[j];
             }
         }
     }
 
     /* Calculate blit regions */
     for (i = 0; i < rgz->nhregions; i++) {
-        rgz_gen_blitregions(&hregions[i], screen_width);
+        rgz_gen_blitregions(rgz, &hregions[i], screen_width);
         ALOGD_IF(debug, "hregion %3d: nsubregions %d", i, hregions[i].nsubregions);
         ALOGD_IF(debug, "           : %d to %d: ",
             hregions[i].rect.top, hregions[i].rect.bottom);
         for (j = 0; j < hregions[i].nlayers; j++)
-            ALOGD_IF(debug, "              %p ", hregions[i].rgz_layers[j]->hwc_layer);
+            ALOGD_IF(debug, "              %p ", &hregions[i].rgz_layers[j]->hwc_layer);
     }
     rgz->state |= RGZ_REGION_DATA;
     return 0;
@@ -981,7 +1365,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
  * dright, dbot, rot, flip, blending, scalew, scaleh, visrects
  *
  */
-static void rgz_print_layer(hwc_layer_t *l, int idx, int csv)
+static void rgz_print_layer(hwc_layer_1_t *l, int idx, int csv)
 {
     char big_log[1024];
     int e = sizeof(big_log);
@@ -1079,11 +1463,11 @@ static void rgz_print_layer(hwc_layer_t *l, int idx, int csv)
     }
 }
 
-static void rgz_print_layers(hwc_layer_list_t* list, int csv)
+static void rgz_print_layers(hwc_display_contents_1_t* list, int csv)
 {
     size_t i;
     for (i = 0; i < list->numHwLayers; i++) {
-        hwc_layer_t *l = &list->hwLayers[i];
+        hwc_layer_1_t *l = &list->hwLayers[i];
         rgz_print_layer(l, i, csv);
     }
 }
@@ -1110,63 +1494,16 @@ static int hal_to_ocd(int color)
     }
 }
 
-/*
- * The loadbltsville fn is only needed for testing, the bltsville shared
- * libraries aren't planned to be used directly in production code here
- */
 static BVFN_MAP bv_map;
 static BVFN_BLT bv_blt;
 static BVFN_UNMAP bv_unmap;
-#ifndef RGZ_TEST_INTEGRATION
-gralloc_module_t const *gralloc;
-#endif
-#define BLTSVILLELIB "libbltsville_cpu.so"
 
-#ifdef RGZ_TEST_INTEGRATION
-static int loadbltsville(void)
-{
-    void *hndl = dlopen(BLTSVILLELIB, RTLD_LOCAL | RTLD_LAZY);
-    if (!hndl) {
-        OUTE("Loading bltsville failed");
-        return -1;
-    }
-    bv_map = (BVFN_MAP)dlsym(hndl, "bv_map");
-    bv_blt = (BVFN_BLT)dlsym(hndl, "bv_blt");
-    bv_unmap = (BVFN_UNMAP)dlsym(hndl, "bv_unmap");
-    if(!bv_blt || !bv_map || !bv_unmap) {
-        OUTE("Missing bltsville fn %p %p %p", bv_map, bv_blt, bv_unmap);
-        return -1;
-    }
-    OUTP("Loaded %s", BLTSVILLELIB);
-
-#ifndef RGZ_TEST_INTEGRATION
-    hw_module_t const* module;
-    int err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module);
-    if (err != 0) {
-        OUTE("Loading gralloc failed");
-        return -1;
-    }
-    gralloc = (gralloc_module_t const *)module;
-#endif
-    return 0;
-}
-#else
-static int loadbltsville(void) {
-    return 0;
-}
-#endif
-
-#ifndef RGZ_TEST_INTEGRATION
 static int rgz_handle_to_stride(IMG_native_handle_t *h)
 {
     int bpp = is_NV12(h->iFormat) ? 0 : (h->iFormat == HAL_PIXEL_FORMAT_RGB_565 ? 2 : 4);
     int stride = ALIGN(h->iWidth, HW_ALIGN) * bpp;
     return stride;
 }
-
-#endif
-
-extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);
 
 static int rgz_get_orientation(unsigned int transform)
 {
@@ -1195,11 +1532,7 @@ static int rgz_get_flip_flags(unsigned int transform, int use_src2_flags)
 
 static int rgz_hwc_layer_blit(rgz_out_params_t *params, rgz_layer_t *rgz_layer)
 {
-    static int loaded = 0;
-    if (!loaded)
-        loaded = loadbltsville() ? : 1; /* attempt load once */
-
-    hwc_layer_t* layer = rgz_layer->hwc_layer;
+    hwc_layer_1_t* layer = &rgz_layer->hwc_layer;
     blit_rect_t srcregion;
     rgz_get_displayframe_rect(layer, &srcregion);
 
@@ -1212,72 +1545,19 @@ static int rgz_hwc_layer_blit(rgz_out_params_t *params, rgz_layer_t *rgz_layer)
     return 0;
 }
 
-/*
- * Calculate the src rectangle on the basis of the layer display, source crop
- * and subregion rectangles. Additionally any rotation will be taken in
- * account. The resulting rectangle is written in res_rect.
- */
-static void rgz_get_src_rect(hwc_layer_t* layer, blit_rect_t *subregion_rect, blit_rect_t *res_rect)
+static int rgz_can_blend_together(hwc_layer_1_t* src1_layer, hwc_layer_1_t* src2_layer)
 {
-    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
-    int res_left = 0;
-    int res_top = 0;
-    int delta_left;
-    int delta_top;
-    int res_width;
-    int res_height;
+    /* If any layer is scaled we cannot blend both layers in one blit */
+    if (rgz_hwc_scaled(src1_layer) || rgz_hwc_scaled(src2_layer))
+        return 0;
 
-    /*
-     * If the layer is scaled we use the whole cropping rectangle from the
-     * source and just move the clipping rectangle for the region we want to
-     * blit, this is done to prevent any artifacts when blitting subregions of
-     * a scaled layer. If there is a transform, adjust the width and height
-     * accordingly to match the rotated buffer geometry.
-     */
-    if (rgz_hwc_scaled(layer)) {
-        delta_top = 0;
-        delta_left = 0;
-        res_width = WIDTH(layer->sourceCrop);
-        res_height = HEIGHT(layer->sourceCrop);
-        if (layer->transform & HAL_TRANSFORM_ROT_90)
-            swap(res_width , res_height);
-    } else {
-        delta_top = subregion_rect->top - layer->displayFrame.top;
-        delta_left = subregion_rect->left - layer->displayFrame.left;
-        res_width = WIDTH(*subregion_rect);
-        res_height = HEIGHT(*subregion_rect);
-    }
+    /* NV12 buffers don't have alpha information on it */
+    IMG_native_handle_t *src1_hndl = (IMG_native_handle_t *)src1_layer->handle;
+    IMG_native_handle_t *src2_hndl = (IMG_native_handle_t *)src2_layer->handle;
+    if (is_NV12(src1_hndl->iFormat) || is_NV12(src2_hndl->iFormat))
+        return 0;
 
-    /*
-     * Calculate the top, left offset from the source cropping rectangle
-     * depending on the rotation
-     */
-    switch(layer->transform) {
-        case 0:
-            res_left = layer->sourceCrop.left + delta_left;
-            res_top = layer->sourceCrop.top + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_90:
-            res_left = handle->iHeight - layer->sourceCrop.bottom + delta_left;
-            res_top = layer->sourceCrop.left + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_180:
-            res_left = handle->iWidth - layer->sourceCrop.right + delta_left;
-            res_top = handle->iHeight - layer->sourceCrop.bottom + delta_top;
-            break;
-        case HAL_TRANSFORM_ROT_270:
-            res_left = layer->sourceCrop.top + delta_left;
-            res_top = handle->iWidth - layer->sourceCrop.right + delta_top;
-            break;
-        default:
-            OUTE("Invalid transform value %d", layer->transform);
-    }
-
-    /* Resulting rectangle has the subregion dimensions */
-    res_rect->left = res_left;
-    res_rect->top = res_top;
-    res_rect->right = res_left + res_width;
-    res_rect->bottom = res_top + res_height;
+    return 1;
 }
 
 static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned int set)
@@ -1287,12 +1567,9 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
     e->bp.batchflags |= set;
 }
 
-static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
+static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params,
+    blit_rect_t *damaged_area)
 {
-    static int loaded = 0;
-    if (!loaded)
-        loaded = loadbltsville() ? : 1; /* attempt load once */
-
     int lix;
     int ldepth = get_layer_ops(hregion, sidx, &lix);
     if (ldepth == 0) {
@@ -1304,22 +1581,28 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
     }
 
     /* Determine if this region is dirty */
-    int dirty = 0, dirtylix = lix;
-    while (dirtylix != -1) {
-        rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
-        if (rgz_layer->dirty_count){
-            /* One of the layers is dirty, we need to generate blits for this subregion */
-            dirty = 1;
-            break;
+    int dirty = 0;
+    blit_rect_t *subregion_rect = &hregion->blitrects[lix][sidx];
+    if (RECT_INTERSECTS(*damaged_area, *subregion_rect)) {
+        /* The subregion intersects the damaged area, draw unconditionally */
+        dirty = 1;
+    } else {
+        int dirtylix = lix;
+        while (dirtylix != -1) {
+            rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
+            if (rgz_layer->dirty_count){
+                /* One of the layers is dirty, we need to generate blits for this subregion */
+                dirty = 1;
+                break;
+            }
+            dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
         }
-        dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
     }
-
     if (!dirty)
         return 0;
 
     /* Check if the bottom layer is the background */
-    if (hregion->rgz_layers[lix]->hwc_layer == &bg_layer) {
+    if (hregion->rgz_layers[lix]->buffidx == RGZ_BACKGROUND_BUFFIDX) {
         if (ldepth == 1) {
             /* Background layer is the only operation, clear subregion */
             rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
@@ -1337,7 +1620,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
      * See if the depth most layer needs to be ignored. If this layer is the
      * only operation, we need to clear this subregion.
      */
-    if (hregion->rgz_layers[lix]->buffidx == -1) {
+    if (hregion->rgz_layers[lix]->buffidx == RGZ_CLEARHINT_BUFFIDX) {
         ldepth--;
         if (!ldepth) {
             rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
@@ -1359,36 +1642,81 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
          * We save a read and a write from the FB if we blend the bottom
          * two layers, we can do this only if both layers are not scaled
          */
+        int prev_layer_scaled = 0;
+        int prev_layer_nv12 = 0;
         int first_batchflags = 0;
-        if (!rgz_hwc_scaled(hregion->rgz_layers[lix]->hwc_layer) &&
-            !rgz_hwc_scaled(hregion->rgz_layers[s2lix]->hwc_layer)) {
-            e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix],
-                hregion->rgz_layers[s2lix]);
-            first_batchflags |= BVBATCH_SRC2;
-        } else {
+        rgz_layer_t *rgz_src1 = hregion->rgz_layers[lix];
+        rgz_layer_t *rgz_src2 = hregion->rgz_layers[s2lix];
+        if (rgz_can_blend_together(&rgz_src1->hwc_layer, &rgz_src2->hwc_layer))
+            e = rgz_hwc_subregion_blend(params, rect, rgz_src1, rgz_src2);
+        else {
             /* Return index to the first operation and make a copy of the first layer */
             lix = s2lix;
-            e = rgz_hwc_subregion_copy(params, rect, hregion->rgz_layers[lix]);
-            first_batchflags |= BVBATCH_OP | BVBATCH_SRC2;
+            rgz_src1 = hregion->rgz_layers[lix];
+            e = rgz_hwc_subregion_copy(params, rect, rgz_src1);
+            /*
+             * First blit is a copy, the rest will be blends, hence the operation
+             * changed on the second blit.
+             */
+            first_batchflags |= BVBATCH_OP;
+            prev_layer_nv12 = rgz_is_layer_nv12(&rgz_src1->hwc_layer);
+            prev_layer_scaled = rgz_hwc_scaled(&rgz_src1->hwc_layer);
         }
+
+        /*
+         * Regardless if the first blit is a copy or blend, src2 may have changed
+         * on the second blit
+         */
+        first_batchflags |= BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE;
+
         rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
-        int first = 1;
         while((lix = get_layer_ops_next(hregion, sidx, lix)) != -1) {
-            int batchflags = 0;
-            e = rgz_hwc_subregion_blend(params, rect, hregion->rgz_layers[lix], NULL);
-            if (first) {
-                first = 0;
-                batchflags |= first_batchflags;
-            }
+            int batchflags = first_batchflags;
+            first_batchflags = 0;
+            rgz_src1 = hregion->rgz_layers[lix];
+
+            /* Blend src1 into dst */
+            e = rgz_hwc_subregion_blend(params, rect, rgz_src1, NULL);
+
             /*
-             * TODO: This will work when scaling is introduced, however we need
-             * to think on a better way to optimize this.
+             * NOTE: After the first blit is configured, consequent blits are
+             * blend operations done with src1 and the destination, that is,
+             * src2 is the same as dst, any batchflag changed for the destination
+             * applies to src2 as well.
              */
-            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE |
-                BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE | BVBATCH_SRC2RECT_ORIGIN |
-                BVBATCH_SRC2RECT_SIZE | BVBATCH_SCALE;
+
+            /* src1 parameters always change on every blit */
+            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN| BVBATCH_SRC1RECT_SIZE;
+
+            /*
+             * If the current/previous layer has scaling, destination rectangles
+             * likely changed as well as the scaling mode. Clipping rectangle
+             * remains the same as well as destination geometry.
+             */
+            int cur_layer_scaled = rgz_hwc_scaled(&rgz_src1->hwc_layer);
+            if (cur_layer_scaled || prev_layer_scaled) {
+                batchflags |= BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
+                    BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
+                    BVBATCH_SCALE;
+            }
+            prev_layer_scaled = cur_layer_scaled;
+
+            /*
+             * If the current/previous layer is NV12, the destination geometry
+             * could have been rotated, hence the destination and clipping
+             * rectangles might have been trasformed to match the rotated
+             * destination geometry.
+             */
+            int cur_layer_nv12 = rgz_is_layer_nv12(&rgz_src1->hwc_layer);
+            if (cur_layer_nv12 || prev_layer_nv12) {
+                batchflags |= BVBATCH_DST | BVBATCH_DSTRECT_ORIGIN | BVBATCH_DSTRECT_SIZE |
+                    BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE |
+                    BVBATCH_CLIPRECT;
+            }
+            prev_layer_nv12 = cur_layer_nv12;
+
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
 
@@ -1489,7 +1817,7 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
         }
         for (s = 0; s < hregion->nsubregions; s++) {
             ALOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            if (rgz_hwc_subregion_blit(hregion, s, params))
+            if (rgz_hwc_subregion_blit(hregion, s, params, &rgz->damaged_area))
                 return -1;
         }
     }
@@ -1497,16 +1825,16 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
     int rv = 0;
 
     if (IS_BVCMD(params)) {
-        unsigned int j;
+        int j;
         params->data.bvc.out_nhndls = 0;
+        rgz_fb_state_t *cur_fb_state = &rgz->cur_fb_state;
         /* Begin from index 1 to remove the background layer from the output */
-        for (j = 1, i = 0; j < rgz->rgz_layerno; j++) {
-            rgz_layer_t *rgz_layer = &rgz->rgz_layers[j];
+        for (j = 1, i = 0; j < cur_fb_state->rgz_layerno; j++) {
+            rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[j];
             /* We don't need the handles for layers marked as -1 */
             if (rgz_layer->buffidx == -1)
                 continue;
-            hwc_layer_t *layer = rgz_layer->hwc_layer;
-            params->data.bvc.out_hndls[i++] = layer->handle;
+            params->data.bvc.out_hndls[i++] = rgz_layer->hwc_layer.handle;
             params->data.bvc.out_nhndls++;
         }
 
@@ -1531,12 +1859,11 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
     return rv;
 }
 
-void rgz_profile_hwc(hwc_layer_list_t* list, int dispw, int disph)
+void rgz_profile_hwc(hwc_display_contents_1_t* list, int dispw, int disph)
 {
     if (!list)  /* A NULL composition list can occur */
         return;
 
-#ifndef RGZ_TEST_INTEGRATION
     static char regiondump2[PROPERTY_VALUE_MAX] = "";
     char regiondump[PROPERTY_VALUE_MAX];
     property_get("debug.2dhwc.region", regiondump, "0");
@@ -1555,11 +1882,6 @@ void rgz_profile_hwc(hwc_layer_list_t* list, int dispw, int disph)
     /* 0 - off, 1 - human readable, 2 - CSV */
     property_get("debug.2dhwc.dumplayers", dumplayerdata, "0");
     int dumplayers = atoi(dumplayerdata);
-#else
-    char regiondump[] = "";
-    int dumplayers = 1;
-    int dumpregions = 0;
-#endif
     if (dumplayers && (list->flags & HWC_GEOMETRY_CHANGED)) {
         OUTP("<!-- BEGUN-LAYER-DUMP: %d -->", list->numHwLayers);
         rgz_print_layers(list, dumplayers == 1 ? 0 : 1);
@@ -1623,7 +1945,6 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     geom->height = fb_varinfo.yres;
     geom->virtstride = fb_fixinfo.line_length;
     geom->format = hal_to_ocd(fmt);
-    /* Always set to 0, src buffers will contain rotation values as needed */
     geom->orientation = 0;
     return 0;
 }
