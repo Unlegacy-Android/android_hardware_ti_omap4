@@ -189,6 +189,8 @@ param_Array ** Vcapture_Array = 0;
 param_Array ** preview_Array = 0;
 param_Array ** thumbnail_Array = 0;
 fps_Array * fpsArray = 0;
+int iterationCount = 1;
+bool iterationPrint = true;
 
 int enableMisalignmentCorrectionIdx = 0;
 
@@ -858,9 +860,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
 
     if ( msgType & CAMERA_MSG_SHUTTER )
         printf("Shutter done in %llu us\n", timeval_delay(&picture_start));
-
-    if ( msgType & CAMERA_MSG_ERROR && (ext1 == 1))
-      {
+    if ( msgType  == 1) {
         printf("Camera Test CAMERA_MSG_ERROR.....\n");
         if (stressTest)
           {
@@ -872,7 +872,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
             printf("Camera Test Notified of Error Stopping.....\n");
             stopScript =false;
             stopPreview();
-
+            closeCamera();
             if (recordingMode)
               {
                 stopRecording();
@@ -1165,6 +1165,9 @@ int configureRecorder() {
     recording_counter++;
 
     if (cameraInfo.orientation == 90 || cameraInfo.orientation == 270 ) {
+        if (Vcapture_Array[VcaptureSizeIDX]->height == 1080) {
+            Vcapture_Array[VcaptureSizeIDX]->height = 1088;
+        }
         if ( recorder->setVideoSize(Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->width) < 0 ) {
             printf("error while configuring video size\n");
             return -1;
@@ -1296,6 +1299,7 @@ int openCamera() {
     }
     getParametersFromCapabilities();
     getSizeParametersFromCapabilities();
+    initDefaults();
     camera->setParameters(params.flatten());
     camera->setListener(new CameraHandler());
 
@@ -3714,7 +3718,7 @@ int functional_menu() {
             stopPreview();
             deleteAllocatedMemory();
 
-            return -1;
+            return 0;
 
         case '/':
         {
@@ -3788,7 +3792,7 @@ int functional_menu() {
       break;
     }
 
-    return 0;
+    return 1;
 }
 
 void print_usage() {
@@ -4017,6 +4021,7 @@ int restartCamera() {
 
   printf("+++Restarting Camera After Error+++\n");
   stopPreview();
+  closeCamera();
 
   if (recordingMode) {
     stopRecording();
@@ -4251,10 +4256,12 @@ int startTest() {
 int runRegressionTest(cmd_args_t *cmd_args) {
     char *cmd;
     int pid;
+    int res = 0;
+    int restartTestCount = 0;
 
     platformID = cmd_args->platform_id;
 
-    int res = startTest();
+    res = startTest();
     if (res != 0) {
         return res;
     }
@@ -4266,7 +4273,8 @@ int runRegressionTest(cmd_args_t *cmd_args) {
         stressTest = true;
 
         while (1) {
-            if (execute_functional_script(cmd) == 0) {
+            res = execute_functional_script(cmd);
+            if (res >= 0) {
                 break;
             }
 
@@ -4275,6 +4283,11 @@ int runRegressionTest(cmd_args_t *cmd_args) {
             free(cmd);
             cmd = NULL;
 
+            iterationCount = 0;
+            restartTestCount ++;
+            if(restartTestCount > 3) {
+                return res;
+            }
             if ( (restartCamera() != 0)  || ((cmd = load_script(cmd_args->script_file_name)) == NULL) ) {
                 printf("ERROR::CameraTest Restarting Camera...\n");
                 res = -1;
@@ -4291,11 +4304,12 @@ int runRegressionTest(cmd_args_t *cmd_args) {
         stop_logging(cmd_args->logging, pid);
     }
 
-    return 0;
+    return res;
 }
 
 int runFunctionalTest() {
-    int res = startTest();
+    int res = 0;
+    res = startTest();
     if (res != 0) {
         return res;
     }
@@ -4303,12 +4317,13 @@ int runFunctionalTest() {
     print_menu = 1;
 
     while (1) {
-        if (functional_menu() < 0) {
+        res = functional_menu();
+        if (res <= 0) {
             break;
         }
     }
 
-    return 0;
+    return res;
 }
 
 int runApiTest() {

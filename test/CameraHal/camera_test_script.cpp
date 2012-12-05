@@ -171,6 +171,8 @@ extern int manualConvMin ;
 extern int manualConvMax ;
 extern bool faceDetectToggle;
 extern unsigned int burstCount;
+extern int iterationCount;
+extern bool iterationPrint;
 
 /** Buffer source reset */
 extern bool bufferSourceInputReset;
@@ -185,6 +187,18 @@ void trim_script_cmd(char *cmd) {
             *c = *(c+1);
         }
     }
+    if (iterationPrint) {
+        printf("\n==============\n");
+        printf("IterationCount: %d", iterationCount);
+        printf("\n==============\n");
+        iterationPrint = false;
+    }
+    // Iteration Counter
+    while ( NULL != (nl = strchr(cmd, '\n')) || NULL != (nl = strchr(cmd, '\r\n'))) {
+            iterationPrint = true;
+            iterationCount ++;
+            break;
+            }
 
     // then remove all single line feed symbols
     while ( NULL != (nl = strchr(cmd, '\n'))) {
