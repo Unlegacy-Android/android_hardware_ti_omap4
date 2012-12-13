@@ -2560,7 +2560,7 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
     memset(hwc_dev, 0, sizeof(*hwc_dev));
 
     hwc_dev->base.common.tag = HARDWARE_DEVICE_TAG;
-    hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_1_0;
+    hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_1_1;
 
     if (use_sw_vsync()) {
         hwc_dev->use_sw_vsync = true;
