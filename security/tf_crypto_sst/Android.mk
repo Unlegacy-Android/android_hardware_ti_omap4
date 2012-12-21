@@ -1,5 +1,3 @@
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
-
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
@@ -28,4 +26,3 @@ LOCAL_STATIC_LIBRARIES := libtee_client_api_driver
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
-endif
