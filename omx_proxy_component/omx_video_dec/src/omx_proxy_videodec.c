@@ -641,7 +641,6 @@ OMX_ERRORTYPE RPC_UTIL_SetStrideAndPadding(OMX_COMPONENTTYPE * hComponent,PROXY_
 OMX_ERRORTYPE PROXY_VIDDEC_FillThisBuffer(OMX_HANDLETYPE hComponent, OMX_BUFFERHEADERTYPE * pBufferHdr)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
-	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
 	OMX_U32 count = 0;
@@ -700,12 +699,12 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillThisBuffer(OMX_HANDLETYPE hComponent, OMX_BUFFERH
 				0,0,sPortDef.format.video.nFrameWidth, sPortDef.format.video.nFrameHeight,NULL);
 	}
 
-        eRPCError = PROXY_FillThisBuffer(hComponent, pBufferHdr);
+	eError = PROXY_FillThisBuffer(hComponent, pBufferHdr);
 
 	PROXY_assert(eError == OMX_ErrorNone,
-	    eError," Error in Proxy SetParameter for Port Def");
+			eError," Error in Proxy FillThisBuffer");
 
-      EXIT:
+EXIT:
 	DOMX_EXIT("eError: %d", eError);
 	return eError;
 }
@@ -722,7 +721,6 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
     OMX_PTR pMarkData)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
-	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
 	OMX_U32 count = 0;
@@ -783,11 +781,11 @@ OMX_ERRORTYPE PROXY_VIDDEC_FillBufferDone(OMX_HANDLETYPE hComponent,
 #endif
 	}
 
-	eRPCError = PROXY_FillBufferDone(hComponent,remoteBufHdr, nfilledLen, nOffset, nFlags,
+	eError = PROXY_FillBufferDone(hComponent,remoteBufHdr, nfilledLen, nOffset, nFlags,
 		nTimeStamp, hMarkTargetComponent, pMarkData);
 
 	PROXY_assert(eError == OMX_ErrorNone,
-			eError," Error in PROXY FillBufferDone for Port Def");
+			eError," Error in PROXY FillBufferDone");
 
 EXIT:
 	DOMX_EXIT("eError: %d", eError);
