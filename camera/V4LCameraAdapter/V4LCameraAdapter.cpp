@@ -1095,8 +1095,7 @@ void V4LCameraAdapter::setupWorkingMode() {
         }
 
         case 2 : {
-            // This is WA for Kernel 3.0 - till correct h264 parsing come.
-            mPixelFormat = 0;//V4L2_PIX_FMT_H264
+            mPixelFormat = V4L2_PIX_FMT_H264;
             mCameraHal->setExternalLocking(true);
             mDecoder = DecoderFactory::createDecoderByType(DecoderType_H264, false);
             CAMHAL_LOGI("Using V4L preview format: V4L2_PIX_FMT_H264");
