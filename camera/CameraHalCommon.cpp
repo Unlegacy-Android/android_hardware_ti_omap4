@@ -209,5 +209,25 @@ size_t CameraHal::calculateBufferSize(const char* parametersFormat, int width, i
 }
 
 
+bool CameraHal::parsePair(const char *str, int *first, int *second, char delim)
+{
+    // Find the first integer.
+    char *end;
+    int w = (int)strtol(str, &end, 10);
+    // If a delimeter does not immediately follow, give up.
+    if (*end != delim) {
+        CAMHAL_LOGE("Cannot find delimeter (%c) in str=%s", delim, str);
+        return false;
+    }
+
+    // Find the second integer, immediately after the delimeter.
+    int h = (int)strtol(end+1, &end, 10);
+
+    *first = w;
+    *second = h;
+
+    return true;
+}
+
 } // namespace Camera
 } // namespace Ti

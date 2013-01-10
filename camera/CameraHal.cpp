@@ -385,7 +385,6 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
     int w, h;
     int framerate;
-    int maxFPS, minFPS;
     const char *valstr = NULL;
     int varint = 0;
     status_t ret = NO_ERROR;
@@ -684,54 +683,63 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 #endif
 
         // Variable framerate ranges have higher priority over
-        // deprecated constant FPS. "KEY_PREVIEW_FPS_RANGE" should
-        // be cleared by the client in order for constant FPS to get
-        // applied.
-        // If Port FPS needs to be used for configuring, then FPS RANGE should not be set by the APP.
+        // deprecated constant FPS.
+        // There is possible 3 situations :
+        // 1) User change FPS range and HAL use it for fps port value (don't care about
+        //    changed or not const FPS).
+        // 2) User change single FPS and not change FPS range - will be applyed single FPS value
+        //    to port.
+        // 3) Both FPS range and const FPS are unchanged - FPS range will be applied to port.
+
+        int curFramerate = 0;
+        bool frameRangeUpdated = false, fpsUpdated = false;
+        int curMaxFPS = 0, curMinFPS = 0, maxFPS = 0, minFPS = 0;
+
+        mParameters.getPreviewFpsRange(&curMinFPS, &curMaxFPS);
+        params.getPreviewFpsRange(&minFPS, &maxFPS);
+
+        curFramerate = mParameters.getPreviewFrameRate();
+        framerate = params.getPreviewFrameRate();
+
         valstr = params.get(android::CameraParameters::KEY_PREVIEW_FPS_RANGE);
-        if (valstr != NULL && strlen(valstr)) {
-            int curMaxFPS = 0;
-            int curMinFPS = 0;
-
-            // APP wants to set FPS range
-            // Set framerate = MAXFPS
-            CAMHAL_LOGDA("APP IS CHANGING FRAME RATE RANGE");
-
-            mParameters.getPreviewFpsRange(&curMinFPS, &curMaxFPS);
-            CAMHAL_LOGDB("## current minFPS = %d; maxFPS=%d",curMinFPS, curMaxFPS);
-
-            params.getPreviewFpsRange(&minFPS, &maxFPS);
-            CAMHAL_LOGDB("## requested minFPS = %d; maxFPS=%d",minFPS, maxFPS);
-            // Validate VFR
+        if (valstr != NULL && strlen(valstr) &&
+                ((curMaxFPS != maxFPS) || (curMinFPS != minFPS))) {
+            CAMHAL_LOGDB("## current minFPS = %d; maxFPS=%d", curMinFPS, curMaxFPS);
+            CAMHAL_LOGDB("## requested minFPS = %d; maxFPS=%d", minFPS, maxFPS);
             if (!isFpsRangeValid(minFPS, maxFPS, params.get(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE)) &&
                 !isFpsRangeValid(minFPS, maxFPS, params.get(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED))) {
-                CAMHAL_LOGEA("Invalid FPS Range");
+                CAMHAL_LOGEA("Trying to set invalid FPS Range (%d,%d)", minFPS, maxFPS);
                 return BAD_VALUE;
-            } else {
-                framerate = maxFPS / CameraHal::VFR_SCALE;
-                mParameters.setPreviewFrameRate(framerate);
-                CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
-                mParameters.set(android::CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
-                CAMHAL_LOGDB("FPS Range = %s", valstr);
-                if ( curMaxFPS == (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) &&
-                     maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
-                    restartPreviewRequired = true;
-                }
             }
-        } else {
-            framerate = params.getPreviewFrameRate();
+            mParameters.set(android::CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
+            CAMHAL_LOGDB("FPS Range = %s", valstr);
+            if ( curMaxFPS == (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) &&
+                 maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
+                restartPreviewRequired = true;
+            }
+            frameRangeUpdated = true;
+        }
+
+        valstr = params.get(android::CameraParameters::KEY_PREVIEW_FRAME_RATE);
+        if (valstr != NULL && strlen(valstr) && (framerate != curFramerate)) {
+            CAMHAL_LOGD("current framerate = %d reqested framerate = %d", curFramerate, framerate);
             if (!isParameterValid(framerate, params.get(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES)) &&
                 !isParameterValid(framerate, params.get(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED))) {
-                CAMHAL_LOGEA("Invalid frame rate");
+                CAMHAL_LOGEA("Trying to set invalid frame rate %d", framerate);
                 return BAD_VALUE;
             }
-            char tmpBuffer[MAX_PROP_VALUE_LENGTH];
-
-            sprintf(tmpBuffer, "%d,%d", framerate * CameraHal::VFR_SCALE, framerate * CameraHal::VFR_SCALE);
             mParameters.setPreviewFrameRate(framerate);
-            CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
-            mParameters.set(android::CameraParameters::KEY_PREVIEW_FPS_RANGE, tmpBuffer);
-            CAMHAL_LOGDB("FPS Range = %s", tmpBuffer);
+            CAMHAL_LOGDB("Set frame rate %d", framerate);
+            fpsUpdated = true;
+        }
+
+        if (frameRangeUpdated) {
+            mParameters.set(TICameraParameters::KEY_PREVIEW_FRAME_RATE_RANGE,
+                    mParameters.get(android::CameraParameters::KEY_PREVIEW_FPS_RANGE));
+        } else if (fpsUpdated) {
+            char tmpBuffer[MAX_PROP_VALUE_LENGTH];
+            sprintf(tmpBuffer, "%d,%d", framerate * CameraHal::VFR_SCALE, framerate * CameraHal::VFR_SCALE);
+            mParameters.set(TICameraParameters::KEY_PREVIEW_FRAME_RATE_RANGE, tmpBuffer);
         }
 
         if ((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) {
@@ -4555,6 +4563,7 @@ void CameraHal::initDefaultParameters()
     //Insert default values
     p.setPreviewFrameRate(atoi(mCameraProperties->get(CameraProperties::PREVIEW_FRAME_RATE)));
     p.set(android::CameraParameters::KEY_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
+    p.set(TICameraParameters::KEY_PREVIEW_FRAME_RATE_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
     p.setPreviewFormat(mCameraProperties->get(CameraProperties::PREVIEW_FORMAT));
     p.setPictureFormat(mCameraProperties->get(CameraProperties::PICTURE_FORMAT));
     p.set(android::CameraParameters::KEY_JPEG_QUALITY, mCameraProperties->get(CameraProperties::JPEG_QUALITY));

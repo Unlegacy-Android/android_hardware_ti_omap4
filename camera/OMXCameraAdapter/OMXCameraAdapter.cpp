@@ -594,56 +594,37 @@ status_t OMXCameraAdapter::setParameters(const android::CameraParameters &params
 
     params.getPreviewSize(&w, &h);
     frameRate = params.getPreviewFrameRate();
-    params.getPreviewFpsRange(&minFramerate, &maxFramerate);
+
+    const char *frameRateRange = params.get(TICameraParameters::KEY_PREVIEW_FRAME_RATE_RANGE);
+    bool fpsRangeParsed = CameraHal::parsePair(frameRateRange, &minFramerate, &maxFramerate, ',');
+    CAMHAL_ASSERT(fpsRangeParsed);
+
     minFramerate /= CameraHal::VFR_SCALE;
     maxFramerate /= CameraHal::VFR_SCALE;
-    if ( ( 0 < minFramerate ) && ( 0 < maxFramerate ) ) {
-        if ( minFramerate > maxFramerate ) {
-            CAMHAL_LOGEA(" Min FPS set higher than MAX. So setting MIN and MAX to the higher value");
-            maxFramerate = minFramerate;
-        }
 
-        if ( 0 >= frameRate ) {
-            frameRate = maxFramerate;
-        }
+    frameRate = maxFramerate;
 
-        if ( ( cap->mMinFrameRate != (OMX_U32) minFramerate ) ||
-             ( cap->mMaxFrameRate != (OMX_U32) maxFramerate ) ) {
-            cap->mMinFrameRate = minFramerate;
-            cap->mMaxFrameRate = maxFramerate;
-            setVFramerate(cap->mMinFrameRate, cap->mMaxFrameRate);
-        }
+    if ( ( cap->mMinFrameRate != (OMX_U32) minFramerate ) ||
+         ( cap->mMaxFrameRate != (OMX_U32) maxFramerate ) ) {
+        cap->mMinFrameRate = minFramerate;
+        cap->mMaxFrameRate = maxFramerate;
+        setVFramerate(cap->mMinFrameRate, cap->mMaxFrameRate);
     }
 
-    if ( 0 < frameRate )
-        {
-        cap->mColorFormat = pixFormat;
-        cap->mWidth = w;
-        cap->mHeight = h;
-        cap->mFrameRate = frameRate;
+    cap->mColorFormat = pixFormat;
+    cap->mWidth = w;
+    cap->mHeight = h;
+    cap->mFrameRate = frameRate;
 
-        CAMHAL_LOGVB("Prev: cap.mColorFormat = %d", (int)cap->mColorFormat);
-        CAMHAL_LOGVB("Prev: cap.mWidth = %d", (int)cap->mWidth);
-        CAMHAL_LOGVB("Prev: cap.mHeight = %d", (int)cap->mHeight);
-        CAMHAL_LOGVB("Prev: cap.mFrameRate = %d", (int)cap->mFrameRate);
+    CAMHAL_LOGVB("Prev: cap.mColorFormat = %d", (int)cap->mColorFormat);
+    CAMHAL_LOGVB("Prev: cap.mWidth = %d", (int)cap->mWidth);
+    CAMHAL_LOGVB("Prev: cap.mHeight = %d", (int)cap->mHeight);
+    CAMHAL_LOGVB("Prev: cap.mFrameRate = %d", (int)cap->mFrameRate);
 
-        //TODO: Add an additional parameter for video resolution
-       //use preview resolution for now
-        cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
-        cap->mColorFormat = pixFormat;
-        cap->mWidth = w;
-        cap->mHeight = h;
-        cap->mFrameRate = frameRate;
+    ///mStride is set from setBufs() while passing the APIs
+    cap->mStride = 4096;
+    cap->mBufSize = cap->mStride * cap->mHeight;
 
-        CAMHAL_LOGVB("Video: cap.mColorFormat = %d", (int)cap->mColorFormat);
-        CAMHAL_LOGVB("Video: cap.mWidth = %d", (int)cap->mWidth);
-        CAMHAL_LOGVB("Video: cap.mHeight = %d", (int)cap->mHeight);
-        CAMHAL_LOGVB("Video: cap.mFrameRate = %d", (int)cap->mFrameRate);
-
-        ///mStride is set from setBufs() while passing the APIs
-        cap->mStride = 4096;
-        cap->mBufSize = cap->mStride * cap->mHeight;
-        }
 
     if ( ( cap->mWidth >= 1920 ) &&
          ( cap->mHeight >= 1080 ) &&

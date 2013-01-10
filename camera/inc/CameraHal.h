@@ -1311,6 +1311,7 @@ public:
                                 unsigned int offset, unsigned int stride,
                                 const char* format);
     static unsigned int getBPP(const char* format);
+    static bool parsePair(const char *str, int *first, int *second, char delim);
 
 /*--------------------Internal Member functions - Private---------------------------------*/
 private:

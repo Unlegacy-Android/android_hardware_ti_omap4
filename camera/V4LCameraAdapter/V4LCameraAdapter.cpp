@@ -508,8 +508,9 @@ status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params
             CAMHAL_LOGEB(" VIDIOC_S_FMT Failed: %s", strerror(errno));
             goto EXIT;
         }
-
-        params.getPreviewFpsRange(&minFps, &maxFps);
+        const char *frameRateRange = params.get(TICameraParameters::KEY_PREVIEW_FRAME_RATE_RANGE);
+        bool fpsRangeParsed = CameraHal::parsePair(frameRateRange, &minFps, &maxFps, ',');
+        CAMHAL_ASSERT(fpsRangeParsed);
         CAMHAL_LOGD("Current fps is %d new fps is (%d,%d)", mFrameRate, minFps, maxFps);
         if (maxFps != mFrameRate) {
             mFrameRate = maxFps;
