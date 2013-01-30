@@ -3825,61 +3825,44 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
         }
 
     ///////////////////////////////////////////////////////
-    // Following commands do NOT need preview to be started
-    ///////////////////////////////////////////////////////
-
-    switch ( cmd ) {
-#ifdef ANDROID_API_JB_OR_LATER
-    case CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG:
-    {
-        const bool enable = static_cast<bool>(arg1);
-        android::AutoMutex lock(mLock);
-        if ( enable ) {
-            mMsgEnabled |= CAMERA_MSG_FOCUS_MOVE;
-        } else {
-            mMsgEnabled &= ~CAMERA_MSG_FOCUS_MOVE;
-        }
-    }
-        return OK;
-#endif
-    }
-
-    if ( ret == OK && !previewEnabled()
-#ifdef OMAP_ENHANCEMENT_VTC
-            && (cmd != CAMERA_CMD_PREVIEW_INITIALIZATION)
-#endif
-         ) {
-        CAMHAL_LOGEA("Preview is not running");
-        ret = -EINVAL;
-    }
-
-    ///////////////////////////////////////////////////////
     // Following commands NEED preview to be started
     ///////////////////////////////////////////////////////
+
+    if ((!previewEnabled()) && ((cmd == CAMERA_CMD_START_SMOOTH_ZOOM)
+            || (cmd == CAMERA_CMD_STOP_SMOOTH_ZOOM)
+            || (cmd == CAMERA_CMD_START_FACE_DETECTION)
+#ifdef OMAP_ENHANCEMENT_VTC
+            || (cmd == CAMERA_CMD_PREVIEW_DEINITIALIZATION)
+#endif
+            ))
+    {
+        CAMHAL_LOGEA("sendCommand with cmd = 0x%x need preview to be started", cmd);
+        return BAD_VALUE;
+    }
 
     if ( NO_ERROR == ret )
         {
         switch(cmd)
             {
             case CAMERA_CMD_START_SMOOTH_ZOOM:
-
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_SMOOTH_ZOOM, arg1);
 
                 break;
-            case CAMERA_CMD_STOP_SMOOTH_ZOOM:
 
+            case CAMERA_CMD_STOP_SMOOTH_ZOOM:
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_SMOOTH_ZOOM);
+
                 break;
 
             case CAMERA_CMD_START_FACE_DETECTION:
-
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_FD);
 
                 break;
 
             case CAMERA_CMD_STOP_FACE_DETECTION:
-
-                ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_FD);
+                if (previewEnabled()) {
+                    ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_FD);
+                }
 
                 break;
 
@@ -3906,6 +3889,20 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
                 ret = cameraPreviewInitialization();
 
                 break;
+#endif
+
+#ifdef ANDROID_API_JB_OR_LATER
+            case CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG:
+            {
+                const bool enable = static_cast<bool>(arg1);
+                android::AutoMutex lock(mLock);
+                if ( enable ) {
+                    mMsgEnabled |= CAMERA_MSG_FOCUS_MOVE;
+                } else {
+                    mMsgEnabled &= ~CAMERA_MSG_FOCUS_MOVE;
+                }
+                break;
+            }
 #endif
 
             default:
