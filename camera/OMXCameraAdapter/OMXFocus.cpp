@@ -177,7 +177,8 @@ status_t OMXCameraAdapter::doAutoFocus()
         // force AF, Ducati will take care of whether CAF
         // or AF will be performed, depending on light conditions
         if ( focusControl.eFocusControl == OMX_IMAGE_FocusControlAuto &&
-             ( focusStatus.eFocusStatus == OMX_FocusStatusUnableToReach ||
+             ( focusStatus.eFocusStatus == OMX_FocusStatusRequest ||
+               focusStatus.eFocusStatus == OMX_FocusStatusUnableToReach ||
                focusStatus.eFocusStatus == OMX_FocusStatusLost ) ) {
             focusControl.eFocusControl = OMX_IMAGE_FocusControlAutoLock;
         }
