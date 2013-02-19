@@ -4169,10 +4169,10 @@ OMXCameraAdapter::~OMXCameraAdapter()
 
     android::AutoMutex lock(gAdapterLock);
 
-    if ( mOmxInitialized ) {
-        // return to OMX Loaded state
-        switchToLoaded();
+    // return to OMX Loaded state
+    switchToLoaded();
 
+    if ( mOmxInitialized ) {
         saveDccFileDataSave();
 
         closeDccFileDataSave();
