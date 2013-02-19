@@ -408,6 +408,7 @@ void OMXCameraAdapter::performCleanupAfterError()
     ///De-init the OMX
     OMX_Deinit();
     mComponentState = OMX_StateInvalid;
+    mOmxInitialized = false;
 }
 
 OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(CameraFrame::FrameType frameType)
