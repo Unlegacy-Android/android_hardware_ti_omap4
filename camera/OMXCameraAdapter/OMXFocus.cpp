@@ -829,8 +829,15 @@ void OMXCameraAdapter::handleFocusCallback() {
     OMX_PARAM_FOCUSSTATUSTYPE eFocusStatus;
     CameraHalEvent::FocusStatus focusStatus = CameraHalEvent::FOCUS_STATUS_FAIL;
     status_t ret = NO_ERROR;
-    BaseCameraAdapter::AdapterState nextState;
+    BaseCameraAdapter::AdapterState nextState, currentState;
     BaseCameraAdapter::getNextState(nextState);
+    BaseCameraAdapter::getState(currentState);
+
+    // Dropping AF callback if it triggered in non AF state
+    if ((currentState != AF_STATE) && (currentState != AF_ZOOM_STATE) &&
+        (nextState != AF_STATE) && (nextState != AF_ZOOM_STATE)) {
+        return;
+    }
 
     OMX_INIT_STRUCT(eFocusStatus, OMX_PARAM_FOCUSSTATUSTYPE);
 
