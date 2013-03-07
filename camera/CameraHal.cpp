@@ -549,18 +549,6 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             if(strcmp(valstr, android::CameraParameters::TRUE) == 0)
                 {
                 CAMHAL_LOGVB("Video Resolution: %d x %d", mVideoWidth, mVideoHeight);
-#ifdef OMAP_ENHANCEMENT_VTC
-                if (!mVTCUseCase)
-#endif
-                {
-                    int maxFPS, minFPS;
-
-                    params.getPreviewFpsRange(&minFPS, &maxFPS);
-                    maxFPS /= CameraHal::VFR_SCALE;
-                    if ( ( maxFPS <= SW_SCALING_FPS_LIMIT ) ) {
-                        getPreferredPreviewRes(&w, &h);
-                    }
-                }
                 mParameters.set(android::CameraParameters::KEY_RECORDING_HINT, valstr);
                 restartPreviewRequired |= setVideoModeParameters(params);
                 }
@@ -4719,24 +4707,6 @@ status_t CameraHal::storeMetaDataInBuffers(bool enable)
     LOG_FUNCTION_NAME;
 
     return mAppCallbackNotifier->useMetaDataBufferMode(enable);
-
-    LOG_FUNCTION_NAME_EXIT;
-}
-
-void CameraHal::getPreferredPreviewRes(int *width, int *height)
-{
-    LOG_FUNCTION_NAME;
-
-    // We request Ducati for a higher resolution so preview looks better and then downscale the frame before the callback.
-    // TODO: This should be moved to configuration constants and boolean flag whether to provide such optimization
-    // Also consider providing this configurability of the desired display resolution from the application
-    if ( ( *width == 320 ) && ( *height == 240 ) ) {
-        *width = 640;
-        *height = 480;
-    } else if ( ( *width == 176 ) && ( *height == 144 ) ) {
-        *width = 704;
-        *height = 576;
-    }
 
     LOG_FUNCTION_NAME_EXIT;
 }

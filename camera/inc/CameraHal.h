@@ -1387,7 +1387,6 @@ private:
 
     void forceStopPreview();
 
-    void getPreferredPreviewRes(int *width, int *height);
     void resetPreviewRes(android::CameraParameters *params);
 
     // Internal __takePicture function - used in public takePicture() and reprocess()
