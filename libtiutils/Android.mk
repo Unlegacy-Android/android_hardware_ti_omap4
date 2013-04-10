@@ -17,7 +17,8 @@ LOCAL_SHARED_LIBRARIES:= \
     libui \
     libbinder \
     libutils \
-    libcutils
+    libcutils \
+    liblog
 
 ifdef ANDROID_API_JB_OR_LATER
 LOCAL_C_INCLUDES += \

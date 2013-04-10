@@ -18,6 +18,7 @@ LOCAL_SHARED_LIBRARIES :=       \
         libbinder               \
         libutils                \
         libcutils               \
+        liblog                  \
         libui                   \
         libdl                   \
 
