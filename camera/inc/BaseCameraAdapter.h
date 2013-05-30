@@ -246,7 +246,7 @@ protected:
     mutable android::Mutex mPreviewBufferLock;
 
     //Snapshot buffer management data
-    android::KeyedVector<int, int> mSnapshotBuffersAvailable;
+    android::KeyedVector<CameraBuffer *, int> mSnapshotBuffersAvailable;
     mutable android::Mutex mSnapshotBufferLock;
 
     //Video buffer management data

@@ -1495,7 +1495,7 @@ int BaseCameraAdapter::getFrameRefCount(CameraBuffer * frameBuf, CameraFrame::Fr
         case CameraFrame::SNAPSHOT_FRAME:
                 {
                 android::AutoMutex lock(mSnapshotBufferLock);
-                res = mSnapshotBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                res = mSnapshotBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
@@ -1547,7 +1547,7 @@ void BaseCameraAdapter::setFrameRefCount(CameraBuffer * frameBuf, CameraFrame::F
         case CameraFrame::SNAPSHOT_FRAME:
                 {
                 android::AutoMutex lock(mSnapshotBufferLock);
-                mSnapshotBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                mSnapshotBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
