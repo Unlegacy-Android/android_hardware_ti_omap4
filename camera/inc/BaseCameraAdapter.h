@@ -176,8 +176,9 @@ protected:
     status_t resetFrameRefCount(CameraFrame &frame);
 
     //A couple of helper functions
-    void setFrameRefCount(CameraBuffer* frameBuf, CameraFrame::FrameType frameType, int refCount);
-    int getFrameRefCount(CameraBuffer* frameBuf, CameraFrame::FrameType frameType);
+    void setFrameRefCountByType(CameraBuffer* frameBuf, CameraFrame::FrameType frameType, int refCount);
+    int getFrameRefCount(CameraBuffer* frameBuf);
+    int getFrameRefCountByType(CameraBuffer* frameBuf, CameraFrame::FrameType frameType);
     int setInitFrameRefCount(CameraBuffer* buf, unsigned int mask);
     static const char* getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT);
 
