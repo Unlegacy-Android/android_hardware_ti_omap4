@@ -1,3 +1,5 @@
+#DOMX is not supported on J6 yet. Supported only on omap4 and omap5
+ifeq ($(TARGET_BOARD_PLATFORM), $(filter $(TARGET_BOARD_PLATFORM), omap4 omap5))
 ifeq ($(ENHANCED_DOMX),true)
 
     # DOMX not used in OMAP3 program
@@ -37,3 +39,4 @@ ifeq ($(ENHANCED_DOMX),true)
     endif # ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 
 endif #ifeq ($(ENHANCED_DOMX),true)
+endif
