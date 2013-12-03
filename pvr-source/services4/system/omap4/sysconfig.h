@@ -58,7 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* Allow the AP latency to be overridden in the build config */
 #if !defined(SYS_SGX_ACTIVE_POWER_LATENCY_MS)
-#define SYS_SGX_ACTIVE_POWER_LATENCY_MS		(2)
+#define SYS_SGX_ACTIVE_POWER_LATENCY_MS		(100)
 #endif
 
 
