@@ -2040,8 +2040,7 @@ static int hwc_set(struct hwc_composer_device_1 *dev,
 
         hwc_dev->comp_data.blit_data.rgz_flags = hwc_dev->blit_flags;
         hwc_dev->comp_data.blit_data.rgz_items = hwc_dev->blit_num;
-        int omaplfb_comp_data_sz = sizeof(hwc_dev->comp_data) +
-            (hwc_dev->comp_data.blit_data.rgz_items * sizeof(struct rgz_blt_entry));
+        int omaplfb_comp_data_sz = sizeof(hwc_dev->comp_data.dsscomp_data);
 
 
         uint32_t nbufs = hwc_dev->post2_layers;
