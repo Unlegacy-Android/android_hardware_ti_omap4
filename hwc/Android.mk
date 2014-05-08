@@ -8,7 +8,8 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/../vendor/lib/hw
 LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardware_legacy libz
 
 LOCAL_SRC_FILES := hwc.c rgz_2d.c dock_image.c sw_vsync.c display.c
-LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\" -Wall -Werror
+LOCAL_CFLAGS := -DSUPPORT_ANDROID_FRAMEBUFFER_HAL
+LOCAL_CFLAGS += -DLOG_TAG=\"ti_hwc\" -Wall -Werror
 
 ifeq ($(BOARD_USE_TI_LIBION),true)
 LOCAL_SHARED_LIBRARIES += libion_ti
