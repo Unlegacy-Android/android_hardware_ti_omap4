@@ -818,12 +818,13 @@ void AppCallbackNotifier::lockBufferAndUpdatePtrs(CameraFrame* frame)
     bounds.top = 0;
     bounds.right = frame->mWidth;
     bounds.bottom = frame->mHeight;
-    void *y_uv[2];
+    android_ycbcr ycbcr = android_ycbcr();
     buffer_handle_t *handle = reinterpret_cast<buffer_handle_t *>(frame->mBuffer->opaque);
-    mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-    frame->mBuffer->mapped = y_uv[0];
-    frame->mYuv[0] = reinterpret_cast<int>(frame->mBuffer->mapped);
-    frame->mYuv[1] = frame->mYuv[0] + (frame->mLength + frame->mOffset)*2/3;
+    mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+    frame->mBuffer->mapped = ycbcr.y;
+    frame->mBuffer->ycbcr = ycbcr;
+    frame->mYuv[0] = reinterpret_cast<int>(ycbcr.y);
+    frame->mYuv[1] = reinterpret_cast<int>(ycbcr.cb);
 }
 
 void AppCallbackNotifier::unlockBufferAndUpdatePtrs(CameraFrame* frame)
@@ -1199,22 +1200,21 @@ void AppCallbackNotifier::notifyFrame()
                                 if (mExternalLocking) {
                                     lockBufferAndUpdatePtrs(frame);
                                 }
-                                void *y_uv[2];
-                                mapper.lock((buffer_handle_t)vBuf, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-                                y_uv[1] = (void*)((int)y_uv[0] + mVideoHeight*4096);
+                                android_ycbcr ycbcr = android_ycbcr();
+                                mapper.lockYCbCr((buffer_handle_t)vBuf, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
 
                                 structConvImage input =  {(int32_t)frame->mWidth,
                                                           (int32_t)frame->mHeight,
-                                                          4096,
+                                                          (int32_t)(ycbcr.ystride),
                                                           (uint8_t *)frame->mYuv[0],
                                                           (uint8_t *)frame->mYuv[1],
                                                           (int32_t)frame->mOffset};
 
                                 structConvImage output = {mVideoWidth,
                                                           mVideoHeight,
-                                                          4096,
-                                                          (uint8_t *)y_uv[0],
-                                                          (uint8_t *)y_uv[1],
+                                                          (int32_t)(ycbcr.ystride),
+                                                          (uint8_t *)ycbcr.y,
+                                                          (uint8_t *)ycbcr.cb,
                                                           0};
 
                                 VT_resizeFrame_Video_opt2_lp(&input, &output, nullptr);
