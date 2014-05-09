@@ -448,23 +448,25 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int dummyHeight
     }
 
     for( i = 0;  i < mBufferCount-undequeued; i++ ) {
-        void *y_uv[2];
+        android_ycbcr ycbcr = android_ycbcr();
         android::Rect bounds(width, height);
 
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
         mBufferSource->lock_buffer(mBufferSource, handle);
-        mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mBuffers[i].mapped = y_uv[0];
+        mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+        mBuffers[i].mapped = ycbcr.y;
+        mBuffers[i].ycbcr = ycbcr;
     }
 
     // return the rest of the buffers back to ANativeWindow
     for(i = (mBufferCount-undequeued); i >= 0 && i < mBufferCount; i++) {
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
-        void *y_uv[2];
+        android_ycbcr ycbcr = android_ycbcr();
         android::Rect bounds(width, height);
 
-        mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mBuffers[i].mapped = y_uv[0];
+        mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+        mBuffers[i].mapped = ycbcr.y;
+        mBuffers[i].ycbcr = ycbcr;
         mapper.unlock(*handle);
 
         err = mBufferSource->cancel_buffer(mBufferSource, handle);
@@ -530,7 +532,7 @@ CameraBuffer *BufferSourceAdapter::getBuffers(bool reset) {
         const int lnumBufs = mBufferCount;
         android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
         android::Rect bounds(mFrameWidth, mFrameHeight);
-        void *y_uv[2];
+        android_ycbcr ycbcr = android_ycbcr();
         CameraBuffer * newBuffers = NULL;
         unsigned int index = 0;
         android::KeyedVector<void*, int> missingIndices;
@@ -550,6 +552,7 @@ CameraBuffer *BufferSourceAdapter::getBuffers(bool reset) {
             newBuffers[index].type = mBuffers[value].type;
             newBuffers[index].format = mBuffers[value].format;
             newBuffers[index].mapped = mBuffers[value].mapped;
+            newBuffers[index].ycbcr = mBuffers[value].ycbcr;
             mFramesWithCameraAdapterMap.replaceValueAt(index, index);
             missingIndices.removeItem(newBuffers[index].opaque);
         }
@@ -576,8 +579,9 @@ CameraBuffer *BufferSourceAdapter::getBuffers(bool reset) {
             mFramesWithCameraAdapterMap.add(handle, index);
 
             mBufferSource->lock_buffer(mBufferSource, handle);
-            mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-            newBuffers[index].mapped = y_uv[0];
+            mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+            newBuffers[index].mapped = ycbcr.y;
+            newBuffers[index].ycbcr = ycbcr;
             CAMHAL_LOGDB("got handle %p", handle);
 
             missingIndices.removeItem(newBuffers[index].opaque);
@@ -597,6 +601,7 @@ CameraBuffer *BufferSourceAdapter::getBuffers(bool reset) {
             newBuffers[index].type = mBuffers[j].type;
             newBuffers[index].format = mBuffers[j].format;
             newBuffers[index].mapped = mBuffers[j].mapped;
+            newBUffers[index].ycbcr = mBuffers[j].ycbcr;
         }
 
         delete [] mBuffers;
@@ -667,10 +672,11 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
 
     // lock buffer
     {
-        void *y_uv[2];
+        android_ycbcr ycbcr = android_ycbcr();
         android::Rect bounds(mBuffers[0].width, mBuffers[0].height);
-        mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mBuffers[0].mapped = y_uv[0];
+        mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+        mBuffers[0].mapped = ycbcr.y;
+        mBuffers[0].ycbcr = ycbcr;
     }
 
     mFrameWidth = mBuffers[0].width;
@@ -936,7 +942,7 @@ bool BufferSourceAdapter::handleFrameReturn()
     int stride;  // dummy variable to get stride
     CameraFrame::FrameType type;
     android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
-    void *y_uv[2];
+    android_ycbcr ycbcr = android_ycbcr();
     android::Rect bounds(mFrameWidth, mFrameHeight);
 
     android::AutoMutex lock(mLock);
@@ -969,7 +975,7 @@ bool BufferSourceAdapter::handleFrameReturn()
         return false;
     }
 
-    mapper.lock(*buf, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+    mapper.lockYCbCr(*buf, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
 
     for(i = 0; i < mBufferCount; i++) {
         if (mBuffers[i].opaque == buf)
