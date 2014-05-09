@@ -578,14 +578,15 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
     for( i = 0;  i < mBufferCount-undequeued; i++ )
     {
-        void *y_uv[2];
+        android_ycbcr ycbcr = android_ycbcr();
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
 
         mANativeWindow->lock_buffer(mANativeWindow, handle);
 
-        mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mBuffers[i].mapped = y_uv[0];
-        mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
+        mapper.lockYCbCr(*handle, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+        mBuffers[i].mapped = ycbcr.y;
+        mBuffers[i].ycbcr = ycbcr;
+        mFrameProvider->addFramePointers(&mBuffers[i], &ycbcr);
         if (mUseExternalBufferLocking) {
             mapper.unlock(*handle);
         }
@@ -609,10 +610,11 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         }
         mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) mBuffers[i].opaque);
         //LOCK UNLOCK TO GET YUV POINTERS
-        void *y_uv[2];
-        mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mBuffers[i].mapped = y_uv[0];
-        mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
+        android_ycbcr ycbcr = android_ycbcr();
+        mapper.lockYCbCr(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr);
+        mBuffers[i].mapped = ycbcr.y;
+        mBuffers[i].ycbcr = ycbcr;
+        mFrameProvider->addFramePointers(&mBuffers[i], &ycbcr);
         mapper.unlock(*(buffer_handle_t *) mBuffers[i].opaque);
     }
 
@@ -1140,7 +1142,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     android::Rect bounds;
     CameraFrame::FrameType frameType = CameraFrame::PREVIEW_FRAME_SYNC;
 
-    void *y_uv[2];
+   android_ycbcr ycbcr = android_ycbcr();
 
     // TODO(XXX): Do we need to keep stride information in camera hal?
 
@@ -1190,7 +1192,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
         bounds.bottom = mFrameHeight;
 
         int lock_try_count = 0;
-        while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
+        while (mapper.lockYCbCr(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, &ycbcr) < 0){
           if (++lock_try_count > LOCK_BUFFER_TRIES){
             if ( NULL != mErrorNotifier.get() ){
               mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
