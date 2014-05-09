@@ -348,6 +348,7 @@ typedef struct _CameraBuffer {
 
     /* mapped holds ptr to mapped memory in userspace */
     void *mapped;
+    android_ycbcr ycbcr;
 
     /* These are specific to ION buffers */
     struct ion_handle * ion_handle;
@@ -580,7 +581,7 @@ class FrameNotifier : public MessageNotifier
 {
 public:
     virtual void returnFrame(CameraBuffer* frameBuf, CameraFrame::FrameType frameType) = 0;
-    virtual void addFramePointers(CameraBuffer *frameBuf, void *buf) = 0;
+    virtual void addFramePointers(CameraBuffer *frameBuf, android_ycbcr *ycbcr) = 0;
     virtual void removeFramePointers() = 0;
 
     virtual ~FrameNotifier() {};
@@ -601,7 +602,7 @@ public:
     int enableFrameNotification(int32_t frameTypes);
     int disableFrameNotification(int32_t frameTypes);
     int returnFrame(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
-    void addFramePointers(CameraBuffer *frameBuf, void *buf);
+    void addFramePointers(CameraBuffer *frameBuf, android_ycbcr *ycbcr);
     void removeFramePointers();
 };
 
@@ -978,7 +979,7 @@ public:
                                void *cookie = NULL) = 0;
     virtual void disableMsgType(int32_t msgs, void* cookie) = 0;
     virtual void returnFrame(CameraBuffer* frameBuf, CameraFrame::FrameType frameType) = 0;
-    virtual void addFramePointers(CameraBuffer *frameBuf, void *buf) = 0;
+    virtual void addFramePointers(CameraBuffer *frameBuf, android_ycbcr *ycbcr) = 0;
     virtual void removeFramePointers() = 0;
 
     //APIs to configure Camera adapter and get the current parameter set
