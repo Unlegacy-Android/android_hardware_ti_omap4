@@ -66,9 +66,9 @@ int FrameProvider::returnFrame(CameraBuffer *frameBuf, CameraFrame::FrameType fr
     return ret;
 }
 
-void FrameProvider::addFramePointers(CameraBuffer *frameBuf, void *buf)
+void FrameProvider::addFramePointers(CameraBuffer *frameBuf, android_ycbcr *ycbcr)
 {
-  mFrameNotifier->addFramePointers(frameBuf, buf);
+  mFrameNotifier->addFramePointers(frameBuf, ycbcr);
   return;
 }
 
