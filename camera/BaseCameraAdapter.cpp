@@ -299,17 +299,16 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-void BaseCameraAdapter::addFramePointers(CameraBuffer *frameBuf, void *buf)
+void BaseCameraAdapter::addFramePointers(CameraBuffer *frameBuf, android_ycbcr* ycbcr)
 {
-  unsigned int *pBuf = (unsigned int *)buf;
   android::AutoMutex lock(mSubscriberLock);
 
-  if ((frameBuf != NULL) && ( pBuf != NULL) )
+  if ((frameBuf != NULL) && ( ycbcr != NULL) )
     {
       CameraFrame *frame = new CameraFrame;
       frame->mBuffer = frameBuf;
-      frame->mYuv[0] = pBuf[0];
-      frame->mYuv[1] = pBuf[1];
+      frame->mYuv[0] = (unsigned int)ycbcr->y;
+      frame->mYuv[1] = (unsigned int)ycbcr->cb;
       mFrameQueue.add(frameBuf, frame);
 
       CAMHAL_LOGVB("Adding Frame=0x%x Y=0x%x UV=0x%x", frame->mBuffer, frame->mYuv[0], frame->mYuv[1]);
@@ -1364,7 +1363,7 @@ status_t BaseCameraAdapter::__sendFrameToSubscribers(CameraFrame* frame,
         if (mFrameQueue.size() > 0){
           CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(frame->mBuffer);
           frame->mYuv[0] = lframe->mYuv[0];
-          frame->mYuv[1] = frame->mYuv[0] + (frame->mLength + frame->mOffset)*2/3;
+          frame->mYuv[1] = lframe->mYuv[1];
         }
         else{
           CAMHAL_LOGDA("Empty Frame Queue");

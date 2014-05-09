@@ -51,7 +51,7 @@ public:
     virtual void enableMsgType(int32_t msgs, frame_callback callback=NULL, event_callback eventCb=NULL, void* cookie=NULL);
     virtual void disableMsgType(int32_t msgs, void* cookie);
     virtual void returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameType frameType);
-    virtual void addFramePointers(CameraBuffer *frameBuf, void *y_uv);
+    virtual void addFramePointers(CameraBuffer *frameBuf, android_ycbcr* ycbcr);
     virtual void removeFramePointers();
 
     //APIs to configure Camera adapter and get the current parameter set
