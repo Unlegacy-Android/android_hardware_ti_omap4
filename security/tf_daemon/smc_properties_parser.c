@@ -58,7 +58,7 @@
 #define GET_LAST_ERR  errno
 #endif
 
-#if defined (LINUX) || defined (__SYMBIAN32__) || defined (ANDROID)
+#if defined (LINUX) || defined (__SYMBIAN32__) || defined (__ANDROID32__)
 #define STRICMP strcasecmp
 #elif defined(_WIN32_WCE)
 #define STRICMP _stricmp
@@ -402,7 +402,7 @@ static S_RESULT SMCPropYacc(uint8_t* pBuffer, uint32_t nBufferLength,
                      nError=S_ERROR_OUT_OF_MEMORY;
                      goto error;
                   }
-#if defined (LINUX) || defined (__SYMBIAN32__) || defined(ANDROID)
+#if defined (LINUX) || defined (__SYMBIAN32__) || defined(__ANDROID32__)
                   {
                      // put each char of the value in uppercase
                      char* p=pProperty->pValue;

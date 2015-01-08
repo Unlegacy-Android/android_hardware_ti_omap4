@@ -27,6 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #ifndef __S_VERSION_H__
 #define __S_VERSION_H__
 
@@ -44,7 +45,7 @@
 #if defined(WIN32)
 #define S_VERSION_OS "W"          /* "W" for Windows PC (XP, Vista…) */
 #define S_VERSION_PLATFORM "X"    /* "X" for ix86 PC simulators */
-#elif defined(ANDROID)
+#elif defined(__ANDROID32__)
 #define S_VERSION_OS "A"          /* "A" for Android */
 #define S_VERSION_PLATFORM "G"    /* "G" for 4430 */
 #elif defined(LINUX)

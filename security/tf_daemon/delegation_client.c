@@ -28,7 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(ANDROID)
+#if defined(__ANDROID32__)
 #include <stddef.h>
 #endif
 #include <stdio.h>
@@ -43,12 +43,12 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#if defined(LINUX) || defined(ANDROID)
+#if defined(LINUX) || defined(__ANDROID32__)
 #include <unistd.h>
 #include <sys/resource.h>
 
 
-#if defined(ANDROID)
+#if defined(__ANDROID32__)
 /* fdatasync does not exist on Android */
 #define fdatasync fsync
 #else
@@ -58,14 +58,14 @@
  * in some distributions
  */
 int fdatasync(int fd);
-#endif /* ANDROID */
+#endif /* __ANDROID32__ */
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pthread.h>
 #include <semaphore.h>
 #define PATH_SEPARATOR '/'
-#endif /* LINUX || ANDROID */
+#endif /* LINUX || __ANDROID32__ */
 
 #ifdef WIN32
 #include <windows.h>
@@ -97,10 +97,6 @@ int fdatasync(int fd);
 #include "delegation_client_extension.h"
 #endif
 
-#ifdef TFSW_FDM_ANDROID
-#include <android/log.h>
-#endif
-
 /*----------------------------------------------------------------------------
  * Design notes
  * ============
@@ -128,21 +124,6 @@ typedef struct
    uint8_t                        sWorkspace[1/*g_nWorkspaceSize*/];
 } DELEGATION_EXCHANGE_BUFFER;
 
-#ifdef SUPPORT_RPMB_PARTITION
-typedef struct
-{
-   uint8_t pDummy[196];
-   uint8_t pMAC[32];
-   uint8_t pData[256];
-   uint8_t pNonce[16];
-   uint32_t nMC;
-   uint16_t nAddr;
-   uint16_t nBlockCount;
-   uint16_t nResult;
-   uint16_t nReqOrResp;
-} DELEGATION_RPMB_MESSAGE;
-#endif
-
 #define MD_VAR_NOT_USED(variable)  do{(void)(variable);}while(0);
 
 #define MD_INLINE __inline
@@ -160,7 +141,7 @@ typedef struct
    in release builds whereas logs are visible to the customer.
 
    -----------------------------------------------*/
-#if defined(LINUX) || (defined ANDROID)
+#if defined(LINUX) || (defined __ANDROID32__)
 
 static bool bDetached = false;
 
@@ -174,13 +155,9 @@ static MD_INLINE void LogError(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_ERROR   , "TF Daemon", format, ap);
-#else
       fprintf(stderr, "ERROR: ");
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 }
@@ -195,13 +172,9 @@ static MD_INLINE void LogWarning(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_WARN   , "TF Daemon", format, ap);
-#else
       fprintf(stderr, "WARNING: ");
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 }
@@ -215,12 +188,8 @@ static MD_INLINE void LogInfo(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_INFO   , "TF Daemon", format, ap);
-#else
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 }
@@ -236,13 +205,9 @@ static MD_INLINE void TRACE_ERROR(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_ERROR   , "TF Daemon", format, ap);
-#else
       fprintf(stderr, "TRACE: ERROR: ");
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 #else
@@ -261,13 +226,9 @@ static MD_INLINE void TRACE_WARNING(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_WARN   , "TF Daemon", format, ap);
-#else
       fprintf(stderr, "TRACE: WARNING: ");
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 #else
@@ -286,13 +247,9 @@ static MD_INLINE void TRACE_INFO(const char* format, ...)
    }
    else
    {
-#ifdef TFSW_FDM_ANDROID
-	   __android_log_vprint(ANDROID_LOG_INFO   , "TF Daemon", format, ap);
-#else
       fprintf(stderr, "TRACE: ");
       vfprintf(stderr, format, ap);
       fprintf(stderr, "\n");
-#endif
    }
    va_end(ap);
 #else
@@ -332,7 +289,7 @@ static MD_INLINE void TRACE_INFO(const char* format, ...)
 }
 
 #else
-/* !defined(LINUX) || !defined(ANDROID) */
+/* !defined(LINUX) || !defined(__ANDROID32__) */
 
 static MD_INLINE void LogError(const char* format, ...)
 {
@@ -402,7 +359,7 @@ static MD_INLINE void TRACE_INFO(const char* format, ...)
    MD_VAR_NOT_USED(format);
 #endif /* NDEBUG */
 }
-#endif /* defined(LINUX) || defined(ANDROID) */
+#endif /* defined(LINUX) || defined(__ANDROID32__) */
 
 /*----------------------------------------------------------------------------
  * Globals
@@ -526,7 +483,7 @@ int static_checkStorageDirAndAccessRights(char * directoryName)
    if (result == 0)
    {
       /* Storage dir exists. Check access rights */
-#if defined(LINUX) || (defined ANDROID)
+#if defined(LINUX) || (defined __ANDROID32__)
       if ((buf.st_mode & (S_IXUSR | S_IWUSR)) != (S_IXUSR | S_IWUSR))
       {
          LogError("storageDir '%s' does not have read-write access", directoryName);
@@ -572,7 +529,7 @@ static TEEC_Result partitionDestroy(uint32_t nPartitionID)
    }
 
    /* Try to erase the file */
-#if defined(LINUX) || (defined ANDROID) || defined (__SYMBIAN32__)
+#if defined(LINUX) || (defined __ANDROID32__) || defined (__SYMBIAN32__)
    if (unlink(g_pPartitionNames[nPartitionID]) != 0)
 #endif
 #ifdef WIN32
@@ -729,46 +686,6 @@ static TEEC_Result partitionRead(uint32_t nPartitionID, uint32_t nSectorIndex, u
    return S_SUCCESS;
 }
 
-#ifdef SUPPORT_RPMB_PARTITION
-static TEEC_Result rpmbRead(DELEGATION_RPMB_INSTRUCTION *pInstruction)
-{
-   DELEGATION_RPMB_MESSAGE* pMessages;
-   uint32_t nNbMsg, nIndex;
-
-   nNbMsg = g_nSectorSize >> 8;
-   pMessages = (DELEGATION_RPMB_MESSAGE*)malloc(nNbMsg * sizeof(DELEGATION_RPMB_MESSAGE));
-   if (pMessages == NULL)
-   {
-      return S_ERROR_OUT_OF_MEMORY;
-   }
-   memset(pMessages,0,nNbMsg * sizeof(DELEGATION_RPMB_MESSAGE));
-
-   for (nIndex=0;nIndex<nNbMsg;nIndex++)
-   {
-      memcpy(pMessages[nIndex].pNonce , pInstruction->pNonce, 16);
-      pMessages[nIndex].nAddr = pInstruction->nAddr;
-      pMessages[nIndex].nBlockCount = pInstruction->nBlockCount;
-      pMessages[nIndex].nReqOrResp = 0x0004;
-   }
-   memcpy(pMessages[nNbMsg-1].pMAC,pInstruction->nMAC,32);
-
-   /* TODO: send to the RPMB driver */
-
-   memcpy(pInstruction->pNonce,pMessages[0].pNonce , 16);
-   pInstruction->nAddr = pMessages[0].nAddr;
-   pInstruction->nBlockCount = pMessages[0].nBlockCount;
-   for (nIndex=0;nIndex<nNbMsg;nIndex++)
-   {
-      memcpy(g_pWorkspaceBuffer + pInstruction->nWorkspaceOffset[nIndex],pMessages[nIndex].pData,256);
-   }
-   memcpy(pInstruction->nMAC, pMessages[nNbMsg-1].pMAC,32);
-   pInstruction->nResult=pMessages[nNbMsg-1].nResult;
-
-   free(pMessages);
-
-   return S_SUCCESS;
-}
-#endif
 /**
  * This function executes the WRITE instruction.
  *
@@ -807,42 +724,7 @@ static TEEC_Result partitionWrite(uint32_t nPartitionID, uint32_t nSectorIndex, 
    return S_SUCCESS;
 }
 
-#ifdef SUPPORT_RPMB_PARTITION
-static TEEC_Result rpmbWrite(DELEGATION_RPMB_INSTRUCTION *pInstruction)
-{
-   DELEGATION_RPMB_MESSAGE* pMessages;
-   uint32_t nNbMsg, nIndex;
 
-   nNbMsg = g_nSectorSize >> 8;
-   pMessages = (DELEGATION_RPMB_MESSAGE*)malloc(nNbMsg * sizeof(DELEGATION_RPMB_MESSAGE));
-   if (pMessages == NULL)
-   {
-      return S_ERROR_OUT_OF_MEMORY;
-   }
-   memset(pMessages,0,nNbMsg * sizeof(DELEGATION_RPMB_MESSAGE));
-
-   for (nIndex=0;nIndex<nNbMsg;nIndex++)
-   {
-      memcpy(pMessages[nIndex].pData,g_pWorkspaceBuffer + pInstruction->nWorkspaceOffset[nIndex],256);
-      pMessages[nIndex].nMC = pInstruction->nMC;
-      pMessages[nIndex].nAddr = pInstruction->nAddr;
-      pMessages[nIndex].nBlockCount = pInstruction->nBlockCount;
-      pMessages[nIndex].nReqOrResp = 0x0003;
-   }
-   memcpy(pMessages[nNbMsg-1].pMAC,pInstruction->nMAC,32);
-
-   /* TODO: send to the RPMB driver */
-
-   pInstruction->nAddr = pMessages[0].nAddr;
-   pInstruction->nMC = pMessages[0].nMC;
-   memcpy(pInstruction->nMAC, pMessages[nNbMsg-1].pMAC,32);
-   pInstruction->nResult=pMessages[nNbMsg-1].nResult;
-
-   free(pMessages);
-
-   return S_SUCCESS;
-}
-#endif
 /**
  * This function executes the SET_SIZE instruction.
  *
@@ -892,7 +774,7 @@ static TEEC_Result partitionSetSize(uint32_t nPartitionID, uint32_t nNewSectorCo
    {
       int result = 0;
       /* Truncate the partition file */
-#if defined(LINUX) || (defined ANDROID)
+#if defined(LINUX) || (defined __ANDROID32__)
       result = ftruncate(fileno(pFile),nNewSectorCount * g_nSectorSize);
 #endif
 #if defined (__SYMBIAN32__)
@@ -937,7 +819,7 @@ static TEEC_Result partitionSync(uint32_t nPartitionID)
    }
    /* Then synchronize the file descriptor with the file-system */
 
-#if defined(LINUX) || (defined ANDROID)
+#if defined(LINUX) || (defined __ANDROID32__)
    result=fdatasync(fileno(pFile));
 #endif
 #if defined (__SYMBIAN32__)
@@ -1126,13 +1008,6 @@ static int runSession(TEEC_Context* pContext, TEEC_Session* pSession, TEEC_Opera
                {
                case DELEGATION_INSTRUCTION_PARTITION_CREATE:
                   nError = partitionCreate(nPartitionID);
-#ifdef SUPPORT_RPMB_PARTITION
-                  if (nPartitionID == RPMB_PARTITION_ID)
-                  {
-                     /* TODO: get the Write counter */
-                     pInstruction->sAuthRW.nMC = 0;
-                  }
-#endif
                   TRACE_INFO("INSTRUCTION: ID=0x%x pid=%d err=%d", (nInstructionID & 0x0F), nPartitionID, nError);
                   break;
                case DELEGATION_INSTRUCTION_PARTITION_OPEN:
@@ -1144,33 +1019,9 @@ static int runSession(TEEC_Context* pContext, TEEC_Session* pSession, TEEC_Opera
                      {
                         g_pExchangeBuffer->sAdministrativeData.nPartitionOpenSizes[nPartitionID] = nPartitionSize;
                      }
-#ifdef SUPPORT_RPMB_PARTITION
-                     if (nPartitionID == RPMB_PARTITION_ID)
-                     {
-                        /* TODO: get the Write counter */
-                        pInstruction->sAuthRW.nMC = 0;
-                     }
-#endif
                      break;
                   }
                case DELEGATION_INSTRUCTION_PARTITION_READ:
-#ifdef SUPPORT_RPMB_PARTITION
-                  if (nPartitionID == RPMB_PARTITION_ID)
-                  {
-                     if (nInstructionsIndex + sizeof(DELEGATION_RPMB_INSTRUCTION)-sizeof(uint32_t) <= nInstructionsBufferSize)
-                     {
-                        nInstructionsIndex+=sizeof(DELEGATION_RPMB_INSTRUCTION)-sizeof(uint32_t);
-                     }
-                     else
-                     {
-                        goto instruction_parse_end;
-                     }
-                     nError = rpmbRead(&pInstruction->sAuthRW);
-                     TRACE_INFO("INSTRUCTION: ID=0x%x pid=%d err=%d", (nInstructionID & 0x0F), nPartitionID, nError);
-                     break;
-                  }
-                  else
-#endif
                   {
                      /* Parse parameters */
                      uint32_t nSectorID;
@@ -1190,23 +1041,6 @@ static int runSession(TEEC_Context* pContext, TEEC_Session* pSession, TEEC_Opera
                      break;
                   }
                case DELEGATION_INSTRUCTION_PARTITION_WRITE:
-#ifdef SUPPORT_RPMB_PARTITION
-                  if (nPartitionID == RPMB_PARTITION_ID)
-                  {
-                     if (nInstructionsIndex + sizeof(DELEGATION_RPMB_INSTRUCTION)-sizeof(uint32_t) <= nInstructionsBufferSize)
-                     {
-                        nInstructionsIndex+=sizeof(DELEGATION_RPMB_INSTRUCTION)-sizeof(uint32_t);
-                     }
-                     else
-                     {
-                        goto instruction_parse_end;
-                     }
-                     nError = rpmbWrite(&pInstruction->sAuthRW);
-                     TRACE_INFO("INSTRUCTION: ID=0x%x pid=%d err=%d", (nInstructionID & 0x0F), nPartitionID, nError);
-                     break;
-                  }
-                  else
-#endif
                   {
                      /* Parse parameters */
                      uint32_t nSectorID;
@@ -1483,7 +1317,7 @@ int main(int argc, char* argv[])
     * Detach the daemon from the console
     */
 
-#if defined(LINUX) || (defined ANDROID)
+#if defined(LINUX) || (defined __ANDROID32__)
    {
       /*
        * Turns this application into a daemon => fork off parent process, setup logging, ...
