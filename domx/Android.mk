@@ -1,41 +1,42 @@
-LOCAL_PATH:= $(call my-dir)
+#DOMX is not supported on J6 yet. Supported only on omap4 and omap5
+ifeq ($(TARGET_BOARD_PLATFORM), $(filter $(TARGET_BOARD_PLATFORM), omap4 omap5))
+ifeq ($(ENHANCED_DOMX),true)
 
-include $(CLEAR_VARS)
+    # DOMX not used in OMAP3 program
+    ifneq ($(TARGET_BOARD_PLATFORM),omap3)
 
-LOCAL_SRC_FILES:= \
-    omx_rpc/src/omx_rpc.c \
-    omx_rpc/src/omx_rpc_skel.c \
-    omx_rpc/src/omx_rpc_stub.c \
-    omx_rpc/src/omx_rpc_config.c \
-    omx_rpc/src/omx_rpc_platform.c \
-    omx_proxy_common/src/omx_proxy_common.c \
-    profiling/src/profile.c \
-    plugins/memplugin.c \
-    plugins/memplugin_table.c \
-    plugins/memplugin_ion.c
+        LOCAL_PATH:= $(call my-dir)
+        HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)/../omap4xxx
+        OMAP4_DEBUG_MEMLEAK:= false
 
-LOCAL_C_INCLUDES += \
-    $(LOCAL_PATH)/omx_rpc/inc \
-    $(LOCAL_PATH)/../omx_core/inc \
-    $(LOCAL_PATH)/../mm_osal/inc \
-    $(LOCAL_PATH)/profiling/inc \
-    $(HARDWARE_TI_OMAP4_BASE)/hwc/ \
-    $(HARDWARE_TI_OMAP4_BASE)/include/ \
-    system/core/include/cutils \
-    $(HARDWARE_TI_OMAP4_BASE)/../../libhardware/include \
-     $(LOCAL_PATH)/plugins/inc/
+        ifeq ($(OMAP4_DEBUG_MEMLEAK),true)
 
-LOCAL_CFLAGS += -D_Android -DENABLE_GRALLOC_BUFFERS -DUSE_ENHANCED_PORTRECONFIG -DANDROID_QUIRK_LOCK_BUFFER -DUSE_ION
+            OMAP4_DEBUG_CFLAGS:= -DHEAPTRACKER
+            OMAP4_DEBUG_LDFLAGS:= $(foreach f, $(strip malloc realloc calloc free), -Wl,--wrap=$(f))
+            OMAP4_DEBUG_SHARED_LIBRARIES:= liblog
+            BUILD_HEAPTRACKED_SHARED_LIBRARY:= hardware/ti/omap4xxx/heaptracked-shared-library.mk
+            BUILD_HEAPTRACKED_EXECUTABLE:= hardware/ti/omap4xxx/heaptracked-executable.mk
 
+            LOCAL_PATH:= $(call my-dir)
+            include $(CLEAR_VARS)
+            LOCAL_SRC_FILES:= heaptracker.c stacktrace.c mapinfo.c
+            LOCAL_MODULE:= libheaptracker
+            LOCAL_MODULE_TAGS:= optional
+            include $(BUILD_STATIC_LIBRARY)
 
-LOCAL_SHARED_LIBRARIES := \
-    libmm_osal \
-    libc \
-    liblog \
-    libion_ti \
-    libcutils
+            include $(CLEAR_VARS)
+            LOCAL_SRC_FILES:= tm.c
+            LOCAL_MODULE:= tm
+            LOCAL_MODULE_TAGS:= test
+            include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
-LOCAL_MODULE:= libdomx
-LOCAL_MODULE_TAGS:= optional
+        else
+            BUILD_HEAPTRACKED_SHARED_LIBRARY:=$(BUILD_SHARED_LIBRARY)
+            BUILD_HEAPTRACKED_EXECUTABLE:= $(BUILD_EXECUTABLE)
+        endif
 
-include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
+        include $(call first-makefiles-under,$(LOCAL_PATH))
+    endif # ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+
+endif #ifeq ($(ENHANCED_DOMX),true)
+endif
