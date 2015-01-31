@@ -1,4 +1,5 @@
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifeq ($(TARGET_BOARD_PLATFORM_VARIANT),omap4-next)
 
 LOCAL_PATH:= $(call my-dir)
 
@@ -40,4 +41,5 @@ include $(LOCAL_PATH)/cpcam/Android.mk
 
 $(clear-android-api-vars)
 
+endif
 endif
