@@ -109,6 +109,10 @@ LOCAL_CFLAGS += -D_Android -DSET_STRIDE_PADDING_FROM_PROXY -DANDROID_QUIRK_CHANG
 LOCAL_CFLAGS += -DANDROID_QUIRK_LOCK_BUFFER -DUSE_ION
 LOCAL_MODULE_TAGS:= optional
 
+ifdef TI_CAMERAHAL_USES_LEGACY_DOMX_DCC
+LOCAL_CFLAGS += -DUSES_LEGACY_DOMX_DCC
+endif
+
 LOCAL_SRC_FILES:= omx_camera/src/omx_proxy_camera.c \
                   omx_camera/src/proxy_camera_android_glue.c
 

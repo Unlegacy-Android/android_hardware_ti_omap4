@@ -75,14 +75,15 @@
 /* Incase of multiple instance, making sure DCC is initialized only for
    first instance */
 static OMX_S16 numofInstance = 0;
-int dcc_flag = 0;
 TIMM_OSAL_PTR cam_mutex = NULL;
 
+#ifdef USES_LEGACY_DOMX_DCC
+int dcc_flag = 0;
 /* To store DCC buffer size */
 OMX_S32 dccbuf_size = 0;
-
 /* DCC buff accessors */
 MEMPLUGIN_BUFFER_ACCESSOR sDccBuffer;
+#endif
 
 /* ===========================================================================*/
 /**
@@ -243,6 +244,8 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
 
         MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
+
+#ifdef USES_LEGACY_DOMX_DCC
         if (dcc_flag)
         {
             eOsalError =
@@ -252,11 +255,12 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
                     TIMM_OSAL_Error("Mutex Obtain failed");
             }
             numofInstance = numofInstance - 1;
-
             eOsalError = TIMM_OSAL_MutexRelease(cam_mutex);
             PROXY_assert(eOsalError == TIMM_OSAL_ERR_NONE,
                 OMX_ErrorInsufficientResources, "Mutex release failed");
         }
+#endif
+
         OMX_CameraVtcFreeMemory(hComponent);
 
 
@@ -289,8 +293,10 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
 
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn;
+#ifdef USES_LEGACY_DOMX_DCC
     static OMX_BOOL dcc_loaded = OMX_FALSE;
     OMX_ERRORTYPE dcc_eError = OMX_ErrorNone;
+#endif
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
     PROXY_COMPONENT_PRIVATE *pCompPrv;
     OMX_PROXY_CAM_PRIVATE   *pCamPrv;
@@ -310,6 +316,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
             DOMX_ERROR("DOMX: _OMX_CameraVtcAllocateMemory completed with error 0x%x\n", eError);
             goto EXIT;
         }
+#ifdef USES_LEGACY_DOMX_DCC
         if (!dcc_loaded)
         {
             dcc_eError = DCC_Init(hComponent);
@@ -330,6 +337,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
             }
             dcc_loaded = OMX_TRUE;
         }
+#endif
     } else if (eCmd == OMX_CommandPortDisable) {
         int i, j;
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
@@ -596,6 +604,7 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	return eError;
 }
 
+#ifdef USES_LEGACY_DOMX_DCC
 /* ===========================================================================*/
 /**
  * @name DCC_Init()
@@ -882,7 +891,7 @@ void DCC_DeInit(OMX_HANDLETYPE hComponent)
 
        DOMX_EXIT("EXIT");
 }
-
+#endif
 
 
 /*===============================================================*/
