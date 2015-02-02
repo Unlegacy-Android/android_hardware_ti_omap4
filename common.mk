@@ -19,6 +19,8 @@ PRODUCT_PACKAGES += \
     libdomx \
     libOMX_Core \
     libOMX.TI.DUCATI1.VIDEO.H264E \
+    libOMX.TI.DUCATI1.VIDEO.H264SVCE \
+    libOMX.TI.DUCATI1.VIDEO.VC1E \
     libOMX.TI.DUCATI1.VIDEO.MPEG4E \
     libOMX.TI.DUCATI1.VIDEO.DECODER \
     libOMX.TI.DUCATI1.VIDEO.DECODER.secure \
@@ -27,9 +29,7 @@ PRODUCT_PACKAGES += \
     libstagefrighthw \
     libI420colorconvert \
     libtiutils \
-    libcamera \
     libion_ti \
-    libomxcameraadapter \
     smc_pa_ctrl \
     tf_daemon \
     libtf_crypto_sst
