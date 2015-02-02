@@ -37,7 +37,6 @@ endif
 include $(call first-makefiles-under,$(LOCAL_PATH))
 else
 LOCAL_PATH:= $(call my-dir)
-include $(LOCAL_PATH)/cpcam/Android.mk
 
 $(clear-android-api-vars)
 
