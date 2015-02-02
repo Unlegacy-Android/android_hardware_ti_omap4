@@ -21,9 +21,11 @@ LOCAL_SHARED_LIBRARIES:= \
 
 ifdef ANDROID_API_JB_OR_LATER
 LOCAL_C_INCLUDES += \
+    frameworks/native/include/media/openmax \
     frameworks/native/include
 else
 LOCAL_C_INCLUDES += \
+    frameworks/native/include/media/openmax \
     frameworks/base/include
 endif
 
