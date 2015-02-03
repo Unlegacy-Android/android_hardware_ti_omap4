@@ -41,3 +41,7 @@ PRODUCT_PACKAGES += \
     libion.so \
     pvrsrvinit \
     libPVRScopeServices.so
+
+# compatiblity for older binaries
+PRODUCT_PACKAGES += \
+    libcorkscrew
