@@ -80,7 +80,7 @@ LOCAL_SHARED_LIBRARIES += \
 endif
 
 LOCAL_C_INCLUDES += \
-    hardware/ti/omap4xxx/include \
+    $(HARDWARE_TI_OMAP4_BASE)/include \
 	frameworks/base/include/ui \
 	frameworks/base/include/surfaceflinger \
 	frameworks/base/include/camera \

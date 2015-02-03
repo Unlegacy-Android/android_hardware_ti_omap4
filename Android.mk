@@ -13,8 +13,8 @@ ifeq ($(OMAP4_DEBUG_MEMLEAK),true)
 OMAP4_DEBUG_CFLAGS:= -DHEAPTRACKER
 OMAP4_DEBUG_LDFLAGS:= $(foreach f, $(strip malloc realloc calloc free), -Wl,--wrap=$(f))
 OMAP4_DEBUG_SHARED_LIBRARIES:= liblog
-BUILD_HEAPTRACKED_SHARED_LIBRARY:= hardware/ti/omap4xxx/heaptracked-shared-library.mk
-BUILD_HEAPTRACKED_EXECUTABLE:= hardware/ti/omap4xxx/heaptracked-executable.mk
+BUILD_HEAPTRACKED_SHARED_LIBRARY:= $(HARDWARE_TI_OMAP4_BASE)/heaptracked-shared-library.mk
+BUILD_HEAPTRACKED_EXECUTABLE:= $(HARDWARE_TI_OMAP4_BASE)/heaptracked-executable.mk
 
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)

@@ -38,8 +38,8 @@ LOCAL_C_INCLUDES += \
     $(DOMX_PATH)/mm_osal/inc
 else
 LOCAL_C_INCLUDES += \
-    hardware/ti/omap4xxx/domx/omx_core/inc \
-    hardware/ti/omap4xxx/domx/mm_osal/inc
+    $(HARDWARE_TI_OMAP4_BASE)/domx/omx_core/inc \
+    $(HARDWARE_TI_OMAP4_BASE)/domx/mm_osal/inc
 endif
 
 LOCAL_CFLAGS += -fno-short-enums $(ANDROID_API_CFLAGS)

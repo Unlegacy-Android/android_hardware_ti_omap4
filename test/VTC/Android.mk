@@ -47,7 +47,7 @@ LOCAL_SRC_FILES := VTCLoopback.cpp IOMXEncoder.cpp IOMXDecoder.cpp
 
 LOCAL_C_INCLUDES += \
     $(DOMX_PATH)/omx_core/inc \
-    $(TOP)/hardware/ti/omap4xxx/libtiutils
+    $(HARDWARE_TI_OMAP4_BASE)/libtiutils
 
 ifdef ANDROID_API_JB_OR_LATER
 LOCAL_C_INCLUDES += \

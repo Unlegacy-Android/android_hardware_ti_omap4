@@ -19,6 +19,6 @@ PRODUCT_PACKAGES += \
     camera.omap4 \
     hwcomposer.omap4
 
-PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4xxx/kernel-headers
+PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4-next/kernel-headers
 
-$(call inherit-product, hardware/ti/omap4xxx/common.mk)
+$(call inherit-product, hardware/ti/omap4-next/common.mk)

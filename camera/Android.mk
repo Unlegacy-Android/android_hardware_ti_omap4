@@ -49,8 +49,8 @@ endif
 CAMERAHAL_CFLAGS += -DLOG_TAG=\"CameraHal\"
 
 TI_CAMERAHAL_COMMON_INCLUDES := \
-    hardware/ti/omap4xxx/include \
-    hardware/ti/omap4xxx/hwc \
+    $(LOCAL_PATH)/../include \
+    $(LOCAL_PATH)/../hwc \
     external/jpeg \
     external/jhead \
     $(LOCAL_PATH)/../libtiutils \
