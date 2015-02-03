@@ -51,6 +51,7 @@ const int OMXCameraAdapter::SENSORID_S5K4E1GA = 305;
 const int OMXCameraAdapter::SENSORID_S5K6A1GX03 = 306;
 const int OMXCameraAdapter::SENSORID_OV8830 = 310;
 const int OMXCameraAdapter::SENSORID_OV2722 = 311;
+const int OMXCameraAdapter::SENSORID_OV9726 = 312;
 
 
 const int OMXCameraAdapter::FPS_MIN = 5;
@@ -320,7 +321,8 @@ const CapU32 OMXCameraAdapter::mSensorNames [] = {
     { SENSORID_S5K4E1GA, "S5K4E1GA"},
     { SENSORID_S5K6A1GX03, "S5K6A1GX03" },
     { SENSORID_OV8830, "OV8830" },
-    { SENSORID_OV2722, "OV2722" }
+    { SENSORID_OV2722, "OV2722" },
+    { SENSORID_OV9726, "OV9726" }
     // TODO(XXX): need to account for S3D camera later
 };
 

@@ -918,6 +918,7 @@ private:
     static const int SENSORID_S5K6A1GX03;
     static const int SENSORID_OV8830;
     static const int SENSORID_OV2722;
+    static const int SENSORID_OV9726;
     static const CapU32 mFacing [];
     static const userToOMX_LUT mAutoConvergence [];
     static const LUTtype mAutoConvergenceLUT;
