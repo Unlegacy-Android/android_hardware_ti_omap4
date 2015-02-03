@@ -48,7 +48,7 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-#ifdef ANDROID_API_JB_MR1_OR_LATER
+#ifdef USE_LIBION_TI
 #include <ion_ti/ion.h>
 #else
 #include <ion/ion.h>
