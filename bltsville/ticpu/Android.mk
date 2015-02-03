@@ -18,7 +18,7 @@ LOCAL_PATH := $(call my-dir)
 
 #Copying libbltsville_ticpu.BV_CPUVERSION.so
 include $(CLEAR_VARS)
-BV_CPUVERSION :=$(shell ls $(LOCAL_PATH)/lib/android/libbltsville_*.*.so|\
+BV_CPUVERSION :=$(shell ls $(HARDWARE_TI_OMAP4_BASE)/bltsville/ticpu/lib/android/libbltsville_*.*.so|\
              sed 's/hardware\/ti\/omap4-next\/bltsville\/ticpu\/lib\/android\/libbltsville_ticpu.//')
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
@@ -37,7 +37,7 @@ $(SYMLINKS): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
 	@mkdir -p $(dir $@)
 	@rm -rf $@
 	$(hide) ln -fs $(TICPU_BINARY) $@
-	@cp -afr $(LOCAL_PATH)/lib/android/libbltsville_ticpu_license.txt $(TARGET_OUT_VENDOR)/lib
+	@cp -afr $(HARDWARE_TI_OMAP4_BASE)/bltsville/ticpu/lib/android/libbltsville_ticpu_license.txt $(TARGET_OUT_VENDOR)/lib
 ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS)
 
 SYMLINKS1 := $(TARGET_OUT_VENDOR)/lib/libbltsville_cpu.so
