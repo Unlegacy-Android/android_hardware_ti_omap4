@@ -23,7 +23,9 @@
 
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
+#ifndef USES_LEGACY_DOMX_DCC
 #include "OMXDCC.h"
+#endif
 #include "ErrorUtils.h"
 #include "TICameraParameters.h"
 #include <signal.h>
@@ -4458,8 +4460,10 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
         goto EXIT;
     }
 
+#ifndef USES_LEGACY_DOMX_DCC
     DCCHandler dcc_handler;
     dcc_handler.loadDCC(handler.componentRef());
+#endif
 
     // Continue selecting sensor and then querying OMX Camera for it's capabilities
     // When sensor select returns an error, we know to break and stop

@@ -109,8 +109,7 @@ TI_CAMERAHAL_OMX_SRC := \
     OMXCameraAdapter/OMXFocus.cpp \
     OMXCameraAdapter/OMXMetadata.cpp \
     OMXCameraAdapter/OMXZoom.cpp \
-    OMXCameraAdapter/OMXDccDataSave.cpp \
-    OMXCameraAdapter/OMXDCC.cpp
+    OMXCameraAdapter/OMXDccDataSave.cpp
 
 TI_CAMERAHAL_USB_SRC := \
     V4LCameraAdapter/V4LCameraAdapter.cpp \
@@ -264,6 +263,12 @@ LOCAL_SHARED_LIBRARIES:= \
 LOCAL_STATIC_LIBRARIES := $(TI_CAMERAHAL_COMMON_STATIC_LIBRARIES)
 
 LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
+
+ifdef TI_CAMERAHAL_USES_LEGACY_DOMX_DCC
+LOCAL_CFLAGS += -DUSES_LEGACY_DOMX_DCC
+else
+LOCAL_SRC_FILES += OMXCameraAdapter/OMXDCC.cpp
+endif
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE:= camera.$(TARGET_BOARD_PLATFORM)
