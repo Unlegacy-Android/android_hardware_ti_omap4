@@ -412,8 +412,8 @@ class CameraFrame
     mFrameMask(0),
     mQuirks(0)
     {
-      mYuv[0] = NULL;
-      mYuv[1] = NULL;
+      mYuv[0] = 0; // NULL is meant for pointers
+      mYuv[1] = 0; // NULL is meant for pointers
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
         mMetaData = 0;
