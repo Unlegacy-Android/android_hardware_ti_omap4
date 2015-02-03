@@ -227,7 +227,8 @@ LOCAL_C_INCLUDES += \
     $(DOMX_PATH)/mm_osal/inc \
     frameworks/native/include/media/openmax \
     $(LOCAL_PATH)/inc/OMXCameraAdapter \
-    $(LOCAL_PATH)/inc/V4LCameraAdapter
+    $(LOCAL_PATH)/inc/V4LCameraAdapter \
+    system/media/camera/include
 
 LOCAL_SHARED_LIBRARIES:= \
     $(TI_CAMERAHAL_COMMON_SHARED_LIBRARIES) \
