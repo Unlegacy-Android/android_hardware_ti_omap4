@@ -35,3 +35,9 @@ PRODUCT_PACKAGES += \
     smc_pa_ctrl \
     tf_daemon \
     libtf_crypto_sst
+
+# symlinks and pvr files
+PRODUCT_PACKAGES += \
+    libion.so \
+    pvrsrvinit \
+    libPVRScopeServices.so
