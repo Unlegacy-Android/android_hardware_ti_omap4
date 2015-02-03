@@ -4391,6 +4391,7 @@ public:
                 return err;
             }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
             CAMHAL_LOGD("Camera mode: CPCAM ");
             properties->setMode(MODE_CPCAM);
             err = fetchCapabiltiesForMode(OMX_TI_CPCam,
@@ -4399,6 +4400,7 @@ public:
             if ( NO_ERROR != err ) {
                 return err;
             }
+#endif
 
 #ifdef CAMERAHAL_OMAP5_CAPTURE_MODES
 

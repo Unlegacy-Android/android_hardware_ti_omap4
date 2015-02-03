@@ -1022,7 +1022,7 @@ class DisplayAdapter : public BufferProvider, public virtual android::RefBase
 public:
     DisplayAdapter();
 
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
     preview_stream_extended_ops_t * extendedOps() const {
         return mExtendedOps;
     }
@@ -1060,7 +1060,7 @@ public:
     virtual bool match(const char * str) { return false; }
 
 private:
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
     preview_stream_extended_ops_t * mExtendedOps;
 #endif
 };
@@ -1428,7 +1428,7 @@ public:
     android::sp<DisplayAdapter> mBufferSourceAdapter_In;
     android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
 
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
     preview_stream_extended_ops_t * mExtendedPreviewStreamOps;
 #endif
 

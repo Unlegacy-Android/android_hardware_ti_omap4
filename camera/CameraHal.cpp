@@ -142,7 +142,7 @@ CameraHal::SocFamily CameraHal::getSocFamily() {
 }
 
 
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
 static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
 #ifdef OMAP_ENHANCEMENT_CPCAM
     dummy_update_and_get_buffer,
@@ -161,12 +161,12 @@ static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
 
 DisplayAdapter::DisplayAdapter()
 {
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
     mExtendedOps = &dummyPreviewStreamExtendedOps;
 #endif
 }
 
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
 void DisplayAdapter::setExtendedOps(preview_stream_extended_ops_t * extendedOps) {
     mExtendedOps = extendedOps ? extendedOps : &dummyPreviewStreamExtendedOps;
 }
@@ -2084,7 +2084,7 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
             CAMHAL_ASSERT(0);
         }
         mDisplayAdapter = displayAdapter;
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
         mDisplayAdapter->setExtendedOps(mExtendedPreviewStreamOps);
 #endif
         ret = NO_ERROR;
