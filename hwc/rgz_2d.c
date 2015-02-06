@@ -1186,7 +1186,9 @@ static void rgz_add_background_layer(rgz_fb_state_t *fb_state)
 static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 {
     hwc_layer_1_t *layers = p->data.hwc.layers;
+#ifdef OMAP_ENHANCEMENT_HWC_EXTENDED_API
     hwc_layer_extended_t *extlayers = p->data.hwc.extlayers;
+#endif
     int layerno = p->data.hwc.layerno;
 
     rgz->state &= ~RGZ_STATE_INIT;
@@ -1223,7 +1225,9 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                     possible_blit < RGZ_INPUT_MAXLAYERS) {
                 rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
                 rgz_layer->hwc_layer = layers[l];
+#ifdef OMAP_ENHANCEMENT_HWC_EXTENDED_API
                 rgz_layer->identity = extlayers[l].identity;
+#endif
                 rgz_layer->buffidx = memidx++;
                 possible_blit++;
             }
@@ -1239,7 +1243,9 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                  */
                 rgz_layer_t *rgz_layer = &cur_fb_state->rgz_layers[possible_blit+1];
                 rgz_layer->hwc_layer = layers[l];
+#ifdef OMAP_ENHANCEMENT_HWC_EXTENDED_API
                 rgz_layer->identity = extlayers[l].identity;
+#endif
                 rgz_layer->buffidx = RGZ_CLEARHINT_BUFFIDX;
                 /* Set dummy handle to maintain dirty region state */
                 rgz_layer->hwc_layer.handle = (void*) 0x1;
