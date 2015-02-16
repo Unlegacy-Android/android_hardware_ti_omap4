@@ -18,6 +18,6 @@
 PRODUCT_PACKAGES += \
     hwcomposer.omap4
 
-PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4-next/kernel-headers
+PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
 
-$(call inherit-product, hardware/ti/omap4-next/common.mk)
+$(call inherit-product, hardware/ti/omap4/common.mk)

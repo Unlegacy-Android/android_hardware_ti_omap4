@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OMAP4_NEXT_FOLDER := hardware/ti/omap4-next
+OMAP4_NEXT_FOLDER := hardware/ti/omap4
 
 # Processor
 TARGET_CPU_ABI := armeabi-v7a
