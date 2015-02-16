@@ -1017,10 +1017,17 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
     {
         android::Vector<FpsRange> fpsRanges;
 
-        const int minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE,
-                androidFromDucatiFrameRate(caps.xFramerateMin));
-        const int maxFrameRate = min<int>(FPS_MAX * CameraHal::VFR_SCALE,
-                androidFromDucatiFrameRate(caps.xFramerateMax));
+	// HASH: Fix JEM Amazon Ducati xFramerates which are [1 .. 30] vs [256 .. 7680]
+        int minFrameRate = -1;
+	if (caps.xFramerateMin >= 50)
+		minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMin));
+	else
+		minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMin << 8));
+        int maxFrameRate = -1;
+	if (caps.xFramerateMax >= 50)
+		maxFrameRate = min<int>(FPS_MAX * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMax));
+	else
+		maxFrameRate = min<int>(FPS_MAX * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMax << 8));
 
         if ( minFrameRate > maxFrameRate ) {
             CAMHAL_LOGE("Invalid frame rate range: [%d .. %d]", caps.xFramerateMin, caps.xFramerateMax);
@@ -1081,10 +1088,17 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
     {
         android::Vector<FpsRange> fpsRanges;
 
-        const int minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE,
-                androidFromDucatiFrameRate(caps.xFramerateMin));
-        const int maxFrameRate = min<int>(FPS_MAX_EXTENDED * CameraHal::VFR_SCALE,
-                androidFromDucatiFrameRate(caps.xFramerateMax));
+	// HASH: Fix JEM Amazon Ducati xFramerates which are [1 .. 30] vs [256 .. 7680]
+        int minFrameRate = -1;
+	if (caps.xFramerateMin >= 50)
+		minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMin));
+	else
+		minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMin << 8));
+        int maxFrameRate = -1;
+	if (caps.xFramerateMax >= 50)
+		maxFrameRate = min<int>(FPS_MAX_EXTENDED * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMax));
+	else
+		maxFrameRate = min<int>(FPS_MAX_EXTENDED * CameraHal::VFR_SCALE, androidFromDucatiFrameRate(caps.xFramerateMax << 8));
 
         encodeFrameRates(minFrameRate, maxFrameRate, caps, mFramerates, ARRAY_SIZE(mFramerates), fpsRanges);
 
