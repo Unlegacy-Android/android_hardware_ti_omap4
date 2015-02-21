@@ -2201,6 +2201,48 @@ typedef enum OMX_TI_COLOR_FORMATTYPE {
     OMX_TI_ColorFormatTypeMax = 0x7fffffff
 } OMX_TI_COLOR_FORMATTYPE;
 
+#ifdef BOARD_USE_MOTOROLA_DOMX_ENHANCEMENTS
+/**
+ * Target exposure configuration of the exposure algorythm.
+ *
+ * STRUCT MEMBERS:
+ *  nSize              : Size of the structure in bytes
+ *  nVersion           : OMX specification version information
+ *  nTargetExposure    : Value to be passed to the exposure algorythm
+ *                       Range 0..255, default 128.
+ *  nPortIndex         : Port that this structure applies to
+ *  bUseTargetExposure : Flag to enable usage of the nTargetExposure value.
+ *                       Set to true, to use the nTargetExposure value;
+ *                       false means the algorythm shall use the
+ *                       Target Exposure value from tuning data.
+ */
+typedef struct OMX_CONFIG_TARGETEXPOSURE {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nPortIndex;
+	OMX_U8 nTargetExposure;
+	OMX_BOOL bUseTargetExposure;
+} OMX_CONFIG_TARGETEXPOSURE;
+
+/**
+ * Led Flash & Torch Intensity
+ *
+ *  STRUCT MEMBERS:
+ *  nSize              : Size of the structure in bytes
+ *  nVersion           : OMX specification version information
+ *  nPortIndex         : Port that this structure applies to
+ *  nLedFlashIntens    : Led Flash intensity
+ *  nLedTorchIntens    : Led Torch intensity
+ */
+typedef struct OMX_CONFIG_LEDINTESITY {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nPortIndex;
+	OMX_U32	nLedFlashIntens;
+	OMX_U32	nLedTorchIntens;
+} OMX_CONFIG_LEDINTESITY;
+#endif
+
 /**
  * The OMX_TI_EXIFTAGSTATUS enumeration is used to define the
  * tag status types.

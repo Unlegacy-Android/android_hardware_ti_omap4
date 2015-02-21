@@ -282,7 +282,15 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigGammaTable,                       /**< 0x7F0000B5 reference: OMX_TI_CONFIG_SHAREDBUFFER */
     OMX_TI_IndexConfigDynamicCameraDescriptor,          /**< 0x7F0000B6 reference: OMX_TI_CONFIG_SHAREDBUFFER */
 
-    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
+    OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100), /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
+
+#ifdef BOARD_USE_MOTOROLA_DOMX_ENHANCEMENTS
+    // Note! This section must be placed at the bottom of this enum.
+#if 0
+    OMX_IndexConfigTargetExposure = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100),          /**< reference: OMX_CONFIG_TARGETEXPOSURE */
+#endif
+    OMX_IndexConfigLedIntensity = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x106),           /**< 0x7F000106 reference: OMX_CONFIG_LEDINTESITY */
+#endif
 
 } OMX_TI_INDEXTYPE;
 
