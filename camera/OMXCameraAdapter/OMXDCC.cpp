@@ -31,7 +31,11 @@
 namespace Ti {
 namespace Camera {
 
+#ifndef MOTOROLA_CAMERA
 android::String8 DCCHandler::DCCPath("/data/misc/camera/");
+#else
+android::String8 DCCHandler::DCCPath("/system/etc/omapcam/");
+#endif
 bool DCCHandler::mDCCLoaded = false;
 
 status_t DCCHandler::loadDCC(OMX_HANDLETYPE hComponent)

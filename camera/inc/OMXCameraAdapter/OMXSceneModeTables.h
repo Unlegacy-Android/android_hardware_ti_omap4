@@ -745,7 +745,12 @@ static const CameraToSensorModesLUTEntry CameraToSensorModesLUT [] = {
     { "OV5650", OV5650_SceneModesLUT, ARRAY_SIZE(OV5650_SceneModesLUT)},
     { "OV8830", OV8830_SceneModesLUT, ARRAY_SIZE(OV8830_SceneModesLUT)},
     { "OV9726", OV2722_SceneModesLUT, ARRAY_SIZE(OV2722_SceneModesLUT)},
-    { "OV2722", OV2722_SceneModesLUT, ARRAY_SIZE(OV2722_SceneModesLUT)}
+    { "OV2722", OV2722_SceneModesLUT, ARRAY_SIZE(OV2722_SceneModesLUT)},
+#ifdef MOTOROLA_CAMERA
+    { "OV8820", OV8830_SceneModesLUT, ARRAY_SIZE(OV8830_SceneModesLUT)},
+    { "OV7739", OV2722_SceneModesLUT, ARRAY_SIZE(OV2722_SceneModesLUT)},
+    { "MT9M114", OV2722_SceneModesLUT, ARRAY_SIZE(OV2722_SceneModesLUT)},
+#endif
 };
 
 } // namespace Camera
