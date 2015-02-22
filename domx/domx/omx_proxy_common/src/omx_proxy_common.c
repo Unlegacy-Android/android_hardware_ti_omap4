@@ -76,7 +76,11 @@
 #ifdef ALLOCATE_TILER_BUFFER_IN_PROXY
 #ifdef USE_ION
 #include <unistd.h>
+#ifdef USE_TI_LIBION
 #include <ion_ti/ion.h>
+#else
+#include <ion/ion.h>
+#endif
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/eventfd.h>

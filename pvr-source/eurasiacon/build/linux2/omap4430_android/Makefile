@@ -39,6 +39,15 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+# ION can support dma-buf.
+# Use this toggle to determine how ion functions should work.
+ifeq ($(BOARD_USE_TI_LIBION),false)
+ USE_TI_LIBION := 0
+else
+ USE_TI_LIBION := 1
+endif
+export USE_TI_LIBION
+
 ifeq ($(TARGET_SGX),544sc)
  SGXCORE := 544
  SGX_CORE_REV := 112

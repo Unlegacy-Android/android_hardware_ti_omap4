@@ -91,16 +91,20 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
         ///1D buffers
         for (int i = 0; i < numBufs; i++) {
             unsigned char *data;
-#ifdef USE_LIBION_TI
+#ifdef USE_TI_LIBION
             int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT,
                     &handle);
 #else
             int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT, 0,
-                    &handle);
+                    (ion_user_handle_t*)&handle);
 #endif
             if((ret < 0) || ((int)handle == -ENOMEM)) {
                 ret = ion_alloc_tiler(mIonFd, (size_t)size, 1, TILER_PIXEL_FMT_PAGE,
+#ifdef USE_TI_LIBION
                 OMAP_ION_HEAP_TILER_MASK, &handle, &stride);
+#else
+                OMAP_ION_HEAP_TILER_MASK, (ion_user_handle_t*)&handle, &stride);
+#endif
             }
 
             if((ret < 0) || ((int)handle == -ENOMEM)) {
@@ -109,10 +113,18 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
             }
 
             CAMHAL_LOGDB("Before mapping, handle = %p, nSize = %d", handle, size);
+#ifdef USE_TI_LIBION
             if ((ret = ion_map(mIonFd, handle, size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+#else
+            if ((ret = ion_map(mIonFd, (ion_user_handle_t)handle, size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+#endif
                           &data, &mmap_fd)) < 0) {
                 CAMHAL_LOGEB("Userspace mapping of ION buffers returned error %d", ret);
+#ifdef USE_TI_LIBION
                 ion_free(mIonFd, handle);
+#else
+                ion_free(mIonFd, (ion_user_handle_t)handle);
+#endif
                 goto error;
             }
 
@@ -193,7 +205,11 @@ int MemoryManager::freeBufferList(CameraBuffer *buffers)
             {
             munmap(buffers[i].opaque, buffers[i].size);
             close(buffers[i].fd);
+#ifdef USE_TI_LIBION
             ion_free(mIonFd, buffers[i].ion_handle);
+#else
+            ion_free(mIonFd, (ion_user_handle_t)buffers[i].ion_handle);
+#endif
             }
         else
             {

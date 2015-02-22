@@ -41,7 +41,12 @@
 
 #include <linux/fb.h>
 #include <linux/omapfb.h>
+#ifdef USE_TI_LIBION
 #include <ion_ti/ion.h>
+#else
+#include <ion/ion.h>
+#include "ion_ti_custom.h"
+#endif
 
 #include "hwc_dev.h"
 #include "display.h"

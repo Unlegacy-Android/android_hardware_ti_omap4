@@ -163,6 +163,9 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
                                     pIonBufferParams->nWidth,
                                     sIonParams.nAlign,
                                     sIonParams.alloc_flags,
+#ifndef USE_TI_LIBION
+                                    0,
+#endif
                                     &temp);
         if(ret || (int)temp == -ENOMEM)
         {

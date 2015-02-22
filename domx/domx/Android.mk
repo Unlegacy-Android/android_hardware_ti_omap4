@@ -36,8 +36,15 @@ LOCAL_SHARED_LIBRARIES := \
     libmm_osal \
     libc \
     liblog \
-    libion_ti \
     libcutils
+
+ifeq ($(BOARD_USE_TI_LIBION),true)
+LOCAL_SHARED_LIBRARIES += libion_ti
+else
+LOCAL_SHARED_LIBRARIES += libion
+LOCAL_SRC_FILES += ../../libion/ion_ti_custom.c
+LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
+endif
 
 LOCAL_MODULE:= libdomx
 LOCAL_MODULE_TAGS:= optional

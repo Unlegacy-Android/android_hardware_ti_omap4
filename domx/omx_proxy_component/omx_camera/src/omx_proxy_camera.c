@@ -61,7 +61,12 @@
 
 #ifdef USE_ION
 #include <unistd.h>
+#ifdef USE_TI_LIBION
 #include <ion_ti/ion.h>
+#else
+#include <ion/ion.h>
+#include "ion_ti_custom.h"
+#endif
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/eventfd.h>

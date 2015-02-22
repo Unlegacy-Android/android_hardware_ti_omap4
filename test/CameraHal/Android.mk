@@ -69,14 +69,14 @@ LOCAL_SHARED_LIBRARIES:= \
 	libgui \
 	libcamera_client \
 	libEGL \
-    libGLESv2
+	libGLESv2
 
-ifdef ANDROID_API_JB_MR1_OR_LATER
-LOCAL_SHARED_LIBRARIES += \
-    libion_ti
+ifeq ($(BOARD_USE_TI_LIBION),true)
+LOCAL_SHARED_LIBRARIES += libion_ti
 else
-LOCAL_SHARED_LIBRARIES += \
-    libion
+LOCAL_SHARED_LIBRARIES += libion
+LOCAL_SRC_FILES += ../../libion/ion_ti_custom.c
+LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
 endif
 
 LOCAL_C_INCLUDES += \
@@ -84,7 +84,7 @@ LOCAL_C_INCLUDES += \
 	frameworks/base/include/ui \
 	frameworks/base/include/surfaceflinger \
 	frameworks/base/include/camera \
-    frameworks/base/include/media
+	frameworks/base/include/media
 
 LOCAL_MODULE:= surfacetexture_test
 LOCAL_MODULE_TAGS:= tests
