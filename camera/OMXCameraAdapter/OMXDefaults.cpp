@@ -40,7 +40,11 @@ const char OMXCameraAdapter::DEFAULT_EXPOSURE_MODE[] = "auto";
 const char OMXCameraAdapter::DEFAULT_FLASH_MODE[] = "off";
 const char OMXCameraAdapter::DEFAULT_FOCUS_MODE_PREFERRED[] = "auto";
 const char OMXCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
+#ifndef MOTOROLA_CAMERA
 const char OMXCameraAdapter::DEFAULT_IPP[] = "ldc-nsf";
+#else
+const char OMXCameraAdapter::DEFAULT_IPP[] = "off";
+#endif
 const char OMXCameraAdapter::DEFAULT_ISO_MODE[] = "auto";
 const char OMXCameraAdapter::DEFAULT_JPEG_QUALITY[] = "95";
 const char OMXCameraAdapter::DEFAULT_THUMBNAIL_QUALITY[] = "60";
