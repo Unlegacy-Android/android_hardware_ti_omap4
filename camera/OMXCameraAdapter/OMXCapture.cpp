@@ -821,7 +821,9 @@ status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
             {
             if (bracketMode == OMX_BracketExposureGainAbsolute) {
                 extExpCapMode.tBracketConfigType.nBracketValues[i]  =  evValues[i];
+#ifndef CAMERAHAL_TUNA
                 extExpCapMode.tBracketConfigType.nBracketValues2[i]  =  evValues2[i];
+#endif
             } else {
                 // assuming OMX_BracketExposureRelativeInEV
                 extExpCapMode.tBracketConfigType.nBracketValues[i]  =  ( evValues[i] * ( 1 << Q16_OFFSET ) )  / 10;
@@ -1619,6 +1621,7 @@ EXIT:
 
 status_t OMXCameraAdapter::initInternalBuffers(OMX_U32 portIndex)
 {
+#ifndef CAMERAHAL_TUNA
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     int index = 0;
     OMX_TI_PARAM_USEBUFFERDESCRIPTOR bufferdesc;
@@ -1686,11 +1689,15 @@ status_t OMXCameraAdapter::initInternalBuffers(OMX_U32 portIndex)
     CAMHAL_LOGV("Ducati requested too many (>1) internal buffers");
 
     return -EINVAL;
+#else
+    return NO_ERROR;
+#endif
 }
 
 status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
+#ifndef CAMERAHAL_TUNA
     OMX_TI_PARAM_USEBUFFERDESCRIPTOR bufferdesc;
 
     OMX_INIT_STRUCT_PTR (&bufferdesc, OMX_TI_PARAM_USEBUFFERDESCRIPTOR);
@@ -1719,6 +1726,7 @@ status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
         CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
         return -EINVAL;
     }
+#endif
 
     return Utils::ErrorUtils::omxToAndroidError(eError);
 }
@@ -1891,7 +1899,9 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         if (mNextState != LOADED_REPROCESS_CAPTURE_STATE) {
             // Enable WB and vector shot extra data for metadata
             setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
+#ifndef CAMERAHAL_TUNA
             setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
+#endif
         }
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
@@ -1970,7 +1980,9 @@ EXIT:
     // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
     // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
     // setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
+#ifndef CAMERAHAL_TUNA
     setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
+#endif
     //Release image buffers
     if ( NULL != mReleaseImageBuffersCallback ) {
         mReleaseImageBuffersCallback(mReleaseData);

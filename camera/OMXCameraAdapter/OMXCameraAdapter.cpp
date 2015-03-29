@@ -131,7 +131,9 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mComponentState = OMX_StateLoaded;
 
     CAMHAL_LOGVB("OMX_GetHandle -0x%x sensor_index = %lu", eError, mSensorIndex);
+#ifndef CAMERAHAL_TUNA
     initDccFileDataSave(&mCameraAdapterParameters.mHandleComp, mCameraAdapterParameters.mPrevPortIndex);
+#endif
 
     eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
                                   OMX_CommandPortDisable,
@@ -3589,7 +3591,9 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
         }
 
+#ifndef CAMERAHAL_TUNA
         sniffDccFileDataSave(pBuffHeader);
+#endif
 
         stat |= advanceZoom();
 
@@ -4053,7 +4057,7 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     extraDataControl.nPortIndex = nPortIndex;
     extraDataControl.eExtraDataType = eType;
 #ifdef CAMERAHAL_TUNA
-    extraDataControl.eCameraView = OMX_2D;
+    extraDataControl.eCameraView = OMX_2D_Prv;
 #endif
 
     if (enable) {

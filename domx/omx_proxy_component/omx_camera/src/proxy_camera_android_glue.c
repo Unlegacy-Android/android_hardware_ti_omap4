@@ -81,6 +81,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
     switch (nParamIndex)
     {
+#ifndef DOMX_TUNA
 	case OMX_TI_IndexParamComponentBufferAllocation: {
                 OMX_U32 port = 0, index = 0;
 		int fd;
@@ -131,6 +132,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
 		close (newBuffer_prop.sBuffer_accessor.bufferFd);
 		newBuffer_prop.sBuffer_accessor.bufferFd = -1;
         }
+#endif
 		goto EXIT;
 		break;
 	default:

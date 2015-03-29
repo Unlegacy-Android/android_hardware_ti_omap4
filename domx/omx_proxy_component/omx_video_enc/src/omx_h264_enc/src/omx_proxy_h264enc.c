@@ -557,6 +557,11 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	{
 		pPortDef = (OMX_PARAM_PORTDEFINITIONTYPE *)pParamStruct;
 
+#ifdef DOMX_TUNA
+		// hack to fix video recording artifacts on tuna
+		pPortDef->format.video.nStride = LINUX_PAGE_SIZE;
+#endif
+
 		if(pPortDef->format.video.eColorFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar)
 		{
 			pPortDef->format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
