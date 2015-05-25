@@ -704,6 +704,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 }
             }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         if((NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mode)) {
             //Configure Single Preview Mode
             eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
@@ -716,7 +717,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 CAMHAL_LOGDA("single preview mode configured successfully");
             }
         }
-
+#endif
 
         if( NO_ERROR == ret )
             {

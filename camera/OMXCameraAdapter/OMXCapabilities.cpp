@@ -575,6 +575,7 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
     return ret;
 }
 
+#ifdef OMAP_ENHANCEMENT_S3D
 status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
                       const CapResolution *cap,
                       size_t capCount,
@@ -607,6 +608,7 @@ status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
 
    return ret;
 }
+#endif
 
 status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
@@ -618,6 +620,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 
     LOG_FUNCTION_NAME;
 
+#ifdef OMAP_ENHANCEMENT_S3D
     for ( unsigned int i = 0 ; i < caps.ulCapFrameLayoutCount; i++ ) {
         if (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
         {
@@ -633,6 +636,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             s3d_detected = 1;
         }
     }
+#endif
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
@@ -653,6 +657,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
         params->set(CameraProperties::MAX_PICTURE_WIDTH, caps.tImageResRange.nWidthMax);
         params->set(CameraProperties::MAX_PICTURE_HEIGHT, caps.tImageResRange.nHeightMax);
     }
+#ifdef OMAP_ENHANCEMENT_S3D
     else // 3d mode
     {
         if (s3d_tb_detected)
@@ -714,6 +719,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             params->set(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES, supported);
         }
     }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -730,6 +736,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 
     LOG_FUNCTION_NAME;
 
+#ifdef OMAP_ENHANCEMENT_S3D
     for ( unsigned int i = 0 ; i < caps.ulPrvFrameLayoutCount; i++ ) {
         if (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
         {
@@ -745,6 +752,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             s3d_detected = 1;
         }
     }
+#endif
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
@@ -775,6 +783,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
         }
     }
+#ifdef OMAP_ENHANCEMENT_S3D
     else // 3d mode
     {
         if (s3d_tb_detected)
@@ -839,6 +848,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
         }
      }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
