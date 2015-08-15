@@ -2469,6 +2469,25 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
         CAMHAL_LOGDA("OMX capability query success");
     }
 
+#ifdef CAMERAHAL_PIRANHA
+    char hwrotation[PROPERTY_VALUE_MAX];
+    if (property_get("ro.sf.hwrotation", hwrotation, 0) > 0) {
+        if (caps->tSenMounting.nSenId == 306) { // front camera
+            caps->tSenMounting.nRotation = atoi(hwrotation);
+        } else { // back camera
+            caps->tSenMounting.nRotation = 360 - atoi(hwrotation);
+        }
+    }
+    // missing camera caps
+    if (caps->tSenMounting.nSenId == 306) {
+        caps->tPreviewResRange.nWidthMax = 640;
+        caps->tPreviewResRange.nHeightMax = 480;
+        caps->nFocalLength = 130;
+    } else {
+        caps->nFocalLength = 279;
+    }
+#endif
+
 #ifdef CAMERAHAL_DEBUG
     _dumpOmxTiCap(sensorId, *caps);
 #endif
