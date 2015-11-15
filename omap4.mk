@@ -21,3 +21,4 @@ PRODUCT_PACKAGES += \
 PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
 
 $(call inherit-product, hardware/ti/omap4/common.mk)
+$(call inherit-product-if-exists, vendor/ti/omap4/omap4-vendor.mk)
