@@ -14,4 +14,6 @@
 # limitations under the License.
 #
 
+ifeq ($(TI_OMAP_USE_BLTSVILLE),true)
 include $(call all-subdir-makefiles)
+endif
