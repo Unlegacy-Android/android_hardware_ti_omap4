@@ -2557,7 +2557,10 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 
 #ifdef CAMERAHAL_TUNA
     // missing camera caps
+    caps->bAELockSupported = OMX_TRUE;
+    caps->bAWBLockSupported = OMX_TRUE;
     caps->bStillCapDuringVideoSupported = OMX_TRUE;
+    caps->bVideoStabilizationSupported = OMX_TRUE;
     if (caps->tSenMounting.nSenId == SENSORID_S5K4E1GA) {
         caps->nFocalLength = 343; // DEFAULT_FOCAL_LENGTH_PRIMARY
     } else {
