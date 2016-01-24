@@ -208,6 +208,24 @@ static const struct attribute *sgxfreq_attributes[] = {
 
 /************************ end sysfs interface ************************/
 
+static unsigned long __sgxfreq_get_max_safe_freq(void)
+{
+	int i;
+	unsigned long reference_freq = SYS_SGX_CLOCK_SPEED;
+	unsigned long freq;
+
+	if (!cpu_is_omap443x())
+		reference_freq = OMAP446X_447X_REFERNECE_FREQUENCY;
+
+	for (i = sfd.freq_cnt - 1; i >= 0; i--) {
+		freq = sfd.freq_list[i];
+		if (freq <= reference_freq)
+			return freq;
+	}
+
+	return reference_freq;
+}
+
 static void __set_freq(void)
 {
 	unsigned long freq;
@@ -334,7 +352,7 @@ int sgxfreq_init(struct device *dev)
 	rcu_read_unlock();
 
 	mutex_init(&sfd.freq_mutex);
-	sfd.freq_limit = SYS_SGX_CLOCK_SPEED;
+	sfd.freq_limit = __sgxfreq_get_max_safe_freq();
 	sgxfreq_set_freq_request(sfd.freq_list[sfd.freq_cnt - 1]);
 	sfd.sgx_data.clk_on = false;
 	sfd.sgx_data.active = false;
