@@ -15,10 +15,16 @@
 # This file lists the modules that are specific to OMAP4 but are used by
 # all OMAP4 devices.
 
+OMAP4_NEXT_FOLDER := hardware/ti/omap4
+
 PRODUCT_PACKAGES += \
     hwcomposer.omap4
 
 PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
+
+# Init
+PRODUCT_COPY_FILES += \
+    $(OMAP4_NEXT_FOLDER)/rootdir/init.omap4.rc:root/init.omap4.rc
 
 $(call inherit-product, hardware/ti/omap4/common.mk)
 $(call inherit-product-if-exists, vendor/ti/omap4/omap4-vendor.mk)

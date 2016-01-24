@@ -1,0 +1,14 @@
+on boot
+    # Hardware tunables
+    chown root system /sys/devices/platform/omapdss/manager0/cpr_coef
+    chown root system /sys/devices/platform/omapdss/manager0/cpr_enable
+    chmod 0664 /sys/devices/platform/omapdss/manager0/cpr_coef
+    chmod 0664 /sys/devices/platform/omapdss/manager0/cpr_enable
+    restorecon /sys/devices/platform/omapdss/manager0/cpr_coef
+    restorecon /sys/devices/platform/omapdss/manager0/cpr_enable
+
+service pvrsrvinit /system/bin/pvrsrvinit
+    class core
+    user root
+    group root
+    oneshot
