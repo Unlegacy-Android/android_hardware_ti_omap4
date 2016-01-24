@@ -1,0 +1,2 @@
+# Hardware tunables
+type sysfs_hardware, fs_type, sysfs_type;

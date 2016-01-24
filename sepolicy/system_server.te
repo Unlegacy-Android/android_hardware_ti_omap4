@@ -1,0 +1,2 @@
+# Hardware tunables
+allow system_server sysfs_hardware:file rw_file_perms;
