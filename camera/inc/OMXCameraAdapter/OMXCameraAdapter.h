@@ -536,6 +536,7 @@ private:
     //Digital zoom
     status_t setParametersZoom(const android::CameraParameters &params,
                                BaseCameraAdapter::AdapterState state);
+    int32_t getZoomStep(int index);
     status_t doZoom(int index);
     status_t advanceZoom();
 
@@ -1093,7 +1094,7 @@ private:
     //current zoom
     android::Mutex mZoomLock;
     unsigned int mCurrentZoomIdx, mTargetZoomIdx, mPreviousZoomIndx;
-    bool mZoomUpdating, mZoomUpdate;
+    bool mZoomUpdating, mZoomUpdate, mPrevZoomModeIsVideo;
     int mZoomInc;
     bool mReturnZoomStatus;
     static const int32_t ZOOM_STEPS [];
@@ -1196,7 +1197,7 @@ private:
     android::Mutex mDoAFMutex;
     android::Condition mDoAFCond;
 
-    size_t mSensorIndex;
+    size_t mSensorIndex, mPrevZoomSensorIndex;
     CodingMode mCodingMode;
 
     // Time source delta of ducati & system time

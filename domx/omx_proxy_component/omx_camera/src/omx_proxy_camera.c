@@ -83,6 +83,7 @@ int dcc_flag = 0;
 OMX_S32 dccbuf_size = 0;
 /* DCC buff accessors */
 MEMPLUGIN_BUFFER_ACCESSOR sDccBuffer;
+OMX_BOOL dcc_loaded = OMX_FALSE;
 #endif
 
 #ifdef OMAP_ENHANCEMENT_VTC
@@ -261,6 +262,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
             PROXY_assert(eOsalError == TIMM_OSAL_ERR_NONE,
                 OMX_ErrorInsufficientResources, "Mutex release failed");
         }
+        dcc_loaded = OMX_FALSE;
 #endif
 
 #ifdef OMAP_ENHANCEMENT_VTC
@@ -297,7 +299,6 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn;
 #ifdef USES_LEGACY_DOMX_DCC
-    static OMX_BOOL dcc_loaded = OMX_FALSE;
     OMX_ERRORTYPE dcc_eError = OMX_ErrorNone;
 #endif
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
@@ -556,6 +557,12 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	pHandle->pComponentPrivate = (PROXY_COMPONENT_PRIVATE *)
 	    TIMM_OSAL_Malloc(sizeof(PROXY_COMPONENT_PRIVATE),
 	    TIMM_OSAL_TRUE, 0, TIMMOSAL_MEM_SEGMENT_INT);
+
+#ifdef USES_LEGACY_DOMX_DCC
+        // Should not be needed as PrivateDeInit will set it, but resetting
+        // it here just in case there's some codepath that skips PrivateDeInit.
+        dcc_loaded = OMX_FALSE;
+#endif
 
 	pComponentPrivate =
 	    (PROXY_COMPONENT_PRIVATE *) pHandle->pComponentPrivate;

@@ -124,6 +124,61 @@ RPC_OMX_ERRORTYPE RPC_InstanceInit(OMX_STRING cComponentName,
 	    "Malloc failed");
 	TIMM_OSAL_Memset(pRPCCtx, 0, sizeof(RPC_OMX_CONTEXT));
 
+#ifdef DOMX_TUNA
+	// CMA-enabled kernel for tuna devices will unload Ducati firmware when
+	// it's not in use to free extra memory for applications. On the first
+	// access to /dev/rpmsg-omx1 it will reload the firmware. However, in
+	// the process of this reloading device drivers will be reset, therefore
+	// causing errors when either opening the device or performing the first
+	// operation on it. Moreover, the previously opened handle will be
+	// invalidated in this case. Therefore, the loop below is modified to
+	// retry both open() and first ioctl() calls instead of just open()
+	// and to reopen the device on retries.
+	//
+	// Also, because the reload can happen relatively fast when there are not
+	// too many pages to migrate, we use smaller waiting period but increased
+	// number of retries to improve camera start latency.
+	const OMX_U32 nMaxAttempts = MAX_ATTEMPTS * 4;
+	DOMX_DEBUG("Calling open and OMX_IOCCONNECT ioctl on the device");
+	while (1)
+	{
+		pRPCCtx->fd_omx = open("/dev/rpmsg-omx1", O_RDWR);
+		if(pRPCCtx->fd_omx >= 0)
+		{
+			status = ioctl(pRPCCtx->fd_omx, OMX_IOCCONNECT, &sReq);
+			if (status >= 0)
+				break;
+			if (errno != ENXIO || nAttempts == nMaxAttempts)
+				break;
+			DOMX_DEBUG("errno from ioctl = %d, retrying ...",errno);
+			close(pRPCCtx->fd_omx);
+		}
+		else
+		{
+			if ((errno != ENOENT && errno != ENXIO) || nAttempts == nMaxAttempts)
+				break;
+			DOMX_DEBUG("errno from open= %d, retrying ...",errno);
+		}
+
+		nAttempts++;
+		usleep(250000);
+	}
+	if(pRPCCtx->fd_omx < 0)
+	{
+		DOMX_ERROR("Can't open device, errorno from open = %d",errno);
+		eError = RPC_OMX_ErrorInsufficientResources;
+		goto EXIT;
+	}
+	if(status < 0)
+	{
+		DOMX_ERROR("Can't ioctl device, errorno from ioctl = %d",errno);
+		eError = RPC_OMX_ErrorInsufficientResources;
+		close(pRPCCtx->fd_omx);
+		goto EXIT;
+	}
+	DOMX_DEBUG("Open and OMX_IOCCONNECT were successful, pRPCCtx->fd_omx = %d, ioctl status = %d",
+	    pRPCCtx->fd_omx, status);
+#else
 	/*Assuming that open maintains an internal count for multi instance */
 	DOMX_DEBUG("Calling open on the device");
 	while (1)
@@ -150,6 +205,7 @@ RPC_OMX_ERRORTYPE RPC_InstanceInit(OMX_STRING cComponentName,
 	status = ioctl(pRPCCtx->fd_omx, OMX_IOCCONNECT, &sReq);
 	RPC_assert(status >= 0, RPC_OMX_ErrorInsufficientResources,
 	    "Can't connect");
+#endif
 
 	for (i = 0; i < RPC_OMX_MAX_FUNCTION_LIST; i++)
 	{
