@@ -272,7 +272,7 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_WriteToFrontOfPipe(TIMM_OSAL_PTR pPipe,
 		/*Write back to pipe */
 		lSizeWritten =
 		    write(pHandle->pfd[1], tempPtr,
-		    pHandle->totalBytesInPipe);
+		    lSizeRead);
 
 		if (lSizeWritten != size)
 		{
