@@ -8,6 +8,8 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/frameworks/native/include/media/openmax \
         $(TOP)/frameworks/native/include/media/hardware
 
+LOCAL_CFLAGS := -Wall -Werror
+
 LOCAL_SHARED_LIBRARIES :=       \
         libbinder               \
         libutils                \
