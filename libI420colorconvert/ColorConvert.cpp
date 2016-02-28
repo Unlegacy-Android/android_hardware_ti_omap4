@@ -64,7 +64,7 @@ static int getEncoderInputFormat() {
 
 static int convertI420ToEncoderInput(
     void* srcBits, int srcWidth, int srcHeight,
-    int dstWidth, int dstHeight, ARect dstRect,
+    int dstWidth, int dstHeight, ARect dstRect __unused,
     void* dstBits) {
     uint8_t *pSrc_y = (uint8_t*) srcBits;
     uint8_t *pDst_y = (uint8_t*) dstBits;

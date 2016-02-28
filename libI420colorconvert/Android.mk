@@ -8,7 +8,7 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/frameworks/native/include/media/openmax \
         $(TOP)/frameworks/native/include/media/editor
 
-LOCAL_SHARED_LIBRARIES :=       \
+LOCAL_CFLAGS := -Wall -Werror
 
 LOCAL_MODULE_TAGS := optional
 
