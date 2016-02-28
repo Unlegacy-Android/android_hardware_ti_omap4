@@ -19,6 +19,8 @@
 
 #include <stdint.h>
 
+#include "display.h"
+
 /* ARGB image */
 struct image_info {
     int width;
@@ -28,8 +30,6 @@ struct image_info {
     uint8_t *ptr;
 };
 typedef struct image_info image_info_t;
-
-typedef struct omap_hwc_device omap_hwc_device_t;
 
 int init_dock_image(omap_hwc_device_t *hwc_dev, uint32_t max_width, uint32_t max_height);
 void load_dock_image();

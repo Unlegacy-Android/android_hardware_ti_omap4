@@ -91,6 +91,9 @@ enum {
                     (f) == OMAP_DSS_COLOR_ARGB32 ? "ARGB32" : \
                     (f) == OMAP_DSS_COLOR_RGB16 ? "RGB565" : "??")
 
+//#define DUMP_LAYERS
+//#define DUMP_DSSCOMPS
+
 static bool debug = false;
 static bool debugpost2 = false;
 static bool debugblt = false;
@@ -124,6 +127,7 @@ static void showfps(void)
     }
 }
 
+#ifdef DUMP_LAYERS
 static void dump_layer(hwc_layer_1_t const* l)
 {
     ALOGD("\ttype=%d, flags=%08x, handle=%p, tr=%02x, blend=%04x, {%d,%d,%d,%d}, {%d,%d,%d,%d}",
@@ -137,7 +141,9 @@ static void dump_layer(hwc_layer_1_t const* l)
          l->displayFrame.right,
          l->displayFrame.bottom);
 }
+#endif
 
+#ifdef DUMP_DSSCOMPS
 static void dump_dsscomp(struct dsscomp_setup_dispc_data *d)
 {
     uint32_t i;
@@ -175,6 +181,7 @@ static void dump_dsscomp(struct dsscomp_setup_dispc_data *d)
                  (void *) oi->ba, (void *) oi->uv, c->stride);
     }
 }
+#endif
 
 struct dump_buf {
     char *buf;
@@ -462,12 +469,14 @@ static void setup_layer_base(struct dss2_ovl_cfg *oc, int index, uint32_t format
     oc->vc1.enable = 0;
 }
 
-static void setup_layer(omap_hwc_device_t *hwc_dev, struct dss2_ovl_info *ovl,
+static void setup_layer(omap_hwc_device_t *hwc_dev __unused, struct dss2_ovl_info *ovl,
                         hwc_layer_1_t *layer, int index, uint32_t format, int width, int height)
 {
     struct dss2_ovl_cfg *oc = &ovl->cfg;
 
-    //dump_layer(layer);
+#ifdef DUMP_LAYERS
+    dump_layer(layer);
+#endif
 
     setup_layer_base(oc, index, format, is_BLENDED(layer), width, height);
 
@@ -854,8 +863,8 @@ static int set_best_hdmi_mode(omap_hwc_device_t *hwc_dev, uint32_t xres, uint32_
 {
     int dis_ix = hwc_dev->on_tv ? 0 : 1;
     struct _qdis {
-        struct dsscomp_display_info dis;
         struct dsscomp_videomode modedb[MAX_DISPLAY_CONFIGS];
+        struct dsscomp_display_info dis; /* variable-sized type; should be at end of struct */
     } d = { .dis = { .ix = dis_ix } };
     omap_hwc_ext_t *ext = &hwc_dev->ext;
 
@@ -1153,7 +1162,6 @@ static inline int display_area(struct dss2_ovl_info *o)
 
 static int clone_layer(omap_hwc_device_t *hwc_dev, int ix) {
     struct dsscomp_setup_dispc_data *dsscomp = &hwc_dev->comp_data.dsscomp_data;
-    omap_hwc_ext_t *ext = &hwc_dev->ext;
     int ext_ovl_ix = dsscomp->num_ovls - hwc_dev->post2_layers;
     struct dss2_ovl_info *o = &dsscomp->ovls[dsscomp->num_ovls];
 
@@ -2011,7 +2019,9 @@ static int hwc_set(struct hwc_composer_device_1 *dev,
             }
         }
 
-        //dump_dsscomp(dsscomp);
+#ifdef DUMP_DSSCOMPS
+        dump_dsscomp(dsscomp);
+#endif
 
         // signal the event thread that a post has happened
         write(hwc_dev->pipe_fds[1], "s", 1);
@@ -2464,7 +2474,7 @@ static int hwc_query(struct hwc_composer_device_1* dev, int what, int* value)
 }
 
 static int hwc_eventControl(struct hwc_composer_device_1* dev,
-        int dpy, int event, int enabled)
+        int dpy __unused, int event, int enabled)
 {
     omap_hwc_device_t *hwc_dev = (omap_hwc_device_t *) dev;
 
@@ -2493,7 +2503,7 @@ static int hwc_eventControl(struct hwc_composer_device_1* dev,
     }
 }
 
-static int hwc_blank(struct hwc_composer_device_1 *dev, int dpy, int blank)
+static int hwc_blank(struct hwc_composer_device_1 *dev __unused, int dpy __unused, int blank __unused)
 {
     // We're using an older method of screen blanking based on
     // early_suspend in the kernel.  No need to do anything here.

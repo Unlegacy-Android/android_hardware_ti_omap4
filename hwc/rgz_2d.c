@@ -495,7 +495,7 @@ static void rgz_rotate_src(struct rgz_blt_entry* e, int src_orientation, int is_
         swap(srcgeom->width, srcgeom->height);
 }
 
-static void rgz_set_src_data(rgz_out_params_t *params, rgz_layer_t *rgz_layer,
+static void rgz_set_src_data(rgz_out_params_t *params __unused, rgz_layer_t *rgz_layer,
     blit_rect_t *subregion_rect, struct rgz_blt_entry* e, int src_orientation,
     int is_src2)
 {
@@ -555,7 +555,7 @@ static void rgz_set_clip_rect(rgz_out_params_t *params, blit_rect_t *subregion_r
 /*
  * Configures blit entry to set src2 is the same as the destination
  */
-static void rgz_set_src2_is_dst(rgz_out_params_t *params, struct rgz_blt_entry* e)
+static void rgz_set_src2_is_dst(rgz_out_params_t *params __unused, struct rgz_blt_entry* e)
 {
     /* omaplfb is in charge of assigning the correct src2desc in the kernel */
     e->src2geom = e->dstgeom;
@@ -1099,7 +1099,6 @@ static void rgz_handle_dirty_region(rgz_t *rgz, rgz_in_params_t *params,
     for (i = 0; i < cur_fb_state->rgz_layerno; i++) {
         rgz_layer_t *cur_rgz_layer = &cur_fb_state->rgz_layers[i];
         rgz_layer_t *prev_rgz_layer = NULL;
-        int layer_changed = 0;
 
         if (i == 0) {
             /*
@@ -1500,9 +1499,7 @@ static int hal_to_ocd(int color)
     }
 }
 
-static BVFN_MAP bv_map;
 static BVFN_BLT bv_blt;
-static BVFN_UNMAP bv_unmap;
 
 static int rgz_handle_to_stride(IMG_native_handle_t *h)
 {
@@ -1773,7 +1770,7 @@ static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts, rgz_out_params_
     return ne;
 }
 
-static int rgz_blts_bvdirect(rgz_t *rgz, struct rgz_blts *blts, rgz_out_params_t *params)
+static int rgz_blts_bvdirect(rgz_t *rgz __unused, struct rgz_blts *blts, rgz_out_params_t *params __unused)
 {
     struct bvbatch *batch = NULL;
     int rv = -1;

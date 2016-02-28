@@ -123,7 +123,6 @@ struct omap_hwc_device {
     pthread_mutex_t lock;
 
     IMG_framebuffer_device_public_t *fb_dev;
-    struct dsscomp_display_info fb_dis;
     int fb_fd;                   /* file descriptor for /dev/fb0 */
     int dsscomp_fd;              /* file descriptor for /dev/dsscomp */
     int hdmi_fb_fd;              /* file descriptor for /dev/fb1 */
@@ -174,7 +173,8 @@ struct omap_hwc_device {
     bool use_sw_vsync;
 
     display_t *displays[MAX_DISPLAYS];
+
+    struct dsscomp_display_info fb_dis; /* variable-sized type; should be at end of struct */
 };
-typedef struct omap_hwc_device omap_hwc_device_t;
 
 #endif

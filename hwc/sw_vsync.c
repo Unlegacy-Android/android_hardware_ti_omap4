@@ -54,7 +54,6 @@ static void *vsync_loop(void *data)
     nsecs_t now = 0, period = vsync_rate, next_vsync = 0, next_fake_vsync = 0, sleep = 0;
     omap_hwc_device_t *hwc_dev = (omap_hwc_device_t *)data;
     tp_sleep.tv_sec = tp_sleep.tv_nsec = 0;
-    bool reset_timers = true;
 
     setpriority(PRIO_PROCESS, 0, HAL_PRIORITY_URGENT_DISPLAY);
 
