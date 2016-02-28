@@ -48,7 +48,7 @@ static void free_png_image(image_info_t *img)
 static int load_png_image(char *path, image_info_t *img)
 {
     void *ptr = NULL;
-    png_bytepp row_pointers = NULL;
+    static png_bytepp row_pointers = NULL; /* static prevents setjmp corruption. */
 
     FILE *fd = fopen(path, "rb");
     if (!fd) {
