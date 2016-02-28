@@ -120,7 +120,6 @@ OMX_U16 nBFrames = 0; /* Number of B Frames in H264 Encoder */
 
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 #define OMX_MPEG4E_NUM_INTERNAL_BUF (8)
-#define HAL_PIXEL_FORMAT_TI_NV12 (0x100)
 
 #define COLORCONVERT_MAX_SUB_BUFFERS (3)
 
@@ -825,7 +824,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			return OMX_ErrorBadParameter;
 		}
 #ifdef ENABLE_GRALLOC_BUFFER
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,-1,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer,-1,
 									   &pAuxBuf0, &pAuxBuf1,
 									   GrallocPointers);
 		PROXY_checkRpcError();

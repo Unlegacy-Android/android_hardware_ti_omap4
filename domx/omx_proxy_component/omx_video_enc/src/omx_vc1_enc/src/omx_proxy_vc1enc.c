@@ -118,7 +118,6 @@ OMX_TICKS    nLastFrameRateUpdateTime = 0; /*Time stamp at last frame rate updat
  * ANDROID_QUIRCK_CHANGE_PORT_VALUES
  */
 #define OMX_VC1VE_NUM_INTERNAL_BUF (8)
-#define HAL_PIXEL_FORMAT_TI_NV12 (0x100)
 
 #define COLORCONVERT_MAX_SUB_BUFFERS (3)
 
@@ -857,7 +856,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             goto EXIT; //need to restore lenght fields in pBufferHdr
         }
 #ifdef ENABLE_GRALLOC_BUFFER
-        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer,
+        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer,
                                        &pAuxBuf0, &pAuxBuf1,
                                        GrallocPointers);
         PROXY_checkRpcError();

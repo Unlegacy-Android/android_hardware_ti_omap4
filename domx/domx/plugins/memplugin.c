@@ -51,7 +51,7 @@ extern MEMPLUGIN_TABLETYPE    MemPlugins_Map[];
 MEMPLUGIN_ERRORTYPE MemPlugin_Init(char *cMemPluginName, void **pMemPluginHandle)
 {
     MEMPLUGIN_OBJECT *pMemPluginHdl;
-    OMX_BOOL bFound;
+    OMX_BOOL bFound = OMX_FALSE;
     OMX_U16 i = 0;
     MEMPLUGIN_ERRORTYPE eError = MEMPLUGIN_ERROR_NONE;
 
@@ -62,7 +62,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_Init(char *cMemPluginName, void **pMemPluginHandle
         goto EXIT;
     }
 
-    while(MemPlugins_Map[i].cMemPluginName != NULL)
+    while(MemPlugins_Map[i].pMemPluginConfig != 0)
     {
         if(strcmp(MemPlugins_Map[i].cMemPluginName,cMemPluginName) == 0)
         {

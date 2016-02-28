@@ -119,7 +119,6 @@ OMX_U16      nBFrames = 0; /* Number of B Frames in H264SVC Encoder */
  * ANDROID_QUIRCK_CHANGE_PORT_VALUES
  */
 #define OMX_H264SVCVE_NUM_INTERNAL_BUF (8)
-#define HAL_PIXEL_FORMAT_TI_NV12 (0x100)
 
 #define COLORCONVERT_MAX_SUB_BUFFERS (3)
 
@@ -832,7 +831,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264SVCE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             goto EXIT; //need to restore lenght fields in pBufferHdr
         }
 #ifdef ENABLE_GRALLOC_BUFFER
-        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, pBufferHdr->pBuffer, -1,
+        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer, -1,
                                        &pAuxBuf0, &pAuxBuf1,
                                        GrallocPointers);
         PROXY_checkRpcError();
