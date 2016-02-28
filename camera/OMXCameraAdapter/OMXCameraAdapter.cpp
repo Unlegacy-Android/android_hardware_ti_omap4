@@ -4093,7 +4093,7 @@ OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(const OMX_PTR ptrPrivate
                 OMX_U32 remainingSize = platformPrivate->nMetaDataSize;
                 OMX_OTHER_EXTRADATATYPE *extraData = (OMX_OTHER_EXTRADATATYPE *) platformPrivate->pMetaDataBuffer;
                 if ( NULL != extraData ) {
-                    while ( extraData->eType && extraData->nDataSize && extraData->data &&
+                    while ( extraData->eType && extraData->nDataSize && /*extraData->data &&*/
                         (remainingSize >= extraData->nSize)) {
                         if ( type == extraData->eType ) {
                             return extraData;

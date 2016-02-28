@@ -829,7 +829,7 @@ private:
                 }
 
             enum {
-                COMMAND_EXIT = -1,
+                COMMAND_EXIT = 0xFFFFFFFF,
                 CAMERA_START_IMAGE_CAPTURE = 0,
                 CAMERA_PERFORM_AUTOFOCUS,
                 CAMERA_SWITCH_TO_EXECUTING,
