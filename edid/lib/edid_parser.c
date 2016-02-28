@@ -15,6 +15,7 @@
  *
  */
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -267,7 +268,7 @@ static void edid_parse_s3d_support(struct edid_t *edid, const uint8_t *edid_data
 
     for (i = 0; i < edid->num_s3d_formats; i++) {
         unsigned int j;
-        enum hdmi_3d_subsampling subsampling;
+        enum hdmi_3d_subsampling subsampling = HDMI_SS_NONE;
         if (edid->s3d_format_list[i].format == HDMI_SIDE_BY_SIDE_HALF) {
             uint16_t bitmask = HDMI_SIDE_BY_SIDE_HALF_QUINCUNX_BIT | HDMI_SIDE_BY_SIDE_HALF_BIT;
             if ( (s3d_struct_all & bitmask) == bitmask) {
@@ -279,8 +280,6 @@ static void edid_parse_s3d_support(struct edid_t *edid, const uint8_t *edid_data
             }
         } else if (edid->s3d_format_list[i].format == HDMI_TOPBOTTOM) {
             subsampling = HDMI_SS_VERTICAL;
-        } else {
-            subsampling = HDMI_SS_NONE;
         }
         count = 0;
         for (j = 0; j < 16; j++) {

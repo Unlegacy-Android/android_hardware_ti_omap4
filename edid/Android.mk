@@ -19,6 +19,8 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
     lib/edid_parser.c
 
+LOCAL_CFLAGS := -Wall -Werror
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libedid
 
