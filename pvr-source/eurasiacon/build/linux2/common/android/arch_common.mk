@@ -38,21 +38,48 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+ifeq ($(USE_CLANG),1)
+export CC  := $(OUT_DIR)/host/$(HOST_OS)-$(HOST_ARCH)/bin/clang
+export CXX := $(OUT_DIR)/host/$(HOST_OS)-$(HOST_ARCH)/bin/clang++
+endif
+
+# FIXME: We need to run this early because config/core.mk hasn't been
+# included yet. Use the same variable names as in that makefile.
+#
+_CC		:= $(if $(filter default,$(origin CC)),gcc,$(CC))
+_CLANG	:= $(shell ../tools/cc-check.sh --clang --cc $(_CC))
+
 SYS_CFLAGS := \
  -fno-short-enums \
  -funwind-tables \
- -D__linux__ \
- -I$(ANDROID_ROOT)/bionic/libc/arch-$(ANDROID_ARCH)/include \
- -I$(ANDROID_ROOT)/bionic/libc/include \
- -I$(ANDROID_ROOT)/bionic/libc/kernel/common \
- -I$(ANDROID_ROOT)/bionic/libc/kernel/arch-$(ANDROID_ARCH) \
- -I$(ANDROID_ROOT)/bionic/libm/include \
- -I$(ANDROID_ROOT)/bionic/libm/include/$(ANDROID_ARCH) \
- -I$(ANDROID_ROOT)/bionic/libthread_db/include \
- -I$(ANDROID_ROOT)/frameworks/base/include \
+ -D__linux__
+SYS_INCLUDES := \
+ -isystem $(ANDROID_ROOT)/bionic/libc/arch-$(ANDROID_ARCH)/include \
+ -isystem $(ANDROID_ROOT)/bionic/libc/include \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/common \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/arch-$(ANDROID_ARCH) \
+ -isystem $(ANDROID_ROOT)/bionic/libm/include \
+ -isystem $(ANDROID_ROOT)/bionic/libm/include/$(ANDROID_ARCH) \
+ -isystem $(ANDROID_ROOT)/bionic/libthread_db/include \
+ -isystem $(ANDROID_ROOT)/frameworks/base/include \
  -isystem $(ANDROID_ROOT)/system/core/include \
- -I$(ANDROID_ROOT)/hardware/libhardware/include \
- -I$(ANDROID_ROOT)/external/openssl/include
+ -isystem $(ANDROID_ROOT)/hardware/libhardware/include \
+ -isystem $(ANDROID_ROOT)/external/openssl/include \
+ -isystem $(ANDROID_ROOT)/system/media/camera/include \
+ -isystem $(ANDROID_ROOT)/hardware/libhardware_legacy/include
+
+# This is comparing PVR_BUILD_DIR to see if it is omap and adding 
+# includes required for it's HWC
+ifeq ($(notdir $(abspath .)),omap_android)
+SYS_INCLUDES += \
+ -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/kernel-headers
+endif
+
+ifeq ($(_CLANG),true)
+SYS_INCLUDES := \
+ -nostdinc $(SYS_INCLUDES) \
+ -isystem $(ANDROID_ROOT)/external/clang/lib/include
+endif
 
 ifeq ($(USE_TI_LIBION),1)
 SYS_CFLAGS += -DUSE_TI_LIBION
@@ -63,3 +90,7 @@ SYS_EXE_LDFLAGS := \
  -lc -ldl -lcutils
 
 SYS_LIB_LDFLAGS := $(SYS_EXE_LDFLAGS)
+
+SYS_EXE_LDFLAGS_CXX := -lstdc++
+
+SYS_LIB_LDFLAGS_CXX := $(SYS_EXE_LDFLAGS_CXX)
