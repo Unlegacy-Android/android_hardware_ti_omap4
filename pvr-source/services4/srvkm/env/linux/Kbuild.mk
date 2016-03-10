@@ -51,10 +51,8 @@ pvrsrvkm-y += \
 	services4/srvkm/env/linux/mutex.o \
 	services4/srvkm/env/linux/event.o \
 	services4/srvkm/env/linux/osperproc.o \
-	services4/srvkm/env/linux/sysfs.o \
 	services4/srvkm/common/buffer_manager.o \
 	services4/srvkm/common/devicemem.o \
-	services4/srvkm/common/deviceclass.o \
 	services4/srvkm/common/handle.o \
 	services4/srvkm/common/hash.o \
 	services4/srvkm/common/lists.o \
@@ -66,7 +64,6 @@ pvrsrvkm-y += \
 	services4/srvkm/common/perproc.o \
 	services4/srvkm/common/power.o \
 	services4/srvkm/common/pvrsrv.o \
-	services4/srvkm/common/queue.o \
 	services4/srvkm/common/ra.o \
 	services4/srvkm/common/refcount.o \
 	services4/srvkm/common/resman.o \
@@ -75,19 +72,35 @@ pvrsrvkm-y += \
 	services4/system/$(PVR_SYSTEM)/sysconfig.o \
 	services4/system/$(PVR_SYSTEM)/sysutils.o
 
-pvrsrvkm-$(CONFIG_ION_OMAP) += \
-	services4/srvkm/env/linux/ion.o
-pvrsrvkm-$(CONFIG_GCBV) += \
-	services4/srvkm/env/linux/gc_bvmapping.o
+ifeq ($(SUPPORT_PVRSRV_DEVICE_CLASS),1)
+pvrsrvkm-y += \
+	services4/srvkm/common/deviceclass.o \
+	services4/srvkm/common/queue.o
+endif
+
+ifeq ($(SUPPORT_DRM_GEM),1)
+pvrsrvkm-y += \
+	services4/srvkm/env/linux/dmabuf.o
+endif
 
 ifeq ($(SUPPORT_ION),1)
 pvrsrvkm-y += \
 	services4/srvkm/env/linux/ion.o
 endif
 
+ifeq ($(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC),1)
+pvrsrvkm-y += \
+	services4/srvkm/env/linux/pvr_sync.o
+endif
+
 ifeq ($(TTRACE),1)
 pvrsrvkm-y += \
 	services4/srvkm/common/ttrace.o
+endif
+
+ifeq ($(SUPPORT_PVRSRV_ANDROID_SYSTRACE),1)
+pvrsrvkm-y += \
+	services4/srvkm/env/linux/systrace.o
 endif
 
 ifneq ($(W),1)
@@ -156,7 +169,7 @@ pvrsrvkm-y += \
  services4/srvkm/env/linux/pvr_drm.o
 
 ccflags-y += \
- -I$(KERNELDIR)/include/drm \
+ -Iinclude/drm \
  -I$(TOP)/services4/include/env/linux \
 
 ifeq ($(PVR_DRI_DRM_NOT_PCI),1)
