@@ -49,7 +49,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_km.h"
 
 extern IMG_UINT32 g_ui32HostIRQCountSample;
-int powering_down = 0;
 
 #if defined(SUPPORT_HW_RECOVERY)
 static PVRSRV_ERROR SGXAddTimer(PVRSRV_DEVICE_NODE		*psDeviceNode,
@@ -375,7 +374,7 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 		#endif /* PDUMP */
 
 		/* Wait for the pending ukernel to host interrupts to come back. */
-		#if !defined(NO_HARDWARE)
+		#if !defined(NO_HARDWARE) && defined(SUPPORT_LISR_MISR_SYNC)
 		if (PollForValueKM(&g_ui32HostIRQCountSample,
 							psDevInfo->psSGXHostCtl->ui32InterruptCount,
 							0xffffffff,
@@ -387,7 +386,7 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 			SGXDumpDebugInfo(psDevInfo, IMG_FALSE);
 			PVR_DBG_BREAK;
 		}
-		#endif /* NO_HARDWARE */
+		#endif /* NO_HARDWARE && SUPPORT_LISR_MISR_SYNC*/
 #if defined(SGX_FEATURE_MP)
 		ui32CoresEnabled = ((OSReadHWReg(psDevInfo->pvRegsBaseKM, EUR_CR_MASTER_CORE) & EUR_CR_MASTER_CORE_ENABLE_MASK) >> EUR_CR_MASTER_CORE_ENABLE_SHIFT) + 1;
 #else
@@ -415,8 +414,6 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 							  psDevInfo->ui32MasterClkGateStatus2Mask,
 							  "Wait for SGX master clock gating (2)");
 		#endif /* SGX_FEATURE_MP */
-
-		powering_down = 1;
 
 		if (eNewPowerState == PVRSRV_DEV_POWER_STATE_OFF)
 		{
@@ -497,7 +494,6 @@ PVRSRV_ERROR SGXPostPowerState (IMG_HANDLE				hDevHandle,
 				PVR_DPF((PVR_DBG_ERROR,"SGXPostPowerState: SGXInitialise failed"));
 				return eError;
 			}
-			powering_down = 0;
 		}
 		else
 		{
