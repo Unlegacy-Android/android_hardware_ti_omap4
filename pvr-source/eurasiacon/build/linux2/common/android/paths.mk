@@ -40,6 +40,9 @@
 
 TARGET_BUILD_TYPE ?= release
 
+HOST_OS ?= linux
+HOST_ARCH ?= x86
+
 OUT_DIR ?= $(ANDROID_ROOT)/out
 
 ifeq ($(TARGET_BUILD_TYPE),debug)
@@ -48,6 +51,7 @@ else
 TARGET_ROOT := $(OUT_DIR)/target
 endif
 
-TOOLCHAIN ?= $(TARGET_ROOT)/product/$(TARGET_PRODUCT)/obj
+TOOLCHAIN ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj
+TOOLCHAIN2 ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/system
 
 LIBGCC := $(shell $(CROSS_COMPILE)gcc -print-libgcc-file-name)
