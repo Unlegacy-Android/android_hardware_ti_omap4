@@ -28,3 +28,4 @@ PRODUCT_COPY_FILES += \
 
 $(call inherit-product, hardware/ti/omap4/common.mk)
 $(call inherit-product-if-exists, vendor/ti/omap4/omap4-vendor.mk)
+$(call inherit-product-if-exists, vendor/widevine/omap4/widevine-vendor.mk)
