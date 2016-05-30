@@ -124,13 +124,13 @@ ifneq ($(strip $(KERNELDIR)),)
  endif
  ifeq ($(call kernel-version-at-least,3,0),true)
   SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED := 1
-  SYS_OMAP_HAS_DVFS_FRAMEWORK := 1
+  SYS_OMAP_HAS_DVFS_FRAMEWORK := 0
  endif
 else
  $(warning "KERNELDIR is not set, so can't feature check DVFS or dsscomp.")
  $(warning "Assuming we want DVFS and dsscomp support.")
  SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED := 1
- SYS_OMAP_HAS_DVFS_FRAMEWORK := 1
+ SYS_OMAP_HAS_DVFS_FRAMEWORK := 0
 endif
 
 ifneq ($(LDM_PLATFORM),1)
