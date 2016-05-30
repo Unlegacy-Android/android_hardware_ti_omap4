@@ -198,8 +198,8 @@ endif
 # This requires a new enough kernel version to have the base/sync driver.
 #
 ifeq ($(is_at_least_jellybean_mr1),1)
-EGL_EXTENSION_ANDROID_NATIVE_FENCE_SYNC := 1
-PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC := 1
+EGL_EXTENSION_ANDROID_NATIVE_FENCE_SYNC := 0
+PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC := 0
 endif
 
 ##############################################################################
