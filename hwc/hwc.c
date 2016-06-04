@@ -1586,7 +1586,7 @@ static int free_tiler2d_buffers(omap_hwc_device_t *hwc_dev)
     int i;
 
     for (i = 0 ; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
-        ion_free(hwc_dev->ion_fd, hwc_dev->ion_handles[i]);
+        ion_free(hwc_dev->ion_fd, (ion_user_handle_t) hwc_dev->ion_handles[i]);
         hwc_dev->ion_handles[i] = NULL;
     }
     return 0;

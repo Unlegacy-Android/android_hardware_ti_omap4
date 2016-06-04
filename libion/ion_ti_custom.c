@@ -19,6 +19,7 @@
  *
  */
 #include <cutils/log.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ static int ion_ioctl(int fd, int req, void *arg)
 
 
 int ion_alloc_tiler(int fd, size_t w, size_t h, int fmt, unsigned int flags,
-            ion_user_handle_t*handle, size_t *stride)
+            struct ion_handle **handle, size_t *stride)
 {
         int ret;
         struct omap_ion_tiler_alloc_data alloc_data = {

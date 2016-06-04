@@ -6,7 +6,7 @@
 __BEGIN_DECLS
 
 int ion_alloc_tiler(int fd, size_t w, size_t h, int fmt, unsigned int flags,
-            ion_user_handle_t*handle, size_t *stride);
+            struct ion_handle **handle, size_t *stride);
 
 __END_DECLS
 
