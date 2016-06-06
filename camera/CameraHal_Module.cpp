@@ -74,9 +74,11 @@ camera_module_t HAL_MODULE_INFO_SYM = {
     /* remove compilation warnings: */
     .set_callbacks = NULL,
     .get_vendor_tag_ops = NULL,
+#ifdef ANDROID_API_LP_OR_LATER
     .open_legacy = NULL,
     .set_torch_mode = NULL,
     .init = NULL,
+#endif
     .reserved = {0},
 };
 
