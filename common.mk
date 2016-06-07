@@ -47,7 +47,6 @@ endif
 PRODUCT_PACKAGES += \
     libion.so \
     pvrsrvinit \
-    libEGL_POWERVR_SGX54X \
     libPVRScopeServices.so
 
 # compatiblity for older binaries
