@@ -29,6 +29,7 @@
  */
 
 #include <hardware/gralloc.h>
+#include <hardware/memtrack.h>
 
 #define ALIGN(x,a)	(((x) + (a) - 1L) & ~((a) - 1L))
 #define HW_ALIGN	32
@@ -40,6 +41,13 @@
  * Future OEM video formats might be three sub-allocs (Y, U, V planes).
  */
 #define MAX_SUB_ALLOCS 3
+
+/* Format is not YCbCr (e.g. a RGB format) - bIsYUVFormat should be false */
+#define YUV_CHROMA_ORDER_NONE 0
+/* Cb follows Y */
+#define YUV_CHROMA_ORDER_CBCR_UV 1
+/* Cr follows Y */
+#define YUV_CHROMA_ORDER_CRCB_VU 2
 
 typedef struct
 {
@@ -103,23 +111,6 @@ typedef struct
 }
 __attribute__((aligned(sizeof(int)),packed)) IMG_native_handle_t;
 
-#if defined(SUPPORT_ANDROID_FRAMEBUFFER_HAL)
-
-typedef struct
-{
-	framebuffer_device_t base;
-
-	/* The HWC was loaded. post() is no longer responsible for presents */
-	int bBypassPost;
-
-	/* HWC path for present posts */
-	int (*Post2)(framebuffer_device_t *fb, buffer_handle_t *buffers,
-				 int num_buffers, void *data, int data_length);
-}
-IMG_framebuffer_device_public_t;
-
-#endif /* defined(SUPPORT_ANDROID_FRAMEBUFFER_HAL) */
-
 typedef struct
 {
 	int l, t, w, h;
@@ -155,17 +146,13 @@ typedef struct IMG_buffer_format_public_t
 	/* YUV output format */
 	int bIsYUVFormat;
 
-	/* TRUE if U/Cb follows Y, FALSE if V/Cr follows Y */
-	int bUVCbCrOrdering;
+	/* YCBCR_ORDERING_* defined the order of the Cb/Cr values */
+	int eYUVChromaOrder;
 
 	/* Utility function for adjusting YUV per-plane parameters */
 	IMG_buffer_format_compute_params_pfn pfnComputeParams;
 }
 IMG_buffer_format_public_t;
-
-#if defined(SUPPORT_ANDROID_MEMTRACK_HAL)
-
-#include <hardware/memtrack.h>
 
 typedef struct
 {
@@ -180,19 +167,9 @@ typedef struct
 }
 IMG_memtrack_record_public_t;
 
-#endif /* defined(SUPPORT_ANDROID_MEMTRACK_HAL) */
-
 typedef struct IMG_gralloc_module_public_t
 {
 	gralloc_module_t base;
-
-#if defined(SUPPORT_ANDROID_FRAMEBUFFER_HAL)
-	/* If the framebuffer has been opened, this will point to the
-	 * framebuffer device data required by the allocator, WSEGL
-	 * modules and composerhal.
-	 */
-	IMG_framebuffer_device_public_t *psFrameBufferDevice;
-#endif /* defined(SUPPORT_ANDROID_FRAMEBUFFER_HAL) */
 
 	/* This function is deprecated and might be NULL. Do not use it. */
 	int (*GetPhyAddrs)(gralloc_module_t const* module,
@@ -201,11 +178,9 @@ typedef struct IMG_gralloc_module_public_t
 	/* Obtain HAL's registered format list */
 	const IMG_buffer_format_public_t *(*GetBufferFormats)(void);
 
-#if defined(SUPPORT_ANDROID_MEMTRACK_HAL)
 	int (*GetMemTrackRecords)(struct IMG_gralloc_module_public_t const *module,
 							  IMG_memtrack_record_public_t **ppsRecords,
 							  size_t *puNumRecords);
-#endif /* defined(SUPPORT_ANDROID_MEMTRACK_HAL) */
 
 	/* Custom-blit components in lieu of overlay hardware */
 	int (*Blit)(struct IMG_gralloc_module_public_t const *module,
@@ -223,13 +198,38 @@ typedef struct IMG_gralloc_module_public_t
 }
 IMG_gralloc_module_public_t;
 
-/*
- * These are vendor specific pixel formats, by (informal) convention IMGTec
- * formats start from the top of the range, TI formats start from the bottom
+/**
+ * pixel format definitions
  */
-#define HAL_PIXEL_FORMAT_BGRX_8888      0x1FF
-#define HAL_PIXEL_FORMAT_TI_NV12        0x100
-#define HAL_PIXEL_FORMAT_TI_UNUSED      0x101 /* Free for use */
-#define HAL_PIXEL_FORMAT_TI_NV12_1D     0x102
+
+enum {
+    /*
+     * 0x100 - 0x1FF
+     *
+     * This range is reserved for pixel formats that are specific to the HAL
+     * implementation.  Implementations can use any value in this range to
+     * communicate video pixel formats between their HAL modules.  These formats
+     * must not have an alpha channel.  Additionally, an EGLimage created from a
+     * gralloc buffer of one of these formats must be supported for use with the
+     * GL_OES_EGL_image_external OpenGL ES extension.
+     */
+
+    /*
+     * These are vendor specific pixel formats, by (informal) convention IMGTec
+     * formats start from the top of the range, TI formats start from the bottom
+     */
+    HAL_PIXEL_FORMAT_TI_NV12    = 0x100,
+    HAL_PIXEL_FORMAT_TI_UNUSED  = 0x101, /* Free for use */
+    HAL_PIXEL_FORMAT_TI_NV12_1D = 0x102,
+    HAL_PIXEL_FORMAT_TI_Y8      = 0x103,
+    HAL_PIXEL_FORMAT_TI_Y16     = 0x104,
+    HAL_PIXEL_FORMAT_TI_UYVY    = 0x105,
+    HAL_PIXEL_FORMAT_BGRX_8888  = 0x1FF,
+
+    /* generic format missing from Android list, not specific to vendor implementation */
+    HAL_PIXEL_FORMAT_NV12       = 0x3231564E, // FourCC for NV12
+
+
+};
 
 #endif /* HAL_PUBLIC_H */
