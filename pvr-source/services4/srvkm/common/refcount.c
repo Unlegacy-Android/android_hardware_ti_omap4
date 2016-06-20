@@ -72,10 +72,12 @@ static DEFINE_SPINLOCK(gsCCBLock);
 #define PVRSRV_REFCOUNT_CCB_DEBUG_MMAP		(1U << 16)
 #define PVRSRV_REFCOUNT_CCB_DEBUG_MMAP2		(1U << 17)
 #define PVRSRV_REFCOUNT_CCB_DEBUG_ION_SYNC	(1U << 18)
+#define PVRSRV_REFCOUNT_CCB_DEBUG_DMABUF_SYNC	(1U << 19)
 #else
 #define PVRSRV_REFCOUNT_CCB_DEBUG_MMAP		0
 #define PVRSRV_REFCOUNT_CCB_DEBUG_MMAP2		0
 #define PVRSRV_REFCOUNT_CCB_DEBUG_ION_SYNC	0
+#define PVRSRV_REFCOUNT_CCB_DEBUG_DMABUF_SYNC	0
 #endif
 
 #define PVRSRV_REFCOUNT_CCB_DEBUG_ALL		~0U
@@ -83,8 +85,11 @@ static DEFINE_SPINLOCK(gsCCBLock);
 /*static const IMG_UINT guiDebugMask = PVRSRV_REFCOUNT_CCB_DEBUG_ALL;*/
 static const IMG_UINT guiDebugMask =
 	PVRSRV_REFCOUNT_CCB_DEBUG_SYNCINFO |
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
+#if defined(SUPPORT_ION)
 	PVRSRV_REFCOUNT_CCB_DEBUG_ION_SYNC |
+#endif
+#if defined(SUPPORT_DMABUF)
+	PVRSRV_REFCOUNT_CCB_DEBUG_DMABUF_SYNC |
 #endif
 	PVRSRV_REFCOUNT_CCB_DEBUG_MMAP2;
 
@@ -588,8 +593,8 @@ skip:
 	psOffsetStruct->ui32Mapped--;
 }
 
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-PVRSRV_ERROR PVRSRVExternalBufferSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+#if defined(SUPPORT_ION)
+PVRSRV_ERROR PVRSRVIonBufferSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
 											IMG_HANDLE hUnique,
 											IMG_HANDLE hDevCookie,
 											IMG_HANDLE hDevMemContext,
@@ -601,7 +606,7 @@ PVRSRV_ERROR PVRSRVExternalBufferSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_IN
 	/*
 		We have to do the call 1st as we need to Ion syninfo which it returns
 	*/
-	eError = PVRSRVExternalBufferSyncAcquire(hUnique,
+	eError = PVRSRVIonBufferSyncAcquire(hUnique,
 										hDevCookie,
 										hDevMemContext,
 										ppsIonSyncInfo);
@@ -637,7 +642,7 @@ skip:
 	return eError;
 }
 
-void PVRSRVExternalBufferSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+void PVRSRVIonBufferSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
 									PVRSRV_ION_SYNC_INFO *psIonSyncInfo,
 									PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
@@ -665,10 +670,90 @@ void PVRSRVExternalBufferSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
 
 	PVRSRV_UNLOCK_CCB();
 skip:
-	PVRSRVExternalBufferSyncRelease(psIonSyncInfo);
+	PVRSRVIonBufferSyncRelease(psIonSyncInfo);
 }
 
 #endif /* defined (SUPPORT_ION) */
+
+#if defined(SUPPORT_DMABUF)
+PVRSRV_ERROR PVRSRVDmaBufSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+											IMG_HANDLE hUnique,
+											IMG_HANDLE hPriv,
+											IMG_HANDLE hDevCookie,
+											IMG_HANDLE hDevMemContext,
+											PVRSRV_DMABUF_SYNC_INFO **ppsDmaBufSyncInfo,
+											PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	PVRSRV_ERROR eError;
+
+	eError = PVRSRVDmaBufSyncAcquire(hUnique,
+										hPriv,
+										hDevCookie,
+										hDevMemContext,
+										ppsDmaBufSyncInfo);
+
+	if (eError == PVRSRV_OK)
+	{
+		if(!(guiDebugMask & PVRSRV_REFCOUNT_CCB_DEBUG_DMABUF_SYNC))
+			goto skip;
+
+		PVRSRV_LOCK_CCB();
+
+		gsRefCountCCB[giOffset].pszFile = pszFile;
+		gsRefCountCCB[giOffset].iLine = iLine;
+		gsRefCountCCB[giOffset].ui32PID = OSGetCurrentProcessIDKM();
+		snprintf(gsRefCountCCB[giOffset].pcMesg,
+				 PVRSRV_REFCOUNT_CCB_MESG_MAX - 1,
+				 PVRSRV_REFCOUNT_CCB_FMT_STRING,
+				 "DMA-BUF_SYNC",
+				 (*ppsDmaBufSyncInfo)->psSyncInfo,
+				 psKernelMemInfo,
+				 NULL,
+				 *ppsDmaBufSyncInfo,
+				 (*ppsDmaBufSyncInfo)->ui32RefCount - 1,
+				 (*ppsDmaBufSyncInfo)->ui32RefCount,
+				 0);
+		gsRefCountCCB[giOffset].pcMesg[PVRSRV_REFCOUNT_CCB_MESG_MAX - 1] = 0;
+		giOffset = (giOffset + 1) % PVRSRV_REFCOUNT_CCB_MAX;
+
+		PVRSRV_UNLOCK_CCB();
+	}
+
+skip:
+	return eError;
+}
+
+void PVRSRVDmaBufSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+									PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo,
+									PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	if(!(guiDebugMask & PVRSRV_REFCOUNT_CCB_DEBUG_DMABUF_SYNC))
+		goto skip;
+
+	PVRSRV_LOCK_CCB();
+
+	gsRefCountCCB[giOffset].pszFile = pszFile;
+	gsRefCountCCB[giOffset].iLine = iLine;
+	gsRefCountCCB[giOffset].ui32PID = OSGetCurrentProcessIDKM();
+	snprintf(gsRefCountCCB[giOffset].pcMesg,
+			 PVRSRV_REFCOUNT_CCB_MESG_MAX - 1,
+			 PVRSRV_REFCOUNT_CCB_FMT_STRING,
+			 "DMA-BUF_SYNC",
+			 psDmaBufSyncInfo->psSyncInfo,
+			 psKernelMemInfo,
+			 NULL,
+			 psDmaBufSyncInfo,
+			 psDmaBufSyncInfo->ui32RefCount,
+			 psDmaBufSyncInfo->ui32RefCount - 1,
+			 0);
+	gsRefCountCCB[giOffset].pcMesg[PVRSRV_REFCOUNT_CCB_MESG_MAX - 1] = 0;
+	giOffset = (giOffset + 1) % PVRSRV_REFCOUNT_CCB_MAX;
+
+	PVRSRV_UNLOCK_CCB();
+skip:
+	PVRSRVDmaBufSyncRelease(psDmaBufSyncInfo);
+}
+#endif /* defined (SUPPORT_DMABUF) */
 
 #endif /* defined(__linux__) */
 
