@@ -83,8 +83,15 @@ extern "C" {
 #define PVRSRV_OS_HEAP_MASK			0xf /* host heap flags mask */
 #define PVRSRV_OS_PAGEABLE_HEAP		0x1 /* allocation pageable */
 #define PVRSRV_OS_NON_PAGEABLE_HEAP	0x2 /* allocation non pageable */
+#if defined (__linux__) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+#define PVRSRV_SWAP_BUFFER_ALLOCATION	0x4 /* allocation for swap buffer */
+#else
+#define PVRSRV_SWAP_BUFFER_ALLOCATION	0x0
+#endif
 
-
+#if defined (PVRSRV_DEVMEM_TIME_STATS)
+IMG_UINT64 OSClockMonotonicus(IMG_VOID);
+#endif
 IMG_UINT32 OSClockus(IMG_VOID);
 IMG_UINT32 OSGetPageSize(IMG_VOID);
 PVRSRV_ERROR OSInstallDeviceLISR(IMG_VOID *pvSysData,
@@ -521,6 +528,12 @@ PVRSRV_ERROR OSUnmapPhysToUserSpace(IMG_HANDLE hDevCookie,
 
 PVRSRV_ERROR OSLockResource(PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID);
 PVRSRV_ERROR OSUnlockResource(PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID);
+
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+PVRSRV_ERROR OSLockResourceAndBlockMISR(PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID);
+PVRSRV_ERROR OSUnlockResourceAndUnblockMISR(PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
+
 IMG_BOOL OSIsResourceLocked(PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID);
 PVRSRV_ERROR OSCreateResource(PVRSRV_RESOURCE *psResource);
 PVRSRV_ERROR OSDestroyResource(PVRSRV_RESOURCE *psResource);

@@ -73,20 +73,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	PVR_MOD_STATIC	static
 #endif
 
-#if defined(PVR_LDM_PLATFORM_PRE_REGISTERED)
-#if !defined(NO_HARDWARE)
+#if (defined(PVR_LDM_PLATFORM_PRE_REGISTERED) || defined(PVR_LDM_DEVICE_TREE)) && !defined(NO_HARDWARE)
 #define PVR_USE_PRE_REGISTERED_PLATFORM_DEV
 #endif
+
+#if defined(PVR_LDM_DEVICE_TREE) && !defined(NO_HARDWARE)
+#define PVR_USE_DEVICE_TREE
 #endif
 
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
-
-#ifdef CONFIG_OF
-#include <linux/of.h>
-#endif
 
 #if defined(SUPPORT_DRI_DRM)
 #include <drm/drmP.h>
@@ -143,6 +141,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(SUPPORT_DRI_DRM)
 #include "pvr_drm.h"
 #endif
+
+#if defined(SUPPORT_DMABUF)
+#include "pvr_linux_fence.h"
+#endif
+
 /*
  * DRVNAME is the name we use to register our driver.
  * DEVNAME is the name we use to register actual device nodes.
@@ -170,9 +173,17 @@ module_param(gPVRDebugLevel, uint, 0644);
 MODULE_PARM_DESC(gPVRDebugLevel, "Sets the level of debug output (default 0x7)");
 #endif /* defined(PVRSRV_NEED_PVR_DPF) */
 
-/* Newer kernels no longer support __devinitdata */
 #if !defined(__devinitdata)
 #define __devinitdata
+#endif
+#if !defined(__devinit)
+#define __devinit
+#endif
+#if !defined(__devexit)
+#define __devexit
+#endif
+#if !defined(__devexit_p)
+#define __devexit_p(x) (&(x))
 #endif
 
 #if defined(SUPPORT_PVRSRV_DEVICE_CLASS)
@@ -262,34 +273,36 @@ struct pci_device_id powervr_id_table[] __devinitdata = {
 MODULE_DEVICE_TABLE(pci, powervr_id_table);
 #endif
 
+#if defined(PVR_USE_DEVICE_TREE)
+static struct of_device_id powervr_id_table[] = {
+	{
+		.compatible = SYS_SGX_DEV_NAME
+	},
+	{}
+};
+MODULE_DEVICE_TABLE(of, powervr_id_table);
+#else
 #if defined(PVR_USE_PRE_REGISTERED_PLATFORM_DEV)
 static struct platform_device_id powervr_id_table[] __devinitdata = {
 	{SYS_SGX_DEV_NAME, 0},
 	{}
 };
 #endif
-
-#ifdef CONFIG_OF
-static const struct of_device_id omap_gpu_id_table[] = {
-        { .compatible = "ti,omap4-gpu" },
-        {}
-};
-MODULE_DEVICE_TABLE(of, omap_gpu_id_table);
 #endif
 
 static LDM_DRV powervr_driver = {
 #if defined(PVR_LDM_PLATFORM_MODULE)
 	.driver = {
 		.name		= DRVNAME,
-#ifdef CONFIG_OF
-		.of_match_table = of_match_ptr(omap_gpu_id_table),
+#if defined(PVR_USE_DEVICE_TREE)
+		.of_match_table = powervr_id_table,
 #endif
 	},
 #endif
 #if defined(PVR_LDM_PCI_MODULE)
 	.name		= DRVNAME,
 #endif
-#if defined(PVR_LDM_PCI_MODULE) || defined(PVR_USE_PRE_REGISTERED_PLATFORM_DEV)
+#if (defined(PVR_LDM_PCI_MODULE) || defined(PVR_USE_PRE_REGISTERED_PLATFORM_DEV)) && !defined(PVR_USE_DEVICE_TREE)
 	.id_table = powervr_id_table,
 #endif
 	.probe		= PVRSRVDriverProbe,
@@ -439,6 +452,16 @@ static void __devexit PVRSRVDriverRemove(LDM_DEV *pDevice)
 }
 #endif /* defined(PVR_LDM_MODULE) */
 
+#if !defined(SUPPORT_DRI_DRM)
+struct device *PVRLDMGetDevice(void)
+{
+#if defined(PVR_LDM_MODULE)
+	return &gpsPVRLDMDev->dev;
+#else
+	return NULL;
+#endif
+}
+#endif
 
 #if defined(PVR_LDM_MODULE) || defined(SUPPORT_DRI_DRM)
 static PVRSRV_LINUX_MUTEX gsPMMutex;
@@ -975,9 +998,16 @@ static int __init PVRCore_Init(void)
 		goto init_failed;
 	}
 
+#if defined(SUPPORT_DMABUF)
+	if (PVRLinuxFenceInit())
+	{
+		error = -ENOMEM;
+		goto init_failed;
+	}
+#endif
+
 	LinuxBridgeInit();
 	
-
 	PVRMMapInit();
 
 #if defined(PVR_LDM_MODULE)
@@ -1119,6 +1149,9 @@ init_failed:
 	PVRMMapCleanup();
 	LinuxMMCleanup();
 	LinuxBridgeDeInit();
+#if defined(SUPPORT_DMABUF)
+	PVRLinuxFenceDeInit();
+#endif
 	PVROSFuncDeInit();
 	RemoveProcEntries();
 	return error;
@@ -1223,6 +1256,10 @@ static void __exit PVRCore_Cleanup(void)
 	LinuxMMCleanup();
 
 	LinuxBridgeDeInit();
+
+#if defined(SUPPORT_DMABUF)
+	PVRLinuxFenceDeInit();
+#endif
 
 	PVROSFuncDeInit();
 

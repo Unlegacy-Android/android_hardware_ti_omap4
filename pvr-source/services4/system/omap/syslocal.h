@@ -84,17 +84,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,13))
 #include <plat/gpu.h>
 #endif
 #if !defined(PVR_NO_OMAP_TIMER)
 #define	PVR_OMAP_USE_DM_TIMER_API
 #include <plat/dmtimer.h>
 #endif
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
-#include <linux/wakelock.h>
 #endif
 
 #if !defined(PVR_NO_OMAP_TIMER)
@@ -193,9 +189,6 @@ typedef struct _SYS_SPECIFIC_DATA_TAG_
 #if defined(PVR_OMAP_USE_DM_TIMER_API)
 	struct omap_dm_timer *psGPTimer;
 #endif
-#if defined(CONFIG_HAS_WAKELOCK)
-	struct wake_lock wake_lock;
-#endif /* CONFIG_HAS_WAKELOCK */
 #endif	/* defined(__linux__) */
 } SYS_SPECIFIC_DATA;
 

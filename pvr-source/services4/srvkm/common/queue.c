@@ -52,6 +52,63 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else
 #include <../drivers/staging/android/sw_sync.h>
 #endif
+
+#if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+#include <linux/list.h>
+#include <linux/workqueue.h>
+
+typedef struct _PVR_QUEUE_SYNC_KERNEL_SYNC_INFO_
+{
+	/* Base services sync info structure */
+	PVRSRV_KERNEL_SYNC_INFO *psBase;
+
+	struct list_head	sHead;
+} PVR_QUEUE_SYNC_KERNEL_SYNC_INFO;
+
+static IMG_BOOL PVRSyncIsSyncInfoInUse(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo)
+{
+	return !(psSyncInfo->psSyncData->ui32WriteOpsPending == psSyncInfo->psSyncData->ui32WriteOpsComplete &&
+			psSyncInfo->psSyncData->ui32ReadOpsPending == psSyncInfo->psSyncData->ui32ReadOpsComplete &&
+			psSyncInfo->psSyncData->ui32ReadOps2Pending == psSyncInfo->psSyncData->ui32ReadOps2Complete);
+}
+
+/* Defer Workqueue for releasing command kernel sync info */
+static struct workqueue_struct *gpsWorkQueue;
+
+/* Linux work struct for workqueue. */
+static struct work_struct gsWork;
+
+/* The "defer-free" sync object list. */
+static LIST_HEAD(gSyncInfoFreeList);
+static DEFINE_SPINLOCK(gSyncInfoFreeListLock);
+
+static void PVRSyncWorkQueueFunction(struct work_struct *data)
+{
+	struct list_head sFreeList, *psEntry, *n;
+	PVR_QUEUE_SYNC_KERNEL_SYNC_INFO *psSyncInfo;
+
+	INIT_LIST_HEAD(&sFreeList);
+	spin_lock(&gSyncInfoFreeListLock);
+	list_for_each_safe(psEntry, n, &gSyncInfoFreeList)
+	{
+		psSyncInfo = container_of(psEntry, PVR_QUEUE_SYNC_KERNEL_SYNC_INFO, sHead);
+
+		if(!PVRSyncIsSyncInfoInUse(psSyncInfo->psBase))
+			list_move_tail(psEntry, &sFreeList);
+    	}
+	spin_unlock(&gSyncInfoFreeListLock);
+
+	list_for_each_safe(psEntry, n, &sFreeList)
+	{
+		psSyncInfo = container_of(psEntry, PVR_QUEUE_SYNC_KERNEL_SYNC_INFO, sHead);
+
+		list_del(psEntry);
+
+		PVRSRVKernelSyncInfoDecRef(psSyncInfo->psBase, IMG_NULL);
+	}
+}
+#endif
+
 static struct sync_fence *AllocQueueFence(struct sw_sync_timeline *psTimeline, IMG_UINT32 ui32FenceValue, const char *szName)
 {
 	struct sync_fence *psFence = IMG_NULL;
@@ -425,7 +482,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCreateCommandQueueKM(IMG_SIZE_T uQueueSize,
 
 	if (ui32NoOfSwapchainCreated >= DC_NUM_COMMANDS_PER_TYPE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateCommandQueueKM: Swapchain already exists, increament DC_MAX_SUPPORTED_QUEUES to support more than one swapchain"));
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateCommandQueueKM: Swapchain already exists, increment DC_MAX_SUPPORTED_QUEUES to support more than one swapchain"));
 		return PVRSRV_ERROR_FLIP_CHAIN_EXISTS;
 	}
 
@@ -486,8 +543,13 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCreateCommandQueueKM(IMG_SIZE_T uQueueSize,
 	}
 
 	/* Ensure we don't corrupt queue list, by blocking access */
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	eError = OSLockResourceAndBlockMISR(&psSysData->sQProcessResource,
+							KERNEL_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	eError = OSLockResource(&psSysData->sQProcessResource,
 							KERNEL_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	if (eError != PVRSRV_OK)
 	{
 		goto ErrorExit;
@@ -496,7 +558,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCreateCommandQueueKM(IMG_SIZE_T uQueueSize,
 	psQueueInfo->psNextKM = psSysData->psQueueList;
 	psSysData->psQueueList = psQueueInfo;
 
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	eError = OSUnlockResourceAndUnblockMISR(&psSysData->sQProcessResource, KERNEL_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	eError = OSUnlockResource(&psSysData->sQProcessResource, KERNEL_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	if (eError != PVRSRV_OK)
 	{
 		goto ErrorExit;
@@ -504,6 +570,18 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCreateCommandQueueKM(IMG_SIZE_T uQueueSize,
 
 	*ppsQueueInfo = psQueueInfo;
 
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+	if(!ui32NoOfSwapchainCreated)
+	{
+		gpsWorkQueue = create_freezable_workqueue("flip_pvr_sync_workqueue");
+		if(!gpsWorkQueue)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to create flip_pvr_sync workqueue", __func__));
+			goto ErrorExit;
+		}
+		INIT_WORK(&gsWork, PVRSyncWorkQueueFunction);
+	}
+#endif
 	ui32NoOfSwapchainCreated++;
 
 	return PVRSRV_OK;
@@ -577,8 +655,13 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDestroyCommandQueueKM(PVRSRV_QUEUE_INFO *psQueue
 	}
 
 	/* Ensure we don't corrupt queue list, by blocking access */
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	eError = OSLockResourceAndBlockMISR(&psSysData->sQProcessResource,
+								KERNEL_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	eError = OSLockResource(&psSysData->sQProcessResource,
 								KERNEL_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	if (eError != PVRSRV_OK)
 	{
 		goto ErrorExit;
@@ -632,7 +715,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDestroyCommandQueueKM(PVRSRV_QUEUE_INFO *psQueue
 
 		if(!psQueue)
 		{
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+			eError = OSUnlockResourceAndUnblockMISR(&psSysData->sQProcessResource, KERNEL_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 			eError = OSUnlockResource(&psSysData->sQProcessResource, KERNEL_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 			if (eError != PVRSRV_OK)
 			{
 				goto ErrorExit;
@@ -643,7 +730,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDestroyCommandQueueKM(PVRSRV_QUEUE_INFO *psQueue
 	}
 
 	/*  unlock the Q list lock resource */
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	eError = OSUnlockResourceAndUnblockMISR(&psSysData->sQProcessResource, KERNEL_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	eError = OSUnlockResource(&psSysData->sQProcessResource, KERNEL_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	if (eError != PVRSRV_OK)
 	{
 		goto ErrorExit;
@@ -659,6 +750,12 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDestroyCommandQueueKM(PVRSRV_QUEUE_INFO *psQueue
 		}
 	}
 
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+	if(!ui32NoOfSwapchainCreated && gpsWorkQueue)
+	{
+		destroy_workqueue(gpsWorkQueue);
+	}
+#endif
 ErrorExit:
 
 	return eError;
@@ -849,6 +946,13 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInsertCommandKM(PVRSRV_QUEUE_INFO	*psQueue,
 	/* setup dst sync objects and their sync dependencies */
 	for (i=0; i<ui32DstSyncCount; i++)
 	{
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+		PVR_QUEUE_SYNC_KERNEL_SYNC_INFO *psQueueSync = (PVR_QUEUE_SYNC_KERNEL_SYNC_INFO*)kmalloc(sizeof(PVR_QUEUE_SYNC_KERNEL_SYNC_INFO),GFP_KERNEL);
+		psQueueSync->psBase = apsDstSync[i];
+		spin_lock(&gSyncInfoFreeListLock);
+		list_add_tail(&psQueueSync->sHead, &gSyncInfoFreeList);
+		spin_unlock(&gSyncInfoFreeListLock);
+#endif
 		PVR_TTRACE_SYNC_OBJECT(PVRSRV_TRACE_GROUP_QUEUE, QUEUE_TOKEN_DST_SYNC,
 						apsDstSync[i], PVRSRV_SYNCOP_SAMPLE);
 
@@ -868,6 +972,14 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInsertCommandKM(PVRSRV_QUEUE_INFO	*psQueue,
 	/* setup src sync objects and their sync dependencies */
 	for (i=0; i<ui32SrcSyncCount; i++)
 	{
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+		PVR_QUEUE_SYNC_KERNEL_SYNC_INFO *psQueueSync = (PVR_QUEUE_SYNC_KERNEL_SYNC_INFO*)kmalloc(sizeof(PVR_QUEUE_SYNC_KERNEL_SYNC_INFO),GFP_KERNEL);
+		psQueueSync->psBase = apsSrcSync[i];
+		spin_lock(&gSyncInfoFreeListLock);
+		list_add_tail(&psQueueSync->sHead, &gSyncInfoFreeList);
+		spin_unlock(&gSyncInfoFreeListLock);
+#endif
+
 		PVR_TTRACE_SYNC_OBJECT(PVRSRV_TRACE_GROUP_QUEUE, QUEUE_TOKEN_DST_SYNC,
 						apsSrcSync[i], PVRSRV_SYNCOP_SAMPLE);
 
@@ -1221,7 +1333,17 @@ PVRSRV_ERROR PVRSRVProcessQueues(IMG_BOOL	bFlush)
 	/* Ensure we don't corrupt queue list, by blocking access. This is required for OSs where
 	    multiple ISR threads may exist simultaneously (eg WinXP DPC routines)
 	*/
+	if (psSysData->psQueueList == IMG_NULL)
+	{
+		PVR_DPF((PVR_DBG_MESSAGE,"No Queues installed - cannot process commands"));
+		return PVRSRV_OK;
+	}
+
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	while (OSLockResourceAndBlockMISR(&psSysData->sQProcessResource, ISR_ID) != PVRSRV_OK)
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	while (OSLockResource(&psSysData->sQProcessResource, ISR_ID) != PVRSRV_OK)
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	{
 		OSWaitus(1);
 	};
@@ -1265,7 +1387,11 @@ PVRSRV_ERROR PVRSRVProcessQueues(IMG_BOOL	bFlush)
 	List_PVRSRV_DEVICE_NODE_ForEach(psSysData->psDeviceNodeList,
 									&PVRSRVProcessQueues_ForEachCb);
 
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	OSUnlockResourceAndUnblockMISR(&psSysData->sQProcessResource, ISR_ID);
+#else /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 	OSUnlockResource(&psSysData->sQProcessResource, ISR_ID);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
 
 	return PVRSRV_OK;
 }
@@ -1309,7 +1435,9 @@ IMG_VOID PVRSRVCommandCompleteKM(IMG_HANDLE	hCmdCookie,
 	{
 		psCmdCompleteData->psDstSync[i].psKernelSyncInfoKM->psSyncData->ui32WriteOpsComplete++;
 
+#if !(defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS))
 		PVRSRVKernelSyncInfoDecRef(psCmdCompleteData->psDstSync[i].psKernelSyncInfoKM, IMG_NULL);
+#endif
 
 		PVR_TTRACE_SYNC_OBJECT(PVRSRV_TRACE_GROUP_QUEUE, QUEUE_TOKEN_UPDATE_DST,
 					  psCmdCompleteData->psDstSync[i].psKernelSyncInfoKM,
@@ -1327,7 +1455,9 @@ IMG_VOID PVRSRVCommandCompleteKM(IMG_HANDLE	hCmdCookie,
 	{
 		psCmdCompleteData->psSrcSync[i].psKernelSyncInfoKM->psSyncData->ui32ReadOps2Complete++;
 
+#if !(defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS))
 		PVRSRVKernelSyncInfoDecRef(psCmdCompleteData->psSrcSync[i].psKernelSyncInfoKM, IMG_NULL);
+#endif
 
 		PVR_TTRACE_SYNC_OBJECT(PVRSRV_TRACE_GROUP_QUEUE, QUEUE_TOKEN_UPDATE_SRC,
 					  psCmdCompleteData->psSrcSync[i].psKernelSyncInfoKM,
@@ -1339,6 +1469,14 @@ IMG_VOID PVRSRVCommandCompleteKM(IMG_HANDLE	hCmdCookie,
 				psCmdCompleteData->psSrcSync[i].ui32ReadOps2Pending,
 				psCmdCompleteData->psSrcSync[i].ui32WriteOpsPending));
 	}
+
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) && defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
+	if(psCmdCompleteData->ui32DstSyncCount || psCmdCompleteData->ui32SrcSyncCount)
+	{
+		/* Add work to worker thread for checking and freeing of kernel sync */
+		queue_work(gpsWorkQueue, &gsWork);
+	}
+#endif
 
 	PVR_TTRACE(PVRSRV_TRACE_GROUP_QUEUE, PVRSRV_TRACE_CLASS_CMD_COMP_END,
 			QUEUE_TOKEN_COMMAND_COMPLETE);
