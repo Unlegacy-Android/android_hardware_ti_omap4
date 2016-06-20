@@ -1,5 +1,5 @@
 /*************************************************************************/ /*!
-@Title          Ion driver inter-operability code.
+@Title          DmaBuf driver inter-operability code.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -42,17 +42,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef __IMG_LINUX_DMABUF_H__
 #define __IMG_LINUX_DMABUF_H__
 
+#if defined(SUPPORT_DMABUF)
+
 #include "img_types.h"
 #include "servicesext.h"
 
-PVRSRV_ERROR DmabufImportBufferAndAcquirePhysAddr(IMG_UINT32 ui32NumFDs,
-											   IMG_INT32  *pi32BufferFDs,
+PVRSRV_ERROR DmaBufInit(IMG_VOID);
+
+IMG_VOID DmaBufDeinit(IMG_VOID);
+
+PVRSRV_ERROR DmaBufImportAndAcquirePhysAddr(const IMG_UINT32 ui32NumFDs,
+	   										   const IMG_INT32 *pi32DmaBufFD,
+											   const IMG_SIZE_T *puiDmaBufOffset,
+											   const IMG_SIZE_T *puiSize,
 											   IMG_UINT32 *pui32PageCount,
 											   IMG_SYS_PHYADDR **ppsSysPhysAddr,
-											   IMG_PVOID *ppvKernAddr0,
-											   IMG_HANDLE *phPriv,
+											   IMG_SIZE_T *puiMemInfoOffset,
+											   IMG_PVOID *ppvKernAddr,
+											   IMG_HANDLE *phImport,
 											   IMG_HANDLE *phUnique);
 
-IMG_VOID DmabufUnimportBufferAndReleasePhysAddr(IMG_HANDLE hPriv);
+IMG_VOID DmaBufUnimportAndReleasePhysAddr(IMG_HANDLE hImport);
+
+IMG_HANDLE DmaBufGetNativeSyncHandle(IMG_HANDLE hImport);
+void DmaBufFreeNativeSyncHandle(IMG_HANDLE hSync);
+
+void *DmaBufGetReservationObject(IMG_HANDLE hSync, unsigned uIndex);
+#endif /* defined(SUPPORT_DMABUF) */
 
 #endif /* __IMG_LINUX_DMABUF_H__ */

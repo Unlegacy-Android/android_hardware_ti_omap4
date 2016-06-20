@@ -76,7 +76,7 @@ COMMON_USER_FLAGS += -fno-strict-aliasing
 # We always enable debugging. Either the release binaries are stripped
 # and the symbols put in the symbolpackage, or we're building debug.
 #
-COMMON_USER_FLAGS += -g
+COMMON_USER_FLAGS += -g $(ANDROID_FPGA_FORCE_32BIT)
 
 # User C and User C++ warning flags
 #
@@ -173,6 +173,7 @@ TESTED_KBUILD_FLAGS := \
  $(call kernel-cc-option,-Wno-pointer-arith) \
  $(call kernel-cc-option,-Wno-aggregate-return) \
  $(call kernel-cc-option,-Wno-unused-but-set-variable) \
+ $(call kernel-cc-option,-Wno-old-style-declaration) \
  $(call kernel-cc-optional-warning,-Wbad-function-cast) \
  $(call kernel-cc-optional-warning,-Wcast-qual) \
  $(call kernel-cc-optional-warning,-Wcast-align) \

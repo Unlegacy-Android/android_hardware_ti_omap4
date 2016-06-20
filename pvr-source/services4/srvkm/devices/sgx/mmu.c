@@ -307,8 +307,7 @@ static IMG_VOID DumpPT(MMU_PT_INFO *psPTInfoList)
 	/* 1024 entries in a 4K page table */
 	for(i = 0; i < 1024; i += 8)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				 "%08X %08X %08X %08X %08X %08X %08X %08X\n",
+		PVR_LOG(("%08X %08X %08X %08X %08X %08X %08X %08X",
 				 p[i + 0], p[i + 1], p[i + 2], p[i + 3],
 				 p[i + 4], p[i + 5], p[i + 6], p[i + 7]));
 	}
@@ -333,7 +332,7 @@ static IMG_VOID CheckPT(MMU_PT_INFO *psPTInfoList)
 
 	if(psPTInfoList->ui32ValidPTECount != ui32Count)
 	{
-		PVR_DPF((PVR_DBG_ERROR, "ui32ValidPTECount: %u ui32Count: %u\n",
+		PVR_DPF((PVR_DBG_ERROR, "ui32ValidPTECount: %u ui32Count: %u",
 				 psPTInfoList->ui32ValidPTECount, ui32Count));
 		DumpPT(psPTInfoList);
 		PVR_DBG_BREAK;
@@ -1754,13 +1753,14 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 {
 	IMG_UINT32 *pui32Tmp;
 	IMG_UINT32 i;
-	IMG_CPU_VIRTADDR pvPDCpuVAddr;
-	IMG_DEV_PHYADDR sPDDevPAddr;
+	IMG_CPU_VIRTADDR pvPDCpuVAddr = IMG_NULL;
+	IMG_DEV_PHYADDR sPDDevPAddr = {0};
 	IMG_CPU_PHYADDR sCpuPAddr;
 	MMU_CONTEXT *psMMUContext;
 	IMG_HANDLE hPDOSMemHandle = IMG_NULL;
 	SYS_DATA *psSysData;
 	PVRSRV_SGXDEV_INFO *psDevInfo;
+	PVRSRV_ERROR eError = PVRSRV_OK;
 #if defined(PDUMP)
 	PDUMP_MMU_ATTRIB sMMUAttrib;
 #endif
@@ -1806,7 +1806,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 						 &hPDOSMemHandle) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to OSAllocPages failed"));
-			return PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+			eError = PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+			goto exit_setting_values;
 		}
 
 		if(pvPDCpuVAddr)
@@ -1841,7 +1842,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 							 &psDevInfo->hDummyPTPageOSMemHandle) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to OSAllocPages failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				goto exit_setting_values;
 			}
 
 			if(psDevInfo->pvDummyPTPageCpuVAddr)
@@ -1868,7 +1870,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 							 &psDevInfo->hDummyDataPageOSMemHandle) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to OSAllocPages failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				goto exit_setting_values;
 			}
 
 			if(psDevInfo->pvDummyDataPageCpuVAddr)
@@ -1899,7 +1902,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 							 &psDevInfo->hBRN31620DummyPageOSMemHandle) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to OSAllocPages failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				goto exit_setting_values;
 			}				
 
 			/* Get a physical address */
@@ -1933,7 +1937,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 							 &psDevInfo->hBRN31620DummyPTOSMemHandle) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to OSAllocPages failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_PAGES;
+				goto exit_setting_values;
 			}				
 
 			/* Get a physical address */
@@ -1979,7 +1984,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 					&uiLocalPAddr)!= IMG_TRUE)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to RA_Alloc failed"));
-			return PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+			eError = PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+			goto exit_setting_values;
 		}
 
 		/* Munge the local PAddr back into the SysPAddr */
@@ -1995,7 +2001,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 		if(!pvPDCpuVAddr)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR failed to map page tables"));
-			return PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+			eError = PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+			goto exit_setting_values;
 		}
 
 		#if PAGE_TEST
@@ -2019,7 +2026,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 						&uiLocalPAddr)!= IMG_TRUE)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to RA_Alloc failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				goto exit_setting_values;
 			}
 
 			/* Munge the local PAddr back into the SysPAddr */
@@ -2035,7 +2043,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 			if(!psDevInfo->pvDummyPTPageCpuVAddr)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR failed to map page tables"));
-				return PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				eError = PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				goto exit_setting_values;
 			}
 
 			/* Dummy Data page */
@@ -2051,7 +2060,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 						&uiLocalPAddr)!= IMG_TRUE)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to RA_Alloc failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				goto exit_setting_values;
 			}
 
 			/* Munge the local PAddr back into the SysPAddr */
@@ -2067,7 +2077,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 			if(!psDevInfo->pvDummyDataPageCpuVAddr)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR failed to map page tables"));
-				return PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				eError = PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				goto exit_setting_values;
 			}
 		}
 #endif /* #if defined(SUPPORT_SGX_MMU_DUMMY_PAGE) */
@@ -2089,7 +2100,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 						&uiLocalPAddr)!= IMG_TRUE)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to RA_Alloc failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				goto exit_setting_values;
 			}
 
 			/* Munge the local PAddr back into the SysPAddr */
@@ -2105,7 +2117,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 			if(!psDevInfo->pvBRN31620DummyPageCpuVAddr)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR failed to map page tables"));
-				return PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				eError = PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				goto exit_setting_values;
 			}
 
 			MakeKernelPageReadWrite(psDevInfo->pvBRN31620DummyPageCpuVAddr);
@@ -2130,7 +2143,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 						&uiLocalPAddr)!= IMG_TRUE)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to RA_Alloc failed"));
-				return PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				eError = PVRSRV_ERROR_FAILED_TO_ALLOC_VIRT_MEMORY;
+				goto exit_setting_values;
 			}
 
 			/* Munge the local PAddr back into the SysPAddr */
@@ -2147,7 +2161,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 			if(!psDevInfo->pvBRN31620DummyPTCpuVAddr)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR failed to map page tables"));
-				return PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				eError = PVRSRV_ERROR_FAILED_TO_MAP_PAGE_TABLE;
+				goto exit_setting_values;
 			}
 
 			OSMemSet(psDevInfo->pvBRN31620DummyPTCpuVAddr,0,SGX_MMU_PAGE_SIZE);		
@@ -2199,7 +2214,8 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 	else
 	{
 		PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: pvPDCpuVAddr invalid"));
-		return PVRSRV_ERROR_INVALID_CPU_ADDR;
+		eError = PVRSRV_ERROR_INVALID_CPU_ADDR;
+		goto exit_setting_values;
 	}
 
 
@@ -2230,7 +2246,7 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 		MakeKernelPageReadOnly(psDevInfo->pvDummyPTPageCpuVAddr);
 		/* pdump the Dummy PT Page */
 		PDUMPCOMMENT("Dummy Page table contents");
-		PDUMPMEMPTENTRIES(&sMMUAttrib, psDevInfo->hDummyPTOSMemHandle, psDevInfo->pvDummyPTPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, IMG_TRUE, PDUMP_PD_UNIQUETAG, PDUMP_PT_UNIQUETAG);
+		PDUMPMEMPTENTRIES(&sMMUAttrib, psDevInfo->hDummyPTPageOSMemHandle, psDevInfo->pvDummyPTPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, IMG_TRUE, PDUMP_PD_UNIQUETAG, PDUMP_PT_UNIQUETAG);
 
 		/*
 			write a signature to the dummy data page
@@ -2244,7 +2260,7 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 		MakeKernelPageReadOnly(psDevInfo->pvDummyDataPageCpuVAddr);
 		/* pdump the Dummy Data Page */
 		PDUMPCOMMENT("Dummy Data Page contents");
-		PDUMPMEMPTENTRIES(PVRSRV_DEVICE_TYPE_SGX, psDevInfo->hDummyDataPageOSMemHandle, psDevInfo->pvDummyDataPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, IMG_TRUE, PDUMP_PD_UNIQUETAG, PDUMP_PT_UNIQUETAG);
+		PDUMPMEMPTENTRIES(&sMMUAttrib, psDevInfo->hDummyDataPageOSMemHandle, psDevInfo->pvDummyDataPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, IMG_TRUE, PDUMP_PD_UNIQUETAG, PDUMP_PT_UNIQUETAG);
 	}
 #else /* #if defined(SUPPORT_SGX_MMU_DUMMY_PAGE) */
 	/* initialise the PD to invalid address state */
@@ -2330,7 +2346,6 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 #if defined(PDUMP)
 	/* pdump set MMU context */
 	{
-		PVRSRV_ERROR eError;
 		/* default MMU type is 1, 4k page */
 		IMG_UINT32 ui32MMUType = 1;
 
@@ -2352,7 +2367,7 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 		if (eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "MMU_Initialise: ERROR call to PDumpSetMMUContext failed"));
-			return eError;
+			goto exit_setting_values;
 		}
 	}
 
@@ -2376,6 +2391,9 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 		psMMUContext->apsPTInfoListSave[i] = IMG_NULL;
 	}
 #endif
+
+exit_setting_values:
+
 	/* store PD info in the MMU context */
 	psMMUContext->pvPDCpuVAddr = pvPDCpuVAddr;
 	psMMUContext->sPDDevPAddr = sPDDevPAddr;
@@ -2401,7 +2419,7 @@ MMU_Initialise (PVRSRV_DEVICE_NODE *psDeviceNode, MMU_CONTEXT **ppsMMUContext, I
 	DisableHostAccess(psMMUContext);
 #endif
 
-	return PVRSRV_OK;
+	return eError;
 }
 
 /*!
@@ -2427,31 +2445,37 @@ MMU_Finalise (MMU_CONTEXT *psMMUContext)
 	SysAcquireData(&psSysData);
 
 #if defined(PDUMP)
-	/* pdump the MMU context clear */
-	PDUMPCOMMENT("Clear MMU context (MMU Context ID == %u)", psMMUContext->ui32PDumpMMUContextID);
-	PDUMPCLEARMMUCONTEXT(PVRSRV_DEVICE_TYPE_SGX, psMMUContext->psDeviceNode->sDevId.pszPDumpDevName, psMMUContext->ui32PDumpMMUContextID, 2);
+	{
+		IMG_UINT32 ui32Flags = PDUMP_FLAGS_CONTINUOUS;
+		/* pdump the MMU context clear */
+		PDUMPCOMMENT("Clear MMU context (MMU Context ID == %u)", psMMUContext->ui32PDumpMMUContextID);
+		PDUMPCLEARMMUCONTEXT(PVRSRV_DEVICE_TYPE_SGX, psMMUContext->psDeviceNode->sDevId.pszPDumpDevName, psMMUContext->ui32PDumpMMUContextID, 2);
 
-	/* pdump the PD free */
-	PDUMPCOMMENT("Free page directory (PDDevPAddr == 0x" DEVPADDR_FMT ")",
-			psMMUContext->sPDDevPAddr.uiAddr);
-#endif /* PDUMP */
+		/* pdump the PD free */
+		PDUMPCOMMENT("Free page directory (PDDevPAddr == 0x" DEVPADDR_FMT ")",
+				psMMUContext->sPDDevPAddr.uiAddr);
 
-	PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psMMUContext->hPDOSMemHandle, psMMUContext->pvPDCpuVAddr, SGX_MMU_PAGE_SIZE, 0, PDUMP_PT_UNIQUETAG);
+		PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psMMUContext->hPDOSMemHandle, psMMUContext->pvPDCpuVAddr, SGX_MMU_PAGE_SIZE, ui32Flags, PDUMP_PT_UNIQUETAG);
 #if defined(SUPPORT_SGX_MMU_DUMMY_PAGE)
-	PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psDevInfo->hDummyPTPageOSMemHandle, psDevInfo->pvDummyPTPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, PDUMP_PT_UNIQUETAG);
-	PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psDevInfo->hDummyDataPageOSMemHandle, psDevInfo->pvDummyDataPageCpuVAddr, SGX_MMU_PAGE_SIZE, 0, PDUMP_PT_UNIQUETAG);
+		PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psDevInfo->hDummyPTPageOSMemHandle, psDevInfo->pvDummyPTPageCpuVAddr, SGX_MMU_PAGE_SIZE, ui32Flags, PDUMP_PT_UNIQUETAG);
+		PDUMPFREEPAGETABLE(&psMMUContext->psDeviceNode->sDevId, psDevInfo->hDummyDataPageOSMemHandle, psDevInfo->pvDummyDataPageCpuVAddr, SGX_MMU_PAGE_SIZE, ui32Flags, PDUMP_PT_UNIQUETAG);
 #endif
+	}
+#endif /* PDUMP */
 
 	pui32Tmp = (IMG_UINT32 *)psMMUContext->pvPDCpuVAddr;
 
-	MakeKernelPageReadWrite(psMMUContext->pvPDCpuVAddr);
-	/* initialise the PD to invalid address state */
-	for(i=0; i<SGX_MMU_PD_SIZE; i++)
+	if (pui32Tmp)
 	{
-		/* invalid, no read, no write, no cache consistency */
-		pui32Tmp[i] = 0;
+		MakeKernelPageReadWrite(psMMUContext->pvPDCpuVAddr);
+		/* initialise the PD to invalid address state */
+		for(i=0; i<SGX_MMU_PD_SIZE; i++)
+		{
+			/* invalid, no read, no write, no cache consistency */
+			pui32Tmp[i] = 0;
+		}
+		MakeKernelPageReadOnly(psMMUContext->pvPDCpuVAddr);
 	}
-	MakeKernelPageReadOnly(psMMUContext->pvPDCpuVAddr);
 
 	/*
 		free the PD:

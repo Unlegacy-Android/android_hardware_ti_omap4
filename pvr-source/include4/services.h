@@ -92,7 +92,6 @@ extern "C" {
 #define PVRSRV_MEM_NO_RESMAN				(1U<<10)
 #define PVRSRV_MEM_EXPORTED					(1U<<11)
 
-
 /*
 	Heap Attribute flags
 	(bits 12-23)
@@ -169,8 +168,6 @@ extern "C" {
 #define PVRSRV_MISC_INFO_GET_REF_COUNT_PRESENT			(1U<<7)
 #define PVRSRV_MISC_INFO_GET_PAGE_SIZE_PRESENT			(1U<<8)
 #define PVRSRV_MISC_INFO_FORCE_SWAP_TO_SYSTEM_PRESENT	(1U<<9)
-#define PVRSRV_MISC_INFO_GET_DRM_FD_PRESENT				(1U<<10)
-#define PVRSRV_MISC_INFO_SET_DRM_FD_PRESENT				(1U<<11)
 
 #define PVRSRV_MISC_INFO_RESET_PRESENT					(1U<<31)
 
@@ -402,6 +399,26 @@ typedef struct _PVRSRV_MEMBLK_
  ******************************************************************************
  * Memory Management (externel interface)
  *****************************************************************************/
+#if defined (PVRSRV_DEVMEM_TIME_STATS)
+typedef struct _DEVMEM_UNMAPPING_TIME_STATS_
+{
+	IMG_UINT32	ui32TimeToCPUUnmap;
+	IMG_UINT32	ui32TimeToDevUnmap;
+} DEVMEM_UNMAPPING_TIME_STATS;
+
+typedef struct _PVRSRV_DEVMEM_TIMING_STATS_
+{
+	/* This struct holds time taken to map/unmap device memory into CPU/GPU in microsec granularity */
+	struct
+	{
+		IMG_UINT32	ui32TimeToCPUMap;
+		IMG_UINT32	ui32TimeToDevMap;
+	} sDevMemMapTimes;
+
+	DEVMEM_UNMAPPING_TIME_STATS *psDevMemUnmapTimes;	/* User supplied space for "unmap" timings */
+} PVRSRV_DEVMEM_TIMING_STATS;
+#endif
+
 typedef struct _PVRSRV_KERNEL_MEM_INFO_ *PPVRSRV_KERNEL_MEM_INFO;
 
 typedef struct _PVRSRV_CLIENT_MEM_INFO_
@@ -446,12 +463,16 @@ typedef struct _PVRSRV_CLIENT_MEM_INFO_
 	IMG_UINT32							dummy2;
 	#endif /* !defined(USE_CODE) */
 #endif /* defined(SUPPORT_MEMINFO_IDS) */
-#if defined(SUPPORT_DRM_GEM)
-	IMG_SIZE_T							uiDmabufBufferSize;
-#endif /* defined(SUPPORT_DRM_GEM) */
 #if defined(SUPPORT_ION)
 	IMG_SIZE_T							uiIonBufferSize;
 #endif /* defined(SUPPORT_ION) */
+#if defined(SUPPORT_DMABUF)
+	IMG_SIZE_T							uiDmaBufSize;
+#endif /* defined(SUPPORT_ION) */
+
+#if defined (PVRSRV_DEVMEM_TIME_STATS)
+	PVRSRV_DEVMEM_TIMING_STATS			sDevMemTimingStats;
+#endif
 
 	/*
 		ptr to next mem info
@@ -582,7 +603,6 @@ typedef struct _PVRSRV_MISC_INFO_
 	} sGetRefCountCtl;
 
 	IMG_UINT32 ui32PageSize;
-	IMG_INT32 iDrmFd;
 } PVRSRV_MISC_INFO;
 
 /*!
@@ -784,21 +804,6 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVMapDeviceMemory2(IMG_CONST PVRSRV_DEV_DATA	*psDe
 												 PVRSRV_CLIENT_MEM_INFO		**ppsDstMemInfo);
 #endif /* defined(LINUX) */
 
-#if defined(SUPPORT_DRM_GEM)
-PVRSRV_ERROR PVRSRVMapDmabuf(const PVRSRV_DEV_DATA *psDevData,
-								IMG_HANDLE hDevMemHeap,
-								IMG_UINT32 ui32NumFDs,
-								IMG_INT    *paiBufferFDs,
-								IMG_UINT32 ui32ChunkCount,
-								IMG_SIZE_T *pauiOffset,
-								IMG_SIZE_T *pauiSize,
-								IMG_UINT32 ui32Attribs,
-								PVRSRV_CLIENT_MEM_INFO **ppsMemInfo);
-
-PVRSRV_ERROR PVRSRVUnmapDmabuf(const PVRSRV_DEV_DATA *psDevData,
-								  PVRSRV_CLIENT_MEM_INFO *psMemInfo);
-#endif /* defined (SUPPORT_DRM_GEM) */
-
 #if defined(SUPPORT_ION)
 PVRSRV_ERROR PVRSRVMapIonHandle(const PVRSRV_DEV_DATA *psDevData,
 								IMG_HANDLE hDevMemHeap,
@@ -814,6 +819,29 @@ PVRSRV_ERROR PVRSRVUnmapIonHandle(const PVRSRV_DEV_DATA *psDevData,
 								  PVRSRV_CLIENT_MEM_INFO *psMemInfo);
 #endif /* defined (SUPPORT_ION) */
 
+#if defined(SUPPORT_DMABUF)
+IMG_IMPORT
+PVRSRV_ERROR PVRSRVMapDmaBufs(const PVRSRV_DEV_DATA *psDevData,
+								const IMG_HANDLE hDevMemHeap,
+								const IMG_UINT32 ui32Attribs,
+								const IMG_UINT32 ui32NumFDs,
+								const IMG_INT *piDmaBufFD,
+								const IMG_SIZE_T *puiDmaBufOffset,
+								const IMG_SIZE_T *puiDmaBufSize,
+								PVRSRV_CLIENT_MEM_INFO **ppsMemInfo,
+								IMG_SIZE_T *puiMemInfoOffset);
+
+IMG_IMPORT
+PVRSRV_ERROR PVRSRVMapDmaBuf(const PVRSRV_DEV_DATA *psDevData,
+								const IMG_HANDLE hDevMemHeap,
+								const IMG_INT iDmaBufFD,
+								const IMG_UINT32 ui32Attribs,
+								PVRSRV_CLIENT_MEM_INFO **ppsMemInfo);
+
+IMG_IMPORT
+PVRSRV_ERROR PVRSRVUnmapDmaBuf(const PVRSRV_DEV_DATA *psDevData,
+								  PVRSRV_CLIENT_MEM_INFO *psMemInfo);
+#endif /* SUPPORT_DMABUF */
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVAllocDeviceMemSparse(const PVRSRV_DEV_DATA *psDevData,

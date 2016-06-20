@@ -43,9 +43,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __REFCOUNT_H__
 
 #include "pvr_bridge_km.h"
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-#include "external_sync.h"
-#endif /* defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION) */
+#if defined(SUPPORT_ION)
+#include "ion_sync.h"
+#endif /* defined(SUPPORT_ION) */
+#if defined(SUPPORT_DMABUF)
+#include "dmabuf_sync.h"
+#endif /* defined(SUPPORT_DMABUF) */
 
 #if defined(PVRSRV_REFCOUNT_DEBUG)
 
@@ -114,22 +117,41 @@ void PVRSRVOffsetStructIncMapped2(const IMG_CHAR *pszFile, IMG_INT iLine,
 void PVRSRVOffsetStructDecMapped2(const IMG_CHAR *pszFile, IMG_INT iLine,
 								  PKV_OFFSET_STRUCT psOffsetStruct);
 
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-#define PVRSRVExternalBufferSyncInfoIncRef(x...) \
-	PVRSRVExternalBufferSyncInfoIncRef2(__FILE__, __LINE__, x)
-#define PVRSRVExternalBufferSyncInfoDecRef(x...) \
-	PVRSRVExternalBufferSyncInfoDecRef2(__FILE__, __LINE__, x)
+#if defined(SUPPORT_ION)
+#define PVRSRVIonBufferSyncInfoIncRef(x...) \
+	PVRSRVIonBufferSyncInfoIncRef2(__FILE__, __LINE__, x)
+#define PVRSRVIonBufferSyncInfoDecRef(x...) \
+	PVRSRVIonBufferSyncInfoDecRef2(__FILE__, __LINE__, x)
 
-PVRSRV_ERROR PVRSRVExternalBufferSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+PVRSRV_ERROR PVRSRVIonBufferSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
 											IMG_HANDLE hUnique,
 											IMG_HANDLE hDevCookie,
 											IMG_HANDLE hDevMemContext,
-											PVRSRV_EXTERNAL_SYNC_INFO **ppsIonSyncInfo,
+											PVRSRV_ION_SYNC_INFO **ppsIonSyncInfo,
 											PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
-void PVRSRVExternalBufferSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
-									PVRSRV_EXTERNAL_SYNC_INFO *psIonSyncInfo,
+void PVRSRVIonBufferSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+									PVRSRV_ION_SYNC_INFO *psIonSyncInfo,
 									PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 #endif /* defined (SUPPORT_ION) */
+
+#if defined(SUPPORT_DMABUF)
+#define PVRSRVDmaBufSyncInfoIncRef(x...) \
+	PVRSRVDmaBufSyncInfoIncRef2(__FILE__, __LINE__, x)
+#define PVRSRVDmaBufSyncInfoDecRef(x...) \
+	PVRSRVDmaBufSyncInfoDecRef2(__FILE__, __LINE__, x)
+
+PVRSRV_ERROR PVRSRVDmaBufSyncInfoIncRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+											IMG_HANDLE hUnique,
+											IMG_HANDLE hPriv,
+											IMG_HANDLE hDevCookie,
+											IMG_HANDLE hDevMemContext,
+											PVRSRV_DMABUF_SYNC_INFO **ppsDmaBufSyncInfo,
+											PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+
+void PVRSRVDmaBufSyncInfoDecRef2(const IMG_CHAR *pszFile, IMG_INT iLine,
+									PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo,
+									PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+#endif /* defined (SUPPORT_DMABUF) */
 
 #endif /* defined(__linux__) */
 
@@ -216,28 +238,53 @@ static INLINE void PVRSRVOffsetStructDecMapped(PKV_OFFSET_STRUCT psOffsetStruct)
 	psOffsetStruct->ui32Mapped--;
 }
 
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-static INLINE PVRSRV_ERROR PVRSRVExternalBufferSyncInfoIncRef(IMG_HANDLE hUnique,
+#if defined(SUPPORT_ION)
+static INLINE PVRSRV_ERROR PVRSRVIonBufferSyncInfoIncRef(IMG_HANDLE hUnique,
 														 IMG_HANDLE hDevCookie,
 														 IMG_HANDLE hDevMemContext,
-														 PVRSRV_EXTERNAL_SYNC_INFO **ppsIonSyncInfo,
+														 PVRSRV_ION_SYNC_INFO **ppsIonSyncInfo,
 														 PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
 	PVR_UNREFERENCED_PARAMETER(psKernelMemInfo);
 
-	return PVRSRVExternalBufferSyncAcquire(hUnique,
+	return PVRSRVIonBufferSyncAcquire(hUnique,
 									  hDevCookie,
 									  hDevMemContext,
 									  ppsIonSyncInfo);
 }
 
-static INLINE void PVRSRVExternalBufferSyncInfoDecRef(PVRSRV_EXTERNAL_SYNC_INFO *psIonSyncInfo,
+static INLINE void PVRSRVIonBufferSyncInfoDecRef(PVRSRV_ION_SYNC_INFO *psIonSyncInfo,
 										   PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
 	PVR_UNREFERENCED_PARAMETER(psKernelMemInfo);
-	PVRSRVExternalBufferSyncRelease(psIonSyncInfo);
+	PVRSRVIonBufferSyncRelease(psIonSyncInfo);
 }
 #endif	/* defined (SUPPORT_ION) */
+
+#if defined(SUPPORT_DMABUF)
+static INLINE PVRSRV_ERROR PVRSRVDmaBufSyncInfoIncRef(IMG_HANDLE hUnique,
+														 IMG_HANDLE hPriv,
+														 IMG_HANDLE hDevCookie,
+														 IMG_HANDLE hDevMemContext,
+														 PVRSRV_DMABUF_SYNC_INFO **ppsDmaBufSyncInfo,
+														 PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	PVR_UNREFERENCED_PARAMETER(psKernelMemInfo);
+
+	return PVRSRVDmaBufSyncAcquire(hUnique,
+									  hPriv,
+									  hDevCookie,
+									  hDevMemContext,
+									  ppsDmaBufSyncInfo);
+}
+
+static INLINE void PVRSRVDmaBufSyncInfoDecRef(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo,
+										   PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	PVR_UNREFERENCED_PARAMETER(psKernelMemInfo);
+	PVRSRVDmaBufSyncRelease(psDmaBufSyncInfo);
+}
+#endif	/* defined (SUPPORT_DMABUF) */
 
 #endif /* defined(__linux__) */
 

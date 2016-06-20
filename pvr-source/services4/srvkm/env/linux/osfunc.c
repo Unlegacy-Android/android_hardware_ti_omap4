@@ -66,7 +66,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/interrupt.h>
 #include <asm/hardirq.h>
 #include <linux/timer.h>
-#if defined(MEM_TRACK_INFO_DEBUG)
+#if defined(MEM_TRACK_INFO_DEBUG) || defined (PVRSRV_DEVMEM_TIME_STATS)
 #include <linux/time.h>
 #endif
 #include <linux/capability.h>
@@ -94,9 +94,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
 #include "pvr_sync.h"
 #endif
-
 #if defined (SUPPORT_ION)
 #include "ion.h"
+#endif
+#if defined(SUPPORT_DMABUF)
+#include "pvr_linux_fence.h"
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27))
@@ -146,7 +148,7 @@ PVRSRV_ERROR OSAllocMem_Impl(IMG_UINT32 ui32Flags, IMG_SIZE_T uiSize, IMG_PVOID 
     }
 
 #if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
-    *ppvCpuVAddr = _KMallocWrapper(uiSize, GFP_KERNEL | __GFP_NOWARN, pszFilename, ui32Line);
+    *ppvCpuVAddr = _KMallocWrapper(uiSize, GFP_KERNEL | __GFP_NOWARN, pszFilename, ui32Line, ui32Flags & PVRSRV_SWAP_BUFFER_ALLOCATION);
 #else
     *ppvCpuVAddr = KMallocWrapper(uiSize, GFP_KERNEL | __GFP_NOWARN);
 #endif
@@ -189,7 +191,7 @@ PVRSRV_ERROR OSFreeMem_Impl(IMG_UINT32 ui32Flags, IMG_SIZE_T uiSize, IMG_PVOID p
     else
     {
 #if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
-        _KFreeWrapper(pvCpuVAddr, pszFilename, ui32Line);
+        _KFreeWrapper(pvCpuVAddr, pszFilename, ui32Line, ui32Flags & PVRSRV_SWAP_BUFFER_ALLOCATION);
 #else
         KFreeWrapper(pvCpuVAddr);
 #endif
@@ -562,10 +564,28 @@ IMG_VOID OSBreakResourceLock (PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID)
 ******************************************************************************/
 PVRSRV_ERROR OSCreateResource(PVRSRV_RESOURCE *psResource)
 {
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	PVRSRV_ERROR eError = PVRSRV_OK;
+#endif
+
     psResource->ui32ID = 0;
     psResource->ui32Lock = 0;
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	psResource->pOSSyncPrimitive = IMG_NULL;
 
-    return PVRSRV_OK;
+	eError = OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(spinlock_t), (IMG_VOID**)&psResource->pOSSyncPrimitive, IMG_NULL,
+		"Resource Spinlock");
+
+	if (eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"OSCreateResource: Spinlock could not be alloc'd"));
+		return eError;
+	}
+
+	spin_lock_init((spinlock_t*)psResource->pOSSyncPrimitive);
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
+
+	return PVRSRV_OK;
 }
 
 
@@ -583,6 +603,13 @@ PVRSRV_ERROR OSCreateResource(PVRSRV_RESOURCE *psResource)
 ******************************************************************************/
 PVRSRV_ERROR OSDestroyResource (PVRSRV_RESOURCE *psResource)
 {
+#if !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__)
+	if (psResource->pOSSyncPrimitive)
+	{
+		OSFreeMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(spinlock_t), (IMG_VOID*)psResource->pOSSyncPrimitive, IMG_NULL);
+	}
+#endif /* !defined(PVR_LINUX_USING_WORKQUEUES) && defined(__linux__) */
+
     OSBreakResourceLock (psResource, psResource->ui32ID);
 
     return PVRSRV_OK;
@@ -682,6 +709,30 @@ IMG_VOID OSReleaseThreadQuanta(IMG_VOID)
 {
     schedule();
 }
+
+#if defined (PVRSRV_DEVMEM_TIME_STATS)
+/*!
+******************************************************************************
+
+ @Function OSClockMonotonicus
+
+ @Description	This function returns the raw monotonic clock time in microseconds
+				(i.e. un-affected by NTP or similar changes)
+
+ @Input void
+
+ @Return - monotonic clock time in (us)
+
+******************************************************************************/ 
+IMG_UINT64 OSClockMonotonicus(IMG_VOID)
+{
+	struct timespec ts;
+
+	getrawmonotonic(&ts);
+
+	return ((unsigned long)ts.tv_sec * 1000000ul + (unsigned long)ts.tv_nsec / 1000ul);
+}
+#endif
 
 
 /*!
@@ -1119,6 +1170,9 @@ static void MISRWrapper(
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
 	PVRSyncUpdateAllSyncs();
 #endif
+#if defined(SUPPORT_DMABUF)
+	PVRLinuxFenceCheckAll();
+#endif
 }
 
 
@@ -1548,6 +1602,81 @@ PVRSRV_ERROR OSUnlockResource (PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID)
     
     return eError;
 }
+
+
+#if !defined(PVR_LINUX_USING_WORKQUEUES)
+/*!
+******************************************************************************
+
+ @Function OSLockResourceAndBlockMISR
+
+ @Description locks an OS dependant Resource and blocks MISR interrupts
+
+ @Input phResource - pointer to OS dependent Resource
+ @Input bBlock - do we want to block?
+
+ @Return error status
+
+******************************************************************************/
+PVRSRV_ERROR OSLockResourceAndBlockMISR ( PVRSRV_RESOURCE 	*psResource,
+								IMG_UINT32 			ui32ID)
+
+{
+	PVRSRV_ERROR eError = PVRSRV_OK;
+
+	spin_lock_bh(psResource->pOSSyncPrimitive);
+
+	if(!OS_TAS(&psResource->ui32Lock))
+		psResource->ui32ID = ui32ID;
+	else
+		eError = PVRSRV_ERROR_UNABLE_TO_LOCK_RESOURCE;
+
+	return eError;
+}
+
+
+/*!
+******************************************************************************
+
+ @Function OSUnlockResourceAndUnblockMISR
+
+ @Description unlocks an OS dependant resource and unblocks MISR interrupts
+
+ @Input phResource - pointer to OS dependent resource structure
+
+ @Return
+
+******************************************************************************/
+PVRSRV_ERROR OSUnlockResourceAndUnblockMISR (PVRSRV_RESOURCE *psResource, IMG_UINT32 ui32ID)
+{
+	volatile IMG_UINT32 *pui32Access = (volatile IMG_UINT32 *)&psResource->ui32Lock;
+	PVRSRV_ERROR eError = PVRSRV_OK;
+
+	if(*pui32Access)
+	{
+		if(psResource->ui32ID == ui32ID)
+		{
+			psResource->ui32ID = 0;
+			smp_mb();
+			*pui32Access = 0;
+			spin_unlock_bh(psResource->pOSSyncPrimitive);
+		}
+		else
+		{
+			PVR_DPF((PVR_DBG_ERROR,"OSUnlockResourceAndUnblockMISR: Resource %p is not locked with expected value.", psResource));
+			PVR_DPF((PVR_DBG_MESSAGE,"Should be %x is actually %x", ui32ID, psResource->ui32ID));
+			eError = PVRSRV_ERROR_INVALID_LOCK_ID;
+		}
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_ERROR,"OSUnlockResourceAndUnblockMISR: Resource %p is not locked", psResource));
+		eError = PVRSRV_ERROR_RESOURCE_NOT_LOCKED;
+	}
+
+	return eError;
+}
+#endif
 
 
 /*!
@@ -2040,7 +2169,7 @@ PVRSRV_ERROR OSBaseAllocContigMemory(IMG_SIZE_T uiSize, IMG_CPU_VIRTADDR *pvLinA
     IMG_VOID *pvKernLinAddr;
 
 #if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
-    pvKernLinAddr = _KMallocWrapper(uiSize, GFP_KERNEL, __FILE__, __LINE__);
+    pvKernLinAddr = _KMallocWrapper(uiSize, GFP_KERNEL, __FILE__, __LINE__, IMG_FALSE);
 #else
     pvKernLinAddr = KMallocWrapper(uiSize, GFP_KERNEL);
 #endif
@@ -4634,10 +4763,9 @@ PVRSRV_ERROR PVROSFuncInit(IMG_VOID)
     }
 #endif
 
-#if 0//defined (SUPPORT_ION)
+#if defined(SUPPORT_ION) && !defined(LMA)
 	{
 		PVRSRV_ERROR eError;
-
 		eError = IonInit();
 		if (eError != PVRSRV_OK)
 		{
@@ -4654,7 +4782,7 @@ PVRSRV_ERROR PVROSFuncInit(IMG_VOID)
  */
 IMG_VOID PVROSFuncDeInit(IMG_VOID)
 {
-#if 0//defined (SUPPORT_ION)
+#if defined (SUPPORT_ION)
 	IonDeinit();
 #endif
 #if defined(PVR_LINUX_TIMERS_USING_WORKQUEUES)

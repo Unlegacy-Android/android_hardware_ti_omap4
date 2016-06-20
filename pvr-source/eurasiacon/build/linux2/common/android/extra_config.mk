@@ -39,8 +39,14 @@
 ### ###########################################################################
 
 
-$(eval $(call BothConfigC,ANDROID,))
+# On versions of Android prior to L, remap the use of libc++ to a combination
+# of stlport and libstdc++. Not every module written in C++ in the DDK needs
+# the STL, but linking it should be harmless (and most modules do need it).
+ifneq ($(is_at_least_lollipop),1)
+endif
 
+
+$(eval $(call BothConfigC,ANDROID,))
 
 
 
@@ -50,5 +56,16 @@ $(eval $(call TunableBothConfigMake,SUPPORT_PVRSRV_ANDROID_SYSTRACE,))
 
 $(eval $(call TunableBothConfigMake,PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC,))
 $(eval $(call TunableBothConfigC,PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC,))
+
+ifeq ($(NO_HARDWARE),1)
+ override PVR_ANDROID_COMPOSERHAL := null
+endif
+
+ifneq ($(PVR_ANDROID_COMPOSERHAL),drm)
+ ifneq ($(SUPPORT_PVRSRV_DEVICE_CLASS),1)
+  override PVR_ANDROID_COMPOSERHAL := null
+ endif
+endif
+
 
 include ../common/ion.mk

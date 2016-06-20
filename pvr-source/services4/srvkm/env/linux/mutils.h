@@ -80,10 +80,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#define	IOREMAP(pa, bytes)	ioremap_cache(pa, bytes)
 #else	
 	#if defined(__arm__)
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
-			#define	IOREMAP(pa, bytes)	ioremap_cache(pa, bytes)
-		#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0))
-			#define	IOREMAP(pa, bytes)	ioremap_cached(pa, bytes)
+		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
+				#define	IOREMAP(pa, bytes)	ioremap_cache(pa, bytes)
+		#else
+			#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0))
+				#define	IOREMAP(pa, bytes)	ioremap_cached(pa, bytes)
+			#else
+				#define IOREMAP(pa, bytes)	ioremap(pa, bytes)
+			#endif
 		#endif
 	#else
 		#define IOREMAP(pa, bytes)	ioremap(pa, bytes)

@@ -1,6 +1,8 @@
 /*************************************************************************/ /*!
-@Title          Ion driver inter-operability code.
+@File
+@Title          PowerVR Linux fence interface
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@Description    drm module
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -39,35 +41,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __IMG_LINUX_ION_H__
-#define __IMG_LINUX_ION_H__
+#if !defined(__PVR_LINUX_FENCE_H__)
+#define __PVR_LINUX_FENCE_H__
 
-#if defined(SUPPORT_ION)
+IMG_HANDLE PVRLinuxFenceContextCreate(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, IMG_HANDLE hImport);
+void PVRLinuxFenceContextDestroy(IMG_HANDLE hFenceContext);
 
-#include SUPPORT_ION_HEADER
+PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
+				IMG_UINT32 ui32NumSrcSyncs,
+				IMG_HANDLE *phSrcSyncInfo,
+				const IMG_BOOL *pbSrcEnabled,
+				IMG_UINT32 ui32NumDstSyncs,
+				IMG_HANDLE *phDstSyncInfo,
+				const IMG_BOOL *pbDstEnabled);
 
-#include "img_types.h"
-#include "servicesext.h"
+void PVRLinuxFenceRelease(IMG_UINT32 uTag,
+				IMG_UINT32 ui32NumSrcSyncs,
+				IMG_HANDLE *phSrcSyncInfo,
+				const IMG_BOOL *pbSrcEnabled,
+				IMG_UINT32 ui32NumDstSyncs,
+				IMG_HANDLE *phDstSyncInfo,
+				const IMG_BOOL *pbDstEnabled);
 
-#if defined(LMA)
-PVRSRV_ERROR IonInit(void *pvPrivateData);
-#else
-PVRSRV_ERROR IonInit(IMG_VOID);
-#endif
+void PVRLinuxFenceCheckAll(void);
 
-IMG_VOID IonDeinit(IMG_VOID);
+int PVRLinuxFenceInit(void);
+void PVRLinuxFenceDeInit(void);
 
-PVRSRV_ERROR IonImportBufferAndAcquirePhysAddr(IMG_HANDLE hIonDev,
-											   IMG_UINT32 ui32NumFDs,
-											   IMG_INT32  *pi32BufferFDs,
-											   IMG_UINT32 *pui32PageCount,
-											   IMG_SYS_PHYADDR **ppsSysPhysAddr,
-											   IMG_PVOID *ppvKernAddr0,
-											   IMG_HANDLE *phPriv,
-											   IMG_HANDLE *phUnique);
-
-IMG_VOID IonUnimportBufferAndReleasePhysAddr(IMG_HANDLE hPriv);
-
-#endif /* defined(SUPPORT_ION) */
-
-#endif /* __IMG_LINUX_ION_H__ */
+#endif /* !defined(__PVR_LINUX_FENCE_H__) */

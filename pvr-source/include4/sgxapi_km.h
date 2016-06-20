@@ -84,7 +84,12 @@ extern "C" {
 #define SGX_VPB_TILED_HEAP_ID			14
 #endif
 
-#define SGX_MAX_HEAP_ID							15
+#if defined(SGX_FEATURE_ADDRESS_SPACE_EXTENSION)
+		#define SGX_TEXTURE_HEAP_ID                     15      
+		#define SGX_MAX_HEAP_ID                         16      
+#else
+		#define SGX_MAX_HEAP_ID 						15
+#endif
 
 /*
  * Keep SGX_3DPARAMETERS_HEAP_ID as TQ full custom
@@ -106,20 +111,12 @@ extern "C" {
 #define SGX_MAX_TA_STATUS_VALS	32
 #define SGX_MAX_3D_STATUS_VALS	4
 
-#if defined(SUPPORT_SGX_GENERALISED_SYNCOBJECTS)
-/* sync info structure array size */
-#define SGX_MAX_TA_DST_SYNCS			1
-#define SGX_MAX_TA_SRC_SYNCS			1
-#define SGX_MAX_3D_SRC_SYNCS			4
-/* note: there is implicitly 1 3D Dst Sync */
-#else
 /* sync info structure array size */
 #define SGX_MAX_SRC_SYNCS_TA				32
 #define SGX_MAX_DST_SYNCS_TA				1
 /* note: only one dst sync is supported by the 2D paths */
 #define SGX_MAX_SRC_SYNCS_TQ				6
 #define SGX_MAX_DST_SYNCS_TQ				2
-#endif
 
 
 #if defined(SGX_FEATURE_EXTENDED_PERF_COUNTERS)

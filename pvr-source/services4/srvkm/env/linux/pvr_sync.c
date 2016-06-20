@@ -68,6 +68,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DPF(fmt, ...) do {} while(0)
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0))
+
+static inline struct sync_timeline *sync_pt_parent(struct sync_pt *pt)
+{
+		return pt->parent;
+}
+
+#define for_each_sync_pt(s, f, c) \
+		(void)c; \
+list_for_each_entry((s), &(f)->pt_list_head, pt_list)
+
+#else /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
+
+#define for_each_sync_pt(s, f, c) \
+		for ((c) = 0, (s) = (struct sync_pt *)(f)->cbs[0].sync_pt; \
+						(c) < (f)->num_fences; \
+						(c)++,   (s) = (struct sync_pt *)(f)->cbs[c].sync_pt)
+
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
+
 /* We can't support this code when the MISR runs in atomic context because
  * PVRSyncFreeSync() may be called by sync_timeline_signal() which may be
  * scheduled by the MISR. PVRSyncFreeSync() needs to protect the handle
@@ -402,7 +422,7 @@ static struct sync_pt *PVRSyncDup(struct sync_pt *sync_pt)
 	struct PVR_SYNC *psPt, *psParentPt = (struct PVR_SYNC *)sync_pt;
 
 	psPt = (struct PVR_SYNC *)
-		sync_pt_create(sync_pt->parent, sizeof(struct PVR_SYNC));
+		sync_pt_create(sync_pt_parent(sync_pt), sizeof(struct PVR_SYNC));
 	if(!psPt)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: sync_pt_create failed", __func__));
@@ -422,7 +442,7 @@ static int PVRSyncHasSignaled(struct sync_pt *sync_pt)
 {
 	struct PVR_SYNC *psPt = (struct PVR_SYNC *)sync_pt;
 	struct PVR_SYNC_TIMELINE *psTimeline =
-		(struct PVR_SYNC_TIMELINE *) sync_pt->parent;
+		(struct PVR_SYNC_TIMELINE *) sync_pt_parent(sync_pt);
 	PVRSRV_SYNC_DATA *psSyncData =
 		psPt->psSyncData->psSyncInfo->psBase->psSyncData;
 
@@ -448,6 +468,7 @@ static int PVRSyncCompare(struct sync_pt *a, struct sync_pt *b)
 		return -1;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0))
 static void PVRSyncPrintTimeline(struct seq_file *s,
 								 struct sync_timeline *psObj)
 {
@@ -468,7 +489,7 @@ static void PVRSyncPrint(struct seq_file *s, struct sync_pt *psPt)
 				  psSync->psSyncData->ui64Stamp,
 				  atomic_read(&psSync->psSyncData->sRefcount),
 				  psSync->psSyncData->ui32WOPSnapshot,
-				  psSync->pt.parent);
+				  sync_pt_parent(&psSync->pt));
 	seq_printf(s, "\n   WOP/WOC=0x%x/0x%x, "
 	              "ROP/ROC=0x%x/0x%x, ROP2/ROC2=0x%x/0x%x, "
 	              "WOC DevVA=0x%.8x, ROC DevVA=0x%.8x, "
@@ -483,6 +504,42 @@ static void PVRSyncPrint(struct seq_file *s, struct sync_pt *psPt)
 	              psSyncInfo->sReadOpsCompleteDevVAddr.uiAddr,
 	              psSyncInfo->sReadOps2CompleteDevVAddr.uiAddr);
 }
+#else /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
+static void PVRSyncPrintTimeline(struct sync_timeline *psObj,
+									char *str, int size)
+{
+	struct PVR_SYNC_TIMELINE *psTimeline = (struct PVR_SYNC_TIMELINE *)psObj;
+
+	snprintf(str, size, "WOP/WOC=0x%x/0x%x",
+	           psTimeline->psSyncInfo->psBase->psSyncData->ui32WriteOpsPending,
+	           psTimeline->psSyncInfo->psBase->psSyncData->ui32WriteOpsComplete);
+}
+static void PVRSyncPrint(struct sync_pt *psPt, char *str, int size)
+{
+	struct PVR_SYNC *psSync = (struct PVR_SYNC *)psPt;
+	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo =
+		psSync->psSyncData->psSyncInfo->psBase;
+
+	snprintf(str, size, "ID=%llu, refs=%u, WOPSnapshot=0x%x, parent=%p",
+				  psSync->psSyncData->ui64Stamp,
+				  atomic_read(&psSync->psSyncData->sRefcount),
+				  psSync->psSyncData->ui32WOPSnapshot,
+				  sync_pt_parent(&psSync->pt));//psSync->pt.parent);
+	snprintf(str, size, "\n   WOP/WOC=0x%x/0x%x, "
+	              "ROP/ROC=0x%x/0x%x, ROP2/ROC2=0x%x/0x%x, "
+	              "WOC DevVA=0x%.8x, ROC DevVA=0x%.8x, "
+	              "ROC2 DevVA=0x%.8x",
+	              psSyncInfo->psSyncData->ui32WriteOpsPending,
+	              psSyncInfo->psSyncData->ui32WriteOpsComplete,
+	              psSyncInfo->psSyncData->ui32ReadOpsPending,
+	              psSyncInfo->psSyncData->ui32ReadOpsComplete,
+	              psSyncInfo->psSyncData->ui32ReadOps2Pending,
+	              psSyncInfo->psSyncData->ui32ReadOps2Complete,
+	              psSyncInfo->sWriteOpsCompleteDevVAddr.uiAddr,
+	              psSyncInfo->sReadOpsCompleteDevVAddr.uiAddr,
+	              psSyncInfo->sReadOps2CompleteDevVAddr.uiAddr);
+}
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
 
 static void PVRSyncReleaseTimeline(struct sync_timeline *psObj)
 {
@@ -606,8 +663,13 @@ static struct sync_timeline_ops gsTimelineOps =
 	.has_signaled		= PVRSyncHasSignaled,
 	.compare			= PVRSyncCompare,
 	.release_obj		= PVRSyncReleaseTimeline,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0))
 	.print_obj			= PVRSyncPrintTimeline,
 	.print_pt			= PVRSyncPrint,
+#else /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
+	.timeline_value_str = PVRSyncPrintTimeline,
+	.pt_value_str       = PVRSyncPrint,
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)) */
 	.free_pt			= PVRSyncFreeSync,
 };
 
@@ -699,7 +761,7 @@ PVRSyncIOCTLCreate(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 	struct PVR_SYNC_KERNEL_SYNC_INFO *psProvidedSyncInfo = NULL;
 	struct PVR_ALLOC_SYNC_DATA *psAllocSyncData;
 	struct PVR_SYNC_CREATE_IOCTL_DATA sData;
-	int err = -EFAULT, iFd = get_unused_fd();
+	int err = -EFAULT, iFd = get_unused_fd_flags(O_CLOEXEC);
 	struct sync_fence *psFence;
 	struct sync_pt *psPt;
 
@@ -809,8 +871,8 @@ PVRSyncIOCTLDebug(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 {
 	struct PVR_SYNC_DEBUG_IOCTL_DATA sData;
 	struct sync_fence *psFence;
-	struct list_head *psEntry;
-	int i = 0, err = -EFAULT;
+	struct sync_pt *sync_pt;
+	int i = 0, j, err = -EFAULT;
 
 	if(!access_ok(VERIFY_READ, pvData, sizeof(sData)))
 		goto err_out;
@@ -825,7 +887,7 @@ PVRSyncIOCTLDebug(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 		goto err_out;
 	}
 
-	list_for_each(psEntry, &psFence->pt_list_head)
+	for_each_sync_pt(sync_pt, psFence, j)
 	{
 		PVR_SYNC_DEBUG *psMetaData = &sData.sSync[i].sMetaData;
 		PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo;
@@ -840,14 +902,13 @@ PVRSyncIOCTLDebug(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 			break;
 		}
 
-		psPt = (struct PVR_SYNC *)
-			container_of(psEntry, struct sync_pt, pt_list);
+		psPt = (struct PVR_SYNC *)sync_pt; 
 
 		/* Don't dump foreign points */
-		if(psPt->pt.parent->ops != &gsTimelineOps)
+		if(sync_pt_parent(&psPt->pt)->ops != &gsTimelineOps)
 			continue;
 
-		psTimeline = (struct PVR_SYNC_TIMELINE *)psPt->pt.parent;
+		psTimeline = (struct PVR_SYNC_TIMELINE *)sync_pt_parent(&psPt->pt);
 		psKernelSyncInfo = psPt->psSyncData->psSyncInfo->psBase;
 		PVR_ASSERT(psKernelSyncInfo != NULL);
 
@@ -923,7 +984,7 @@ static long
 PVRSyncIOCTLAlloc(struct PVR_SYNC_TIMELINE *psTimeline, void __user *pvData)
 {
 	struct PVR_ALLOC_SYNC_DATA *psAllocSyncData;
-	int err = -EFAULT, iFd = get_unused_fd();
+	int err = -EFAULT, iFd = get_unused_fd_flags(O_CLOEXEC);
 	struct PVR_SYNC_ALLOC_IOCTL_DATA sData;
 	PVRSRV_SYNC_DATA *psSyncData;
 	struct file *psFile;
@@ -1447,14 +1508,12 @@ CopyKernelSyncInfoToDeviceSyncObject(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo,
 
 static IMG_BOOL FenceHasForeignPoints(struct sync_fence *psFence)
 {
-	struct list_head *psEntry;
+	struct sync_pt *psPt;
+	int j;
 
-	list_for_each(psEntry, &psFence->pt_list_head)
+	for_each_sync_pt(psPt, psFence, j)
 	{
-		struct sync_pt *psPt =
-			container_of(psEntry, struct sync_pt, pt_list);
-
-		if(psPt->parent->ops != &gsTimelineOps)
+		if(sync_pt_parent(psPt)->ops != &gsTimelineOps)
 			return IMG_TRUE;
 	}
 
@@ -1495,13 +1554,13 @@ ExpandAndDeDuplicateFenceSyncs(IMG_UINT32 ui32NumSyncs,
 {
 	IMG_UINT32 i, j, ui32FenceIndex = 0;
 	IMG_BOOL bRet = IMG_TRUE;
+	struct sync_pt *psPt;
 
 	*pui32NumRealSyncs = 0;
 
 	for(i = 0; i < ui32NumSyncs; i++)
 	{
 		PVRSRV_KERNEL_SYNC_INFO *psSyncInfo;
-		struct list_head *psEntry;
 
 		/* Skip any invalid fence file descriptors without error */
 		if(aiFenceFds[i] < 0)
@@ -1525,7 +1584,7 @@ ExpandAndDeDuplicateFenceSyncs(IMG_UINT32 ui32NumSyncs,
 		 * patched in userspace. That's really a userspace driver bug, so
 		 * just fail here instead of not synchronizing.
 		 */
-		apsFence[ui32FenceIndex] = sync_fence_fdget(aiFenceFds[i]);
+		apsFence[ui32FenceIndex] = sync_fence_fdget((IMG_INT32)aiFenceFds[i]);
 		if(!apsFence[ui32FenceIndex])
 		{
 			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to get fence from fd=%d",
@@ -1546,7 +1605,7 @@ ExpandAndDeDuplicateFenceSyncs(IMG_UINT32 ui32NumSyncs,
 		 */
 		if(FenceHasForeignPoints(apsFence[ui32FenceIndex]))
 		{
-			psSyncInfo = ForeignSyncPointToSyncInfo(aiFenceFds[i]);
+			psSyncInfo = ForeignSyncPointToSyncInfo((IMG_INT32)aiFenceFds[i]);
 			if(psSyncInfo)
 			{
 				if(!AddSyncInfoToArray(psSyncInfo, ui32SyncPointLimit,
@@ -1563,10 +1622,8 @@ ExpandAndDeDuplicateFenceSyncs(IMG_UINT32 ui32NumSyncs,
 		/* FIXME: The ForeignSyncPointToSyncInfo() path optimizes away already
 		 *        signalled fences. Consider optimizing this path too.
 		 */
-		list_for_each(psEntry, &apsFence[ui32FenceIndex]->pt_list_head)
+		for_each_sync_pt(psPt, apsFence[ui32FenceIndex], j)
 		{
-			struct sync_pt *psPt =
-				container_of(psEntry, struct sync_pt, pt_list);
 
 			psSyncInfo =
 				((struct PVR_SYNC *)psPt)->psSyncData->psSyncInfo->psBase;

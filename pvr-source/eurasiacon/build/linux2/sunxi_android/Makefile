@@ -76,7 +76,7 @@ PVRSRV_DUMP_MK_TRACE ?= 1
 
 SUPPORT_ANDROID_SUNXI ?= 1
 
-ION_DEFAULT_HEAP_MASK := ION_HEAP_CARVEOUT_MASK
+ION_DEFAULT_HEAP_ID_MASK := ION_HEAP_CARVEOUT_MASK
 
 # We have more memory on the sun6i platform, so we can spare to make
 # the pool larger, and have higher resolutions which benefit from it.
@@ -107,6 +107,8 @@ override DISPLAY_CONTROLLER := dcnohw
 KERNEL_COMPONENTS += dc_nohw
 endif
 endif
+
+PVR_ANDROID_COMPOSERHAL ?= sunxi
 
 include ../config/core.mk
 include ../common/android/extra_config.mk

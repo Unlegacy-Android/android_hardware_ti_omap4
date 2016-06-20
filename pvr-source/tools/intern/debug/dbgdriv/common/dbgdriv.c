@@ -864,7 +864,7 @@ static void Write(PDBG_STREAM psStream,IMG_PUINT8 pui8Data,IMG_UINT32 ui32InBuff
  @param		bNewLine - line wrapping
  @return	none
 *****************************************************************************/
-void MonoOut(IMG_CHAR * pszString,IMG_BOOL bNewLine)
+void MonoOut(const IMG_CHAR * pszString,IMG_BOOL bNewLine)
 {
 #if defined (_WIN64)
 	PVR_UNREFERENCED_PARAMETER(pszString);
@@ -1054,7 +1054,7 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 	PDBG_STREAM_CONTROL psCtrl;
 	IMG_UINT32		ui32Off;
 	IMG_VOID *		pvBase;	
-	static IMG_CHAR pszNameInitSuffix[] = "_Init";
+	static const IMG_CHAR pszNameInitSuffix[] = "_Init";
 	IMG_UINT32		ui32OffSuffix;
 
 	/*
@@ -1072,18 +1072,31 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 		Allocate memory for control structures
 	*/
 	psStream = HostNonPageablePageAlloc(1);
-	psInitStream = HostNonPageablePageAlloc(1);
-	psLFBuffer = HostNonPageablePageAlloc(1);
-	psCtrl = HostNonPageablePageAlloc(1);
-	if	(
-			(!psStream) ||
-			(!psInitStream) ||
-			(!psLFBuffer) ||
-			(!psCtrl)
-		)
+	if (!psStream)
 	{
-		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc control structs\n\r"));
-		return((IMG_VOID *) 0);
+		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc Stream\n\r"));
+		goto exit_stream_alloc_failed;
+	}
+	
+	psInitStream = HostNonPageablePageAlloc(1);
+	if (!psInitStream)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc InitStream\n\r"));
+		goto exit_stream_init_alloc_failed;
+	}
+
+	psLFBuffer = HostNonPageablePageAlloc(1);
+	if (!psLFBuffer)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc LFBuffer\n\r"));
+		goto exit_lfbuffer_alloc_failed;
+	}
+
+	psCtrl = HostNonPageablePageAlloc(1);
+	if (!psCtrl)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc Ctrl struct\n\r"));
+		goto exit_ctrl_alloc_failed;
 	}
 
 	/* Allocate memory for buffer */
@@ -1099,8 +1112,7 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 	if (!pvBase)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"DBGDriv: Couldn't alloc Stream buffer\n\r"));
-		HostNonPageablePageFree(psStream);
-		return((IMG_VOID *) 0);
+		goto exit_stream_buffer_failed;
 	}
 
 	/* Setup control state */
@@ -1151,8 +1163,7 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 		{
 			HostPageablePageFree(psStream->pvBase);
 		}
-		HostNonPageablePageFree(psStream);
-		return((IMG_VOID *) 0);
+		goto exit_stream_buffer_failed;
 	}
 
 	/* Initialise the stream for the init phase */
@@ -1216,6 +1227,17 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 	AddSIDEntry(psStream);
 	
 	return((IMG_VOID *) psStream);
+
+exit_stream_buffer_failed:
+	HostNonPageablePageFree(psCtrl);
+exit_ctrl_alloc_failed:
+	HostNonPageablePageFree(psLFBuffer);
+exit_lfbuffer_alloc_failed:
+	HostNonPageablePageFree(psInitStream);
+exit_stream_init_alloc_failed:
+	HostNonPageablePageFree(psStream);
+exit_stream_alloc_failed:
+	return((IMG_VOID *) 0);
 }
 
 /*!****************************************************************************
@@ -1388,7 +1410,7 @@ IMG_VOID * IMG_CALLCONV DBGDrivFindStream(IMG_CHAR * pszName, IMG_BOOL bResetStr
 
 	if(bResetStream && psStream)
 	{
-		static IMG_CHAR szComment[] = "-- Init phase terminated\r\n";
+		static const IMG_CHAR szComment[] = "-- Init phase terminated\r\n";
 		psStream->psInitStream->ui32RPtr = 0;
 		psStream->ui32RPtr = 0;
 		psStream->ui32WPtr = 0;

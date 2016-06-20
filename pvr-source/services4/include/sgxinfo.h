@@ -142,6 +142,9 @@ typedef struct _SGX_BRIDGE_INIT_INFO_
 	IMG_UINT32 ui32MasterClkGateStatus2Mask;
 #endif /* SGX_FEATURE_MP */
 
+#if defined(SGX_FEATURE_AUTOCLOCKGATING)
+	IMG_BOOL bDisableClockGating;
+#endif
 	IMG_UINT32 ui32CacheControl;
 
 	IMG_UINT32	asInitDevData[SGX_MAX_DEV_DATA];
@@ -206,19 +209,9 @@ typedef struct _SGX_CCB_KICK_
 	/* CCB offset of data structure associated with this kick */
 	IMG_UINT32	ui32CCBOffset;
 
-#if defined(SUPPORT_SGX_GENERALISED_SYNCOBJECTS)
-	/* SRC and DST syncs */
-	IMG_UINT32	ui32NumTASrcSyncs;
-	IMG_HANDLE	ahTASrcKernelSyncInfo[SGX_MAX_TA_SRC_SYNCS];
-	IMG_UINT32	ui32NumTADstSyncs;
-	IMG_HANDLE	ahTADstKernelSyncInfo[SGX_MAX_TA_DST_SYNCS];
-	IMG_UINT32	ui32Num3DSrcSyncs;
-	IMG_HANDLE	ah3DSrcKernelSyncInfo[SGX_MAX_3D_SRC_SYNCS];
-#else
 	/* SRC syncs */
 	IMG_UINT32	ui32NumSrcSyncs;
 	IMG_HANDLE	ahSrcKernelSyncInfo[SGX_MAX_SRC_SYNCS_TA];
-#endif
 
 	/* TA/3D dependency data */
 	IMG_BOOL	bTADependency;
@@ -269,7 +262,6 @@ typedef struct _SGX_CLIENT_INFO_
  *****************************************************************************/
 typedef struct _SGX_INTERNAL_DEVINFO_
 {
-	IMG_UINT32			ui32Flags;
 	IMG_HANDLE			hHostCtlKernelMemInfoHandle;
 	IMG_BOOL			bForcePTOff;
 } SGX_INTERNAL_DEVINFO;
