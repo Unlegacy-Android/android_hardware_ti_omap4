@@ -63,7 +63,21 @@ SGXCORE						:= 544
 SGX_CORE_REV				:= 112
 HAL_VARIANT					:= omap4
 endif
-ifneq ($(filter jacinto6evm omap5sevm panda5,$(TARGET_DEVICE)),)
+ifneq ($(filter omap5sevm panda5,$(TARGET_DEVICE)),)
+SGXCORE						:= 544
+SGX_CORE_REV				:= 105
+SGX_FEATURE_MP				:= 1
+SGX_FEATURE_SYSTEM_CACHE	:= 1
+SGX_FEATURE_MP_CORE_COUNT	:= 2
+HAL_VARIANT					:= omap5
+
+# OMAP Product Version
+VS_PRODUCT_VERSION			:= 5
+
+# FIXME: Re-enable this ASAP
+SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
+endif
+ifneq ($(filter jacinto6evm,$(TARGET_DEVICE)),)
 SGXCORE						:= 544
 SGX_CORE_REV				:= 116
 SGX_FEATURE_MP				:= 1
@@ -72,10 +86,12 @@ SGX_FEATURE_MP_CORE_COUNT	:= 2
 HAL_VARIANT					:= jacinto6
 
 # OMAP Product Version
+# FIXME: Get rid of this
 VS_PRODUCT_VERSION			:= 5
 
 # FIXME: Re-enable this ASAP
 SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
+
 endif
 
 # Handle any TARGET_DEVICE remapping. Not all DDK TARGET_DEVICEs
@@ -92,8 +108,12 @@ SGX_DYNAMIC_TIMING_INFO := 1
 
 SUPPORT_LINUX_USING_WORKQUEUES := 1
 
-SUPPORT_PVRSRV_ANDROID_SYSTRACE := 0
+SUPPORT_PVRSRV_ANDROID_SYSTRACE := 1
 
+SUPPORT_DMABUF := 1
+
+# TODO: Set SUPPORT_PVRSVR_DEVICE_CLASS to 0
+#DISPLAY_CONTROLLER should not be used for DRM based display controller
 ifneq ($(SUPPORT_PVRSRV_DEVICE_CLASS),0)
 DISPLAY_CONTROLLER := omaplfb
 endif
@@ -124,6 +144,9 @@ ifneq ($(strip $(KERNELDIR)),)
   SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED := 1
   SYS_OMAP_HAS_DVFS_FRAMEWORK := 0
  endif
+ ifeq ($(call kernel-version-at-least,3,8,13),true)
+  PVR_LDM_DEVICE_TREE := 1
+ endif
 else
  $(warning "KERNELDIR is not set, so can't feature check DVFS or dsscomp.")
  $(warning "Assuming we want DVFS and dsscomp support.")
@@ -141,6 +164,7 @@ DISPLAY_CONTROLLER_COMPONENT := linux_framebuffer
 OMAP_NON_FLIP_DISPLAY := 1
 endif
 else # LDM_PLATFORM != 1
+# TODO: we should set DEVICE_CLASS to zero
 ifneq ($(SUPPORT_PVRSRV_DEVICE_CLASS),0)
 DISPLAY_CONTROLLER_COMPONENT := dc_omapfb3_linux
 endif
@@ -174,7 +198,7 @@ SUPPORT_ANDROID_OMAP_NV12 := 1
 
 PVR_ANDROID_USE_WINDOW_TRANSFORM_HINT := 1
 
-PVR_ANDROID_PLATFORM_HAS_LINUX_FBDEV := 0
+PVR_ANDROID_PLATFORM_HAS_LINUX_FBDEV := 1
 
 # Handle Google's OMAP-based products
 #
@@ -195,6 +219,9 @@ KERNEL_COMPONENTS += dc_nohw
 endif
 endif # SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED == 1
 endif # NO_HARDWARE == 1
+
+# we are not using PVR composerhal
+#PVR_ANDROID_COMPOSERHAL ?= omap
 
 include ../config/core.mk
 include ../common/android/extra_config.mk
