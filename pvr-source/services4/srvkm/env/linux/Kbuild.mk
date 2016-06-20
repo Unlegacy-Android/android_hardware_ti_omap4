@@ -78,14 +78,19 @@ pvrsrvkm-y += \
 	services4/srvkm/common/queue.o
 endif
 
-ifeq ($(SUPPORT_DRM_GEM),1)
-pvrsrvkm-y += \
-	services4/srvkm/env/linux/dmabuf.o
-endif
-
 ifeq ($(SUPPORT_ION),1)
 pvrsrvkm-y += \
 	services4/srvkm/env/linux/ion.o
+ifeq ($(LMA),1)
+pvrsrvkm-y += \
+	services4/srvkm/env/linux/lma_heap_ion.o 
+endif
+endif
+
+ifeq ($(SUPPORT_DMABUF),1)
+pvrsrvkm-y += \
+	services4/srvkm/env/linux/dmabuf.o \
+	services4/srvkm/env/linux/pvr_linux_fence.o
 endif
 
 ifeq ($(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC),1)
