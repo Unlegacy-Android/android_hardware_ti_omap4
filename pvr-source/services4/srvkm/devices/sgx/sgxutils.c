@@ -190,8 +190,10 @@ IMG_VOID SGXTestActivePowerEvent (PVRSRV_DEVICE_NODE	*psDeviceNode,
 			/* Microkernel is idle and is requesting to be powered down. */
 			psSGXHostCtl->ui32InterruptClearFlags |= PVRSRV_USSE_EDM_INTERRUPT_ACTIVE_POWER;
 
-			/* Suspend pdumping. */
+#if !defined(SUPPORT_PDUMP_MULTI_PROCESS)
+		/* Suspend pdumping. */
 			PDUMPSUSPEND();
+#endif
 
 #if defined(SYS_CUSTOM_POWERDOWN)
 			/*
@@ -207,8 +209,10 @@ IMG_VOID SGXTestActivePowerEvent (PVRSRV_DEVICE_NODE	*psDeviceNode,
 			{
 				SGXPostActivePowerEvent(psDeviceNode, ui32CallerID);
 			}
+#if !defined(SUPPORT_PDUMP_MULTI_PROCESS)
 			/* Resume pdumping */
 			PDUMPRESUME();
+#endif
 		}
 
 		PVRSRVPowerUnlock(ui32CallerID);
@@ -325,7 +329,7 @@ PVRSRV_ERROR SGXScheduleCCBCommand(PVRSRV_DEVICE_NODE	*psDeviceNode,
 #if defined(FIX_HW_BRN_28889)
 	/*
 		If the data cache and bif cache need invalidating there has been a cleanup
-		request. Therefore, we need to send the invalidate seperately and wait
+		request. Therefore, we need to send the invalidate separately and wait
 		for it to complete.
 	*/
 	if ( (eCmdType != SGXMKIF_CMD_PROCESS_QUEUES) &&
@@ -699,6 +703,9 @@ PVRSRV_ERROR SGXScheduleCCBCommandKM(PVRSRV_DEVICE_NODE		*psDeviceNode,
 		return eError;
 	}
 
+#if defined(SUPPORT_PDUMP_MULTI_PROCESS)
+	PDUMP_LOCK();
+#endif
 	/* Note that a power-up has been dumped in the init phase. */
 	PDUMPSUSPEND();
 
@@ -707,6 +714,9 @@ PVRSRV_ERROR SGXScheduleCCBCommandKM(PVRSRV_DEVICE_NODE		*psDeviceNode,
 										 PVRSRV_DEV_POWER_STATE_ON);
 
 	PDUMPRESUME();
+#if defined(SUPPORT_PDUMP_MULTI_PROCESS)
+	PDUMP_UNLOCK();
+#endif
 
 	if (eError == PVRSRV_OK)
 	{
@@ -759,7 +769,7 @@ PVRSRV_ERROR SGXScheduleProcessQueuesKM(PVRSRV_DEVICE_NODE *psDeviceNode)
 	ui32PowerStatus = psHostCtl->ui32PowerStatus;
 	if ((ui32PowerStatus & PVRSRV_USSE_EDM_POWMAN_NO_WORK) != 0)
 	{
-		/* The ukernel has no work to do so don't waste power. */
+		/* The ukernel has no work to be done, so don't waste power. */
 		return PVRSRV_OK;
 	}
 
@@ -815,7 +825,6 @@ PVRSRV_ERROR SGXGetInternalDevInfoKM(IMG_HANDLE hDevCookie,
 {
 	PVRSRV_SGXDEV_INFO *psDevInfo = (PVRSRV_SGXDEV_INFO *)((PVRSRV_DEVICE_NODE *)hDevCookie)->pvDevice;
 
-	psSGXInternalDevInfo->ui32Flags = psDevInfo->ui32Flags;
 	psSGXInternalDevInfo->bForcePTOff = (IMG_BOOL)psDevInfo->bForcePTOff;
 
 	/* This should be patched up by OS bridge code */
@@ -888,9 +897,9 @@ PVRSRV_ERROR SGXCleanupRequest(PVRSRV_DEVICE_NODE *psDeviceNode,
 			Pdump the poll as well.
 			Note:
 			We don't expect the cleanup to report busy as the client should have
-			ensured the the resource has been finished with before requesting
-			it's cleanup. This isn't true of the abnormal termination case but
-			we don't expect to PDump that. Unless/until PDump has flow control
+			ensured the resource has been finished with before requesting it's
+			cleanup. This isn't true of the abnormal termination case but we
+			don't expect to PDump that. Unless/until PDump has flow control
 			there isn't anything else we can do.
 		*/
 		PDUMPCOMMENTWITHFLAGS(0, "Host Control - Poll for clean-up request to complete");

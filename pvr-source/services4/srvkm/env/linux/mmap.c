@@ -67,6 +67,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #if defined(SUPPORT_DRI_DRM)
 #include <drm/drmP.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0))
+#include <drm/drm_legacy.h>
+#endif
 #endif
 
 #ifdef CONFIG_ARCH_OMAP5
@@ -93,6 +96,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if !defined(PVR_SECURE_HANDLES)
 #error "The mmap code requires PVR_SECURE_HANDLES"
+#endif
+
+#if defined(SUPPORT_DRI_DRM) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0))
+static inline int drm_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	return drm_legacy_mmap(filp, vma);
+}
 #endif
 
 /* WARNING:
@@ -1167,7 +1177,7 @@ unlock_and_return:
 
     LinuxUnLockMutex(&g_sMMapMutex);
 
-    if(psFlushMemArea)
+    if(psFlushMemArea && uiFlushSize)
     {
         OSInvalidateCPUCacheRangeKM(psFlushMemArea, uiByteOffset, pvBase,
 									uiFlushSize);

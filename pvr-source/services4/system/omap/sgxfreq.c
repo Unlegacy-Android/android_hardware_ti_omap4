@@ -384,8 +384,8 @@ err1:
 #endif
 #endif
 noerr:
-        return ret;
-    }
+		return ret;
+	}
 	return ret;
 }
 
@@ -394,7 +394,7 @@ static struct sgxfreq_governor *__find_governor(const char *name)
         struct sgxfreq_governor *t;
 
         list_for_each_entry(t, &sfd.gov_list, governor_list)
-                if (!strnicmp(name, t->name, SGXFREQ_NAME_LEN))
+                if (!strncasecmp(name, t->name, SGXFREQ_NAME_LEN))
                         return t;
 
         return NULL;
@@ -479,16 +479,16 @@ int sgxfreq_init(struct device *dev)
 		return -EINVAL;
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 	rcu_read_lock();
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 	sfd.freq_cnt = sfd.pdata->opp_get_opp_count(dev);
 #else
-	ret = of_init_opp_table(dev);
-	if (ret) {
-		pr_err("sgxfreq: failed to init OPP table: %d\n", ret);
+        ret = of_init_opp_table(dev);
+        if (ret) {
+                pr_err("sgxfreq: failed to init OPP table: %d\n", ret);
 		return -EINVAL;
-	}
+        }
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0))
 	sfd.freq_cnt = opp_get_opp_count(dev);
 #else
@@ -497,9 +497,7 @@ int sgxfreq_init(struct device *dev)
 #endif
 	if (sfd.freq_cnt < 1) {
 		pr_err("sgxfreq: failed to get operating frequencies\n");
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 		rcu_read_unlock();
-#endif
 		return -ENODEV;
 	}
 
@@ -525,9 +523,7 @@ int sgxfreq_init(struct device *dev)
 #endif
 	sfd.freq_list = kmalloc(sfd.freq_cnt * sizeof(unsigned long), GFP_ATOMIC);
         if (!sfd.freq_list) {
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 		rcu_read_unlock();
-#endif
 		return -ENOMEM;
 	}
 
@@ -542,18 +538,14 @@ int sgxfreq_init(struct device *dev)
 		opp = dev_pm_opp_find_freq_ceil(dev, &freq);
 #endif
 		if (IS_ERR_OR_NULL(opp)) {
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 			rcu_read_unlock();
-#endif
 			kfree(sfd.freq_list);
 			return -ENODEV;
 		}
 		sfd.freq_list[i] = freq;
 		freq++;
 	}
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
 	rcu_read_unlock();
-#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
 	sfd.core_clk = devm_clk_get(dev, "dpll_core_h14x2_ck");
