@@ -39,55 +39,68 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-# If a product wasn't specified, we're an OMAP4430 blaze.
+include ../kernel_version.mk
+ifeq ($(call kernel-version-at-least,3,8,13),true)
+ SUPPORT_LWS_WITH_DC ?= 0
+endif
+include ../config/window_system.mk
+
+# If a product wasn't specified, we're a J6 EVM.
 #
 TARGET_PRODUCT ?= jacinto6evm
+
+PVRSRV_NEED_PVR_DPF := 1
+PVRSRV_NEW_PVR_DPF := 1
 
 # Customize this build as per the TARGET_PRODUCT setting
 #
 ifneq ($(filter blaze blaze_tablet panda,$(TARGET_PRODUCT)),)
-SGXCORE					:= 540
-SGX_CORE_REV				:= 120
+ SGXCORE					:= 540
+ SGX_CORE_REV				:= 120
 endif
 ifneq ($(filter blaze.4470 blaze_tablet.4470,$(TARGET_PRODUCT)),)
-SGXCORE					:= 544
-SGX_CORE_REV				:= 112
+ SGXCORE					:= 544
+ SGX_CORE_REV				:= 112
 endif
 ifneq ($(filter omap5sevm panda5,$(TARGET_PRODUCT)),)
-SGXCORE					:= 544
-SGX_CORE_REV				:= 105
-SGX_FEATURE_MP				:= 1
-SGX_FEATURE_SYSTEM_CACHE		:= 1
-SGX_FEATURE_MP_CORE_COUNT		:= 2
-PVR_OMAPLFB_DRM_FB			:= 0
-SYS_OMAP_HAS_DVFS_FRAMEWORK		:= 1
+ SGXCORE					:= 544
+ SGX_CORE_REV				:= 105
+ SGX_FEATURE_MP				:= 1
+ SGX_FEATURE_SYSTEM_CACHE		:= 1
+ SGX_FEATURE_MP_CORE_COUNT		:= 2
+ PVR_OMAPLFB_DRM_FB			:= 0
+ SYS_OMAP_HAS_DVFS_FRAMEWORK		:= 1
 
-# OMAP Product Version
-VS_PRODUCT_VERSION			:= 5
+ # OMAP Product Version
+ VS_PRODUCT_VERSION			:= 5
 
-# FIXME: Re-enable this ASAP
-SUPPORT_ACTIVE_POWER_MANAGEMENT 	:= 0
+ # FIXME: Re-enable this ASAP
+ SUPPORT_ACTIVE_POWER_MANAGEMENT 	:= 0
 endif
 ifneq ($(filter jacinto6evm omap5uevm,$(TARGET_PRODUCT)),)
-SGXCORE					:= 544
-SGX_CORE_REV				:= 116
-SGX_FEATURE_MP				:= 1
-SGX_FEATURE_SYSTEM_CACHE		:= 1
-SGX_FEATURE_MP_CORE_COUNT		:= 2
+ SGXCORE					:= 544
+ SGX_CORE_REV				:= 116
+ SGX_FEATURE_MP				:= 1
+ SGX_FEATURE_SYSTEM_CACHE		:= 1
+ SGX_FEATURE_MP_CORE_COUNT		:= 2
+ SYS_OMAP_HAS_DVFS_FRAMEWORK		:= 1
 
-SYS_OMAP5_UEVM				:= 1
+ SYS_OMAP5_UEVM				:= 1
 
-# OMAP Product Version
-VS_PRODUCT_VERSION			:= 5
+ # OMAP Product Version
+ VS_PRODUCT_VERSION			:= 5
 endif
+
+PVR_NO_OMAP_TIMER := 1
 
 PVR_SYSTEM		:= omap
 
-KERNEL_COMPONENTS := srvkm bufferclass_example
+KERNEL_COMPONENTS := srvkm
+ifeq ($(PVR_LWS_NOBC),)
+KERNEL_COMPONENTS += bufferclass_example
+endif
 
 SUPPORT_OLD_ION_API := 1
-
-include ../kernel_version.mk
 
 # Only enable active power management if passive power management is
 # enabled, as indicated by LDM_PLATFORM being set to 1.  On OMAP,
@@ -99,8 +112,9 @@ LDM_PLATFORM ?= 1
 
 ifeq ($(LDM_PLATFORM),1)
 SUPPORT_LINUX_USING_WORKQUEUES := 1
-DISPLAY_CONTROLLER_COMPONENT += dc_omapfb3_linux
-DISPLAY_CONTROLLER := omaplfb
+#With DRM EGL and display, omaplfb is not needed
+#DISPLAY_CONTROLLER_COMPONENT += dc_omapfb3_linux
+#DISPLAY_CONTROLLER := omaplfb
 else
 SUPPORT_LINUX_USING_SHARED_WORKQUEUES := 1
 OMAP_NON_FLIP_DISPLAY := 1
@@ -142,16 +156,25 @@ SYS_CUSTOM_POWERLOCK_WRAP := 1
 
 ifeq ($(OMAP_NON_FLIP_DISPLAY),1)
 OPK_DEFAULT := libpvrPVR2D_BLITWSEGL.so
-else
-OPK_DEFAULT := libpvrPVR2D_FLIPWSEGL.so
 endif
 
 ifeq ($(SYS_OMAP5_UEVM),1)
+XORG_EXPLICIT_PVR_SERVICES_LOAD := 1
+ifeq ($(call kernel-version-at-least,3,8,13),true)
+LDM_PLATFORM := 1
+PVR_LDM_DEVICE_TREE := 1
+else
 PVR_LDM_PLATFORM_PRE_REGISTERED := 1
 PVR_LDM_PLATFORM_PRE_REGISTERED_DEV := "\"omapdrm_pvr\""
-XORG_EXPLICIT_PVR_SERVICES_LOAD := 1
+endif
+ifeq ($(PVR_LWS_NODC),1)
+# No display class driver.
+DISPLAY_CONTROLLER_COMPONENT :=
+DISPLAY_CONTROLLER :=
+else
 PVR_OMAPLFB_DRM_FB := 0
 PVR_OMAPLFB_DONT_USE_FB_PAN_DISPLAY := 1
+endif
 else
 ifeq ($(call kernel-version-at-least,2,6,35),true)
 # Work around flipping problems seen with the Taal LCDs on Blaze.
@@ -182,16 +205,17 @@ endif
 endif
 endif
 
-include ../common/xorg_test.mk
-ifeq ($(SUPPORT_BUILD_XORG),1)
-SUPPORT_DRI_DRM := 1
-endif
-
 ifeq ($(SUPPORT_DRI_DRM),1)
 ifeq ($(SYS_OMAP5_UEVM),1)
 PVR_DRI_DRM_PLATFORM_DEV := 1
+ifneq ($(call kernel-version-at-least,3,8,13),true)
 PVR_DRI_DRM_STATIC_BUS_ID := 1
 PVR_DRI_DRM_DEV_BUS_ID := "\"platform:omapdrm_pvr:00"\"
+endif
+ifeq ($(PVR_LWS_NODC),1)
+PVR_DRM_MODESET_DRIVER_NAME := omapdrm
+PVR_DRM_MODESET_MODULE_NAME := dumb
+endif
 else
 ifeq ($(call kernel-version-at-least,2,6,35),true)
 PVR_DRI_DRM_PLATFORM_DEV := 1
@@ -212,6 +236,9 @@ endif	# kernel-version-at-least,2,6,35
 endif	# ($(SYS_OMAP5_UEVM),1)
 endif	# SUPPORT_DRI_DRM
 
+include ../common/xorg_test.mk
+
+ifeq ($(PVR_LWS_NODC),)
 ifeq ($(SUPPORT_BUILD_XORG),1)
 ifeq ($(call kernel-version-at-least,2,6,35,7),true)
 # A client DRI authorisation failure, whilst switched away from the X Server
@@ -222,16 +249,9 @@ PVR_XORG_DONT_DROP_MASTER_IN_LEAVE_VT := 1
 endif
 XORG_PVR_VIDEO ?= omap4
 
-OPK_FALLBACK := libpvrPVR2D_DRIWSEGL.so
-
 ifneq ($(OMAP_NON_FLIP_DISPLAY),1)
 PVR_DISPLAY_CONTROLLER_DRM_IOCTL := 1
 endif
-
-else  # xorg isn't excluded
-
-OPK_FALLBACK := libpvrPVR2D_BLITWSEGL.so
-
 endif # xorg isn't excluded
 
 ifeq ($(SUPPORT_DRI_DRM),1)
@@ -242,6 +262,7 @@ endif
 EXTRA_PVRSRVKM_COMPONENTS += $(DISPLAY_CONTROLLER_COMPONENT)
 else
 KERNEL_COMPONENTS += $(DISPLAY_CONTROLLER_COMPONENT)
+endif
 endif
 
 include ../config/core.mk

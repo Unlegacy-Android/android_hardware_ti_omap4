@@ -61,12 +61,12 @@ endif
 
 # Only allow cflags that do not affect code generation. This is to ensure
 # proper binary compatibility when LTO (Link-Time Optimization) is enabled.
-# We make exceptions for -fPIC, -fPIE and -m32 which will all fail linkage
-# in non-LTO mode if incorrectly specified.
+# We make exceptions for the below flags which will all fail linkage in
+# non-LTO mode if incorrectly specified.
 #
 # NOTE: Only used by static_library and objects right now. Other module
 # types should not be affected by complex code generation flags w/ LTO.
-MODULE_ALLOWED_CFLAGS := -W% -D% -std=% -fPIC -fPIE -m32
+MODULE_ALLOWED_CFLAGS := -W% -D% -std=% -fPIC -fPIE -pie -m32
 
 # -L flags for library search dirs: these are relative to $(TOP), unless
 # they're absolute paths

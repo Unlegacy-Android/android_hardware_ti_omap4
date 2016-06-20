@@ -1,5 +1,5 @@
 /*************************************************************************/ /*!
-@Title          Services Ion synchronisation integration
+@Title          Services dma_buf synchronisation integration
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -43,31 +43,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "servicesint.h"
 
-#ifndef __EXTERNAL_SYNC_H__
-#define __EXTERNAL_SYNC_H__
+#ifndef __DMABUF_SYNC_H__
+#define __DMABUF_SYNC_H__
 
-typedef struct _PVRSRV_EXTERNAL_SYNC_INFO_ {
-	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo;
+typedef struct _PVRSRV_DMABUF_SYNC_INFO_ {
+	PVRSRV_KERNEL_SYNC_INFO 		*psSyncInfo;
 	IMG_HANDLE				hUnique;
 	IMG_UINT32				ui32RefCount;
 	IMG_UINT64				ui64Stamp;
-} PVRSRV_EXTERNAL_SYNC_INFO;
+} PVRSRV_DMABUF_SYNC_INFO;
 
-PVRSRV_ERROR PVRSRVExternalBufferSyncAcquire(IMG_HANDLE hUnique,
+PVRSRV_ERROR PVRSRVDmaBufSyncAcquire(IMG_HANDLE hUnique,
+										IMG_HANDLE hPriv,
 										IMG_HANDLE hDevCookie,
 										IMG_HANDLE hDevMemContext,
-										PVRSRV_EXTERNAL_SYNC_INFO **ppsExternalSyncInfo);
+										PVRSRV_DMABUF_SYNC_INFO **ppsDmaBufSyncInfo);
 
-IMG_VOID PVRSRVExternalBufferSyncRelease(PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo);
+IMG_VOID PVRSRVDmaBufSyncRelease(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo);
 
-static INLINE PVRSRV_KERNEL_SYNC_INFO *ExternalBufferSyncGetKernelSyncInfo(PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo)
+static INLINE IMG_UINT64 DmaBufSyncGetStamp(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo)
 {
-	return psExternalSyncInfo->psSyncInfo;
+	return psDmaBufSyncInfo->ui64Stamp;
 }
 
-static INLINE IMG_UINT64 ExternalBufferSyncGetStamp(PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo)
-{
-	return psExternalSyncInfo->ui64Stamp;
-}
-
-#endif /* __EXTERNAL_SYNC_H__ */
+#endif /* __DMABUF_SYNC_H__ */

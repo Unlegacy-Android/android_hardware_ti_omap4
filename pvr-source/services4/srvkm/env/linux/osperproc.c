@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined (SUPPORT_ION)
 #include <linux/err.h>
 #include "ion.h"
-//extern struct ion_device *gpsIonDev;
+extern struct ion_device *gpsIonDev;
 #endif
 
 extern IMG_UINT32 gui32ReleasePID;
@@ -85,7 +85,7 @@ PVRSRV_ERROR OSPerProcessPrivateDataInit(IMG_HANDLE *phOsPrivateData)
 	INIT_LIST_HEAD(&psEnvPerProc->sDRMAuthListHead);
 #endif
 
-#if 0//defined(SUPPORT_ION)
+#if defined(SUPPORT_ION)
 	OSSNPrintf(psEnvPerProc->azIonClientName, ION_CLIENT_NAME_SIZE, "pvr_ion_client-%d", OSGetCurrentProcessIDKM());
 	psEnvPerProc->psIONClient =
 		ion_client_create(gpsIonDev,
@@ -114,7 +114,7 @@ PVRSRV_ERROR OSPerProcessPrivateDataDeInit(IMG_HANDLE hOsPrivateData)
 
 	psEnvPerProc = (PVRSRV_ENV_PER_PROCESS_DATA *)hOsPrivateData;
 
-#if 0//defined(SUPPORT_ION)
+#if defined(SUPPORT_ION)
 	if (psEnvPerProc->psIONClient)
 	{
 		ion_client_destroy(psEnvPerProc->psIONClient);

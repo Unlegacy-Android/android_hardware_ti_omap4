@@ -39,9 +39,17 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-ifeq ($(filter xorg,$(EXCLUDED_APIS)),)
- COMPONENTS += xorg pvr_conf pvr_video wsegl_dri2_linux
- -include ../common/apis/xorg_opengl.mk
+ifeq ($(WINDOW_SYSTEM),xorg)
+ SUPPORT_BUILD_LWS := 1
+ COMPONENTS += libudev_stubs
+ ifeq ($(PVR_LWS_NODC),1)
+  COMPONENTS += xorg pvr_conf pvr_video lws_pkgconfig pvr_dri
+ else
+  COMPONENTS += xorg pvr_conf pvr_video wsegl_dri2_linux
+  ifeq ($(filter opengl,$(EXCLUDED_APIS)),)
+   COMPONENTS += pvr_dri
+  endif
+ endif
 ifeq ($(SUPPORT_PVR_REMOTE),1)
  COMPONENTS += pvr_input
 endif
