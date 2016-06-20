@@ -178,7 +178,11 @@ $(call directory-must-exist,$(TOP)/eurasiacon/build/linux2/$(PVR_BUILD_DIR))
 # final programs/libraries, and install/rc scripts.
 #
 BUILD	?= release
-OUT		?= $(TOP)/eurasiacon/binary2_$(PVR_BUILD_DIR)_$(BUILD)
+ifneq ($(WINDOW_SYSTEM),)
+OUT ?= $(TOP)/eurasiacon/binary_$(PVR_BUILD_DIR)_$(WINDOW_SYSTEM)_$(BUILD)
+else
+OUT ?= $(TOP)/eurasiacon/binary2_$(PVR_BUILD_DIR)_$(BUILD)
+endif
 override OUT := $(if $(filter /%,$(OUT)),$(OUT),$(TOP)/$(OUT))
 
 CONFIG_MK			:= $(OUT)/config.mk
@@ -269,7 +273,9 @@ ifeq ($(SUPPORT_LINUX_USING_WORKQUEUES),1)
 override PVR_LINUX_USING_WORKQUEUES := 1
 override PVR_LINUX_MISR_USING_PRIVATE_WORKQUEUE := 1
 override PVR_LINUX_TIMERS_USING_WORKQUEUES := 1
+ifneq ($(SUPPORT_ANDROID_FPGA),1)
 override SYS_CUSTOM_POWERLOCK_WRAP := 1
+endif
 else ifeq ($(SUPPORT_LINUX_USING_SHARED_WORKQUEUES),1)
 override PVR_LINUX_USING_WORKQUEUES := 1
 override PVR_LINUX_MISR_USING_WORKQUEUE := 1
@@ -360,7 +366,7 @@ $$(warning *** Setting $(1) via $$(origin $(1)) is deprecated)
 $$(error If you are trying to disable a component, use e.g. EXCLUDED_APIS="opengles1 opengl")
 endif
 endef
-$(foreach _o,SYS_CFLAGS SYS_CXXFLAGS SYS_INCLUDES SYS_EXE_LDFLAGS SYS_LIB_LDFLAGS SYS_EXE_LDFLAGS_CXX SYS_LIB_LDFLAGS_CXX SUPPORT_EWS SUPPORT_OPENGLES1 SUPPORT_OPENGLES2 SUPPORT_OPENCL SUPPORT_RSCOMPUTE SUPPORT_OPENGL SUPPORT_UNITTESTS SUPPORT_XORG,$(eval $(call sanity-check-support-option-origin,$(_o))))
+$(foreach _o,SYS_CFLAGS SYS_CXXFLAGS SYS_INCLUDES SYS_COMMON_LDFLAGS SYS_EXE_LDFLAGS SYS_LIB_LDFLAGS SYS_EXE_LDFLAGS_CXX SYS_LIB_LDFLAGS_CXX SUPPORT_EWS SUPPORT_OPENGLES1 SUPPORT_OPENGLES2 SUPPORT_OPENCL SUPPORT_RSCOMPUTE SUPPORT_OPENGL SUPPORT_UNITTESTS SUPPORT_XORG,$(eval $(call sanity-check-support-option-origin,$(_o))))
 
 # Check for words in EXCLUDED_APIS that aren't understood by the
 # common/apis/*.mk files. This should be kept in sync with all the tests on
@@ -401,6 +407,31 @@ COMPONENTS += pvrvncsrv
 COMPONENTS += pvrvncinput
 endif
 
+ifeq ($(HAVE_WINDOW_SYSTEM_MAKEFILE),)
+  ifeq ($(WINDOW_SYSTEM_SET_INTERNALLY),)
+   ifneq ($(WINDOW_SYSTEM),)
+    $(error "The WINDOW_SYSTEM build variable is not supported on this platform")
+   endif
+  endif
+  ifneq ($(MESA_EGL),)
+   $(error "The MESA_EGL build variable is not supported on this platform")
+  endif
+  PVR_LWS_NODC :=
+  PVR_LWS_NOBC :=
+endif
+
+ifneq ($(WINDOW_SYSTEM),)
+endif
+ifeq ($(MESA_EGL),1)
+ SUPPORT_OPENGLES1_V1_ONLY := 1
+ GLES1_EXTENSION_EGL_IMAGE_EXTERNAL := 1
+ GLES2_EXTENSION_EGL_IMAGE_EXTERNAL := 1
+else
+ ifeq ($(SUPPORT_BUILD_LWS),1)
+ else
+ endif
+endif
+
 $(if $(filter config,$(D)),$(info Build configuration:))
 
 ################################# CONFIG ####################################
@@ -426,7 +457,7 @@ $(eval $(call TunableBothConfigMake,KERNEL_CROSS_COMPILE,))
 endif
 
 # Check the KERNELDIR has a kernel built.
-VMLINUX := $(strip $(wildcard $(KERNELDIR)/vmlinux))
+VMLINUX := 
 LINUXCFG := $(strip $(wildcard $(KERNELDIR)/.config))
 
 ifneq ($(VMLINUX),)
@@ -437,8 +468,10 @@ VMLINUX_IS_64BIT := $(shell file $(VMLINUX) | grep 64-bit >/dev/null || echo fal
 VMLINUX_HAS_PAE36 := $(shell cat $(LINUXCFG) | grep CONFIG_X86_PAE=y >/dev/null || echo false)
 VMLINUX_HAS_PAE40 := $(shell cat $(LINUXCFG) | grep CONFIG_ARM_LPAE=y >/dev/null || echo false)
 VMLINUX_HAS_DMA32 := $(shell cat $(LINUXCFG) | grep CONFIG_ZONE_DMA32=y >/dev/null || echo false)
+VMLINUX_HAS_DMA := $(shell cat $(LINUXCFG) | grep CONFIG_ZONE_DMA=y >/dev/null || echo false)
 
-# $(error 64BIT=$(VMLINUX_IS_64BIT) PAE36=$(VMLINUX_HAS_PAE36) PAE40=$(VMLINUX_HAS_PAE40) DMA32=$(VMLINUX_HAS_DMA32) MMU36=$(SGX_FEATURE_36BIT_MMU))
+
+# $(error 64BIT=$(VMLINUX_IS_64BIT) PAE36=$(VMLINUX_HAS_PAE36) PAE40=$(VMLINUX_HAS_PAE40) DMA=$(VMLINUX_HAS_DMA) DMA32=$(VMLINUX_HAS_DMA32) MMU36=$(SGX_FEATURE_36BIT_MMU))
 
 ifneq ($(VMLINUX_IS_64BIT),false)
 $(warning $$(KERNELDIR)/vmlinux: Note: vmlinux is 64-bit, which is supported but currently experimental.)
@@ -449,8 +482,8 @@ endif
 endif
 
 ifneq ($(VMLINUX_HAS_PAE40),false)
-ifeq ($(VMLINUX_HAS_DMA32),false)
-$(warning SGX MMUs are currently supported up to only 36 bits max. Your Kernel is built with 40-bit PAE but does not have CONFIG_ZONE_DMA32.)
+ifeq ($(VMLINUX_HAS_DMA),false)
+$(warning SGX MMUs are currently supported up to only 36 bits max. Your Kernel is built with 40-bit PAE but does not have CONFIG_ZONE_DMA.)
 $(warning This means you must ensure the runtime system has <= 4GB of RAM, or there will be BIG problems...)
 endif 
 endif
@@ -465,8 +498,8 @@ endif
 else
  # Kernel is 32-bit
 ifneq ($(VMLINUX_HAS_PAE36),false)
-ifeq ($(VMLINUX_HAS_DMA32),false)
-$(warning SGX is configured with 32-bit MMU. Your Kernel is 32-bit PAE, but does not have CONFIG_ZONE_DMA32. )
+ifeq ($(VMLINUX_HAS_DMA),false)
+$(warning SGX is configured with 32-bit MMU. Your Kernel is 32-bit PAE, but does not have CONFIG_ZONE_DMA. )
 $(warning This means you must ensure the runtime system has <= 4GB of RAM, or there will be BIG problems...)
 endif
 endif
@@ -506,13 +539,16 @@ ifneq ($(DISPLAY_CONTROLLER),)
 $(eval $(call BothConfigC,DISPLAY_CONTROLLER,$(DISPLAY_CONTROLLER)))
 endif
 
+ifneq ($(DRM_DISPLAY_CONTROLLER),)
+endif
+
 ifneq ($(strip $(KERNELDIR)),)
 PVR_LINUX_MEM_AREA_POOL_MAX_PAGES ?= 0
 ifneq ($(PVR_LINUX_MEM_AREA_POOL_MAX_PAGES),0)
 PVR_LINUX_MEM_AREA_USE_VMAP ?= 1
 include ../kernel_version.mk
 ifeq ($(call kernel-version-at-least,3,0),true)
-PVR_LINUX_MEM_AREA_POOL_ALLOW_SHRINK ?= 0
+PVR_LINUX_MEM_AREA_POOL_ALLOW_SHRINK ?= 1
 endif
 endif
 $(eval $(call KernelConfigC,PVR_LINUX_MEM_AREA_POOL_MAX_PAGES,$(PVR_LINUX_MEM_AREA_POOL_MAX_PAGES)))
@@ -537,6 +573,7 @@ $(eval $(call KernelConfigC,DEBUG_BRIDGE_KM,))
 else ifeq ($(BUILD),release)
 $(eval $(call BothConfigC,RELEASE,))
 $(eval $(call TunableBothConfigMake,DEBUGLINK,1))
+$(eval $(call TunableBothConfigC,PVR_DBGPRIV_LEVEL,))
 else ifeq ($(BUILD),timing)
 $(eval $(call BothConfigC,TIMING,))
 $(eval $(call TunableBothConfigMake,DEBUGLINK,1))
@@ -566,6 +603,7 @@ $(eval $(call TunableBothConfigC,SGX_FEATURE_MP_PLUS,))
 $(eval $(call TunableBothConfigC,FPGA,))
 $(eval $(call TunableBothConfigC,PDUMP,))
 $(eval $(call TunableBothConfigC,MEM_TRACK_INFO_DEBUG,))
+$(eval $(call TunableBothConfigC,PVRSRV_DEVMEM_TIME_STATS,))
 $(eval $(call TunableBothConfigC,NO_HARDWARE,))
 $(eval $(call TunableBothConfigC,PDUMP_DEBUG_OUTFILES,))
 $(eval $(call TunableBothConfigC,PVRSRV_USSE_EDM_STATUS_DEBUG,))
@@ -578,7 +616,7 @@ $(eval $(call TunableBothConfigC,PVRSRV_NEED_PVR_ASSERT,))
 $(eval $(call TunableBothConfigC,PVRSRV_NEED_PVR_TRACE,))
 $(eval $(call TunableBothConfigC,SUPPORT_SECURE_33657_FIX,))
 $(eval $(call TunableBothConfigC,SUPPORT_ION,))
-$(eval $(call TunableBothConfigC,SUPPORT_DRM_GEM,))
+$(eval $(call TunableBothConfigC,SUPPORT_DMABUF,))
 $(eval $(call TunableBothConfigC,SUPPORT_HWRECOVERY_TRACE_LIMIT,))
 $(eval $(call TunableBothConfigC,SUPPORT_PVRSRV_DEVICE_CLASS,))
 $(eval $(call TunableBothConfigC,SUPPORT_PVRSRV_GET_DC_SYSTEM_BUFFER,1))
@@ -599,6 +637,7 @@ $(eval $(call TunableKernelConfigC,PVR_LINUX_MISR_USING_PRIVATE_WORKQUEUE,))
 $(eval $(call TunableKernelConfigC,PVR_LINUX_TIMERS_USING_WORKQUEUES,))
 $(eval $(call TunableKernelConfigC,PVR_LINUX_TIMERS_USING_SHARED_WORKQUEUE,))
 $(eval $(call TunableKernelConfigC,LDM_PLATFORM,))
+$(eval $(call TunableKernelConfigC,PVR_LDM_DEVICE_TREE,))
 $(eval $(call TunableKernelConfigC,PVR_LDM_PLATFORM_PRE_REGISTERED,))
 $(eval $(call TunableKernelConfigC,PVR_LDM_PLATFORM_PRE_REGISTERED_DEV,))
 $(eval $(call TunableKernelConfigC,PVR_LDM_DRIVER_REGISTRATION_NAME,"\"$(PVRSRV_MODNAME)\""))
@@ -620,7 +659,7 @@ $(eval $(call TunableKernelConfigC,SUPPORT_FORCE_SYNC_DUMP,))
 
 $(eval $(call TunableBothConfigMake,OPTIM,))
 $(eval $(call TunableBothConfigMake,SUPPORT_ION,))
-$(eval $(call TunableBothConfigMake,SUPPORT_DRM_GEM,))
+$(eval $(call TunableBothConfigMake,SUPPORT_DMABUF,))
 $(eval $(call TunableBothConfigMake,SUPPORT_PVRSRV_DEVICE_CLASS,))
 
 
