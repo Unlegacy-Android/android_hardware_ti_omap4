@@ -88,7 +88,7 @@ endef
 define target-executable-from-o
 $(if $(V),,@echo "  LD      " $(call relative-to-top,$@))
 $(CC) \
-	$(SYS_EXE_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
+	$(SYS_EXE_LDFLAGS) $(SYS_COMMON_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
 	$(SYS_EXE_CRTBEGIN) $(sort $(MODULE_ALL_OBJECTS)) $(SYS_EXE_CRTEND) \
 	$(MODULE_LIBRARY_DIR_FLAGS) $(MODULE_LIBRARY_FLAGS) $(LIBGCC)
 endef
@@ -96,7 +96,7 @@ endef
 define target-executable-cxx-from-o
 $(if $(V),,@echo "  LD      " $(call relative-to-top,$@))
 $(CXX) \
-	$(SYS_EXE_LDFLAGS_CXX) $(SYS_EXE_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
+	$(SYS_EXE_LDFLAGS_CXX) $(SYS_EXE_LDFLAGS) $(SYS_COMMON_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
 	$(SYS_EXE_CRTBEGIN) $(sort $(MODULE_ALL_OBJECTS)) $(SYS_EXE_CRTEND) \
 	$(MODULE_LIBRARY_DIR_FLAGS) $(MODULE_LIBRARY_FLAGS) $(LIBGCC)
 endef
@@ -104,7 +104,7 @@ endef
 define target-shared-library-from-o
 $(if $(V),,@echo "  LD      " $(call relative-to-top,$@))
 $(CC) -shared -Wl,-Bsymbolic \
-	$(SYS_LIB_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
+	$(SYS_LIB_LDFLAGS) $(SYS_COMMON_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
 	$(SYS_LIB_CRTBEGIN) $(sort $(MODULE_ALL_OBJECTS)) $(SYS_LIB_CRTEND) \
 	$(MODULE_LIBRARY_DIR_FLAGS) $(MODULE_LIBRARY_FLAGS) $(LIBGCC)
 endef
@@ -114,7 +114,7 @@ endef
 define target-shared-library-cxx-from-o
 $(if $(V),,@echo "  LD      " $(call relative-to-top,$@))
 $(CXX) -shared -Wl,-Bsymbolic \
-	$(SYS_LIB_LDFLAGS_CXX) $(SYS_LIB_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
+	$(SYS_LIB_LDFLAGS_CXX) $(SYS_LIB_LDFLAGS) $(SYS_COMMON_LDFLAGS) $(MODULE_LDFLAGS) -o $@ \
 	$(SYS_LIB_CRTBEGIN) $(sort $(MODULE_ALL_OBJECTS)) $(SYS_LIB_CRTEND) \
 	$(MODULE_LIBRARY_DIR_FLAGS) $(MODULE_LIBRARY_FLAGS) $(LIBGCC)
 endef
@@ -183,7 +183,11 @@ define make-directory
 $(MKDIR) -p $@
 endef
 
+define check-exports-from-file
+endef
+
 define check-exports
+$(call check-exports-from-file,$(if $1,$1,$(notdir $@).txt))
 endef
 
 # Programs used in recipes
@@ -197,6 +201,7 @@ JAR ?= jar
 JAVA ?= java
 JAVAC ?= javac
 ZIP ?= zip
+PKG_CONFIG ?= pkg-config
 
 # Don't override/interfere with Android ccache
 # ifeq ($(USE_CCACHE),1)
@@ -229,10 +234,10 @@ override CC  := $(if $(V),,@)$(CC)
 override CXX := $(if $(V),,@)$(CXX)
 endif
 
-override AR				:= $(if $(V),,@)$(CROSS_COMPILE)ar
+override AR			:= $(if $(V),,@)$(CROSS_COMPILE)ar
 override BISON			:= $(if $(V),,@)$(BISON)
 override BZIP2			:= $(if $(V),,@)bzip2 -9
-override CP				:= $(if $(V),,@)cp
+override CP			:= $(if $(V),,@)cp
 override ECHO			:= $(if $(V),,@)echo
 override FLEX			:= $(if $(V),,@)flex
 override GAWK			:= $(if $(V),,@)gawk
@@ -245,13 +250,14 @@ override INSTALL		:= $(if $(V),,@)install
 override JAR			:= $(if $(V),,@)$(JAR)
 override JAVA			:= $(if $(V),,@)$(JAVA)
 override JAVAC			:= $(if $(V),,@)$(JAVAC)
-override M4				:= $(if $(V),,@)m4
+override LN			:= $(if $(V),,@)ln -f
+override M4			:= $(if $(V),,@)m4
 override MKDIR			:= $(if $(V),,@)mkdir
-override MV				:= $(if $(V),,@)mv
+override MV			:= $(if $(V),,@)mv
 override OBJCOPY		:= $(if $(V),,@)$(CROSS_COMPILE)objcopy
 override PDSASM			:= $(if $(V),,@)$(HOST_OUT)/pdsasm
 override RANLIB			:= $(if $(V),,@)$(CROSS_COMPILE)ranlib
-override RM				:= $(if $(V),,@)rm -f
+override RM			:= $(if $(V),,@)rm -f
 override SED			:= $(if $(V),,@)sed
 override STRIP			:= $(if $(V),,@)$(CROSS_COMPILE)strip
 override TAR			:= $(if $(V),,@)tar

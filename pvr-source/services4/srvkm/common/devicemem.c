@@ -49,21 +49,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "osfunc.h"
 #include "devicemem.h"
 
-#if defined(SUPPORT_DRM_GEM)
-#include "dmabuf.h"
-#endif
-
 #if defined(SUPPORT_ION)
 #include "ion.h"
 #include "env_perproc.h"
+#include "ion_sync.h"
+
+/* Start size of the g_IonSyncHash hash table */
+#define ION_SYNC_HASH_SIZE 20
+HASH_TABLE *g_psIonSyncHash = IMG_NULL;
 #endif
 
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-#include "external_sync.h"
+#if defined(SUPPORT_DMABUF)
+#include "dmabuf.h"
+#include "dmabuf_sync.h"
+#include "pvr_linux_fence.h"
 
-/* Start size of the g_ExternalSyncHash hash table */
-#define EXTERNAL_SYNC_HASH_SIZE 20
-HASH_TABLE *g_psExternalSyncHash = IMG_NULL;
+/* Start size of the g_DmaBufSyncHash hash table */
+#define DMABUF_SYNC_HASH_SIZE 20
+HASH_TABLE *g_psDmaBufSyncHash = IMG_NULL;
 #endif
 
 #include "lists.h"
@@ -114,8 +117,8 @@ typedef struct _PVRSRV_DC_MAPINFO_
 
 static IMG_UINT32 g_ui32SyncUID = 0;
 #if defined (MEM_TRACK_INFO_DEBUG)
-PVRSRV_MEM_TRACK_INFO *g_psMemTrackInfoHead = NULL;
-PVRSRV_MEM_TRACK_INFO *g_psMemTrackInfoTail = NULL;
+PVRSRV_MEM_TRACK_INFO *g_psMemTrackInfoHead = IMG_NULL;
+PVRSRV_MEM_TRACK_INFO *g_psMemTrackInfoTail = IMG_NULL;
 IMG_UINT32	g_ui32NumOfOpsRecorded = 0;
 #endif
 
@@ -182,7 +185,7 @@ IMG_EXPORT
 IMG_VOID IMG_CALLCONV PVRSRVPrintMemTrackInfo(IMG_UINT32 ui32FaultAddr)
 {
 	PVRSRV_MEM_TRACK_INFO *psMemTrackInfo;
-	const IMG_CHAR *apszMemOpNames[] = {"UNKNOWN", "DEVICE", "DEVICECLASS", "WRAPPED", "MAPPED", "ION", "ALLOC", "FREE"};
+	static const IMG_CHAR * const apszMemOpNames[] = {"UNKNOWN", "DEVICE", "DEVICECLASS", "WRAPPED", "MAPPED", "ION", "DMA-BUF" "ALLOC", "FREE"};
 	psMemTrackInfo = g_psMemTrackInfoHead;
 
 	PVR_DPF((PVR_DBG_MESSAGE,"PVRSRVMemTrackInfo: Dumping mem tracking info\n"));
@@ -619,6 +622,9 @@ static PVRSRV_ERROR AllocDeviceMem(IMG_HANDLE		hDevCookie,
 							ui32NumVirtChunks,
 							ui32NumPhysChunks,
 							pabMapChunk,
+							#if defined (PVRSRV_DEVMEM_TIME_STATS)
+							&psMemInfo->ui32TimeToDevMap,
+							#endif
 							&hBuffer);
 
 	if (!bBMError)
@@ -679,7 +685,12 @@ static PVRSRV_ERROR FreeDeviceMem2(PVRSRV_KERNEL_MEM_INFO *psMemInfo, PVRSRV_FRE
 	switch(eCallbackOrigin)
 	{
 		case PVRSRV_FREE_CALLBACK_ORIGIN_ALLOCATOR:
-			BM_Free(hBuffer, psMemInfo->ui32Flags);
+			BM_Free(hBuffer,
+					psMemInfo->ui32Flags
+					#if defined(PVRSRV_DEVMEM_TIME_STATS)
+					,psMemInfo->pui32TimeToDevUnmap
+					#endif
+					);
 			break;
 		case PVRSRV_FREE_CALLBACK_ORIGIN_IMPORTER:
 			BM_FreeExport(hBuffer, psMemInfo->ui32Flags);
@@ -712,7 +723,11 @@ static PVRSRV_ERROR FreeDeviceMem(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
 
 	hBuffer = psMemInfo->sMemBlk.hBuffer;
 
-	BM_Free(hBuffer, psMemInfo->ui32Flags);
+	BM_Free(hBuffer, psMemInfo->ui32Flags
+				#if defined(PVRSRV_DEVMEM_TIME_STATS)
+				, IMG_NULL
+				#endif
+				);
 
 	if(psMemInfo->pvSysBackupBuffer)
 	{
@@ -813,6 +828,10 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVAllocSyncInfoKM(IMG_HANDLE					hDevCookie,
 	psSyncData->ui32LastOpDumpVal = 0;
 	psSyncData->ui32LastReadOpDumpVal = 0;
 	psSyncData->ui64LastWrite = 0;
+
+#if defined(SUPPORT_DMABUF)
+	psKernelSyncInfo->hFenceContext = IMG_NULL;
+#endif
 
 #if defined(SUPPORT_PER_SYNC_DEBUG)
 	psKernelSyncInfo->ui32OperationMask = 0;
@@ -963,21 +982,21 @@ static IMG_VOID freeExternal(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
 			OSReleasePhysPageAddr(hOSWrapMem);
 		}
 	}
-#if defined(SUPPORT_DRM_GEM)
-	else if (psMemInfo->memType == PVRSRV_MEMTYPE_DMABUF)
-	{
-		if (hOSWrapMem)
-		{
-			DmabufUnimportBufferAndReleasePhysAddr(hOSWrapMem);
-		}
-	}
-#endif
 #if defined(SUPPORT_ION)
 	else if (psMemInfo->memType == PVRSRV_MEMTYPE_ION)
 	{
 		if (hOSWrapMem)
 		{
 			IonUnimportBufferAndReleasePhysAddr(hOSWrapMem);
+		}
+	}
+#endif
+#if defined(SUPPORT_DMABUF)
+	else if (psMemInfo->memType == PVRSRV_MEMTYPE_DMABUF)
+	{
+		if (hOSWrapMem)
+		{
+			DmaBufUnimportAndReleasePhysAddr(hOSWrapMem);
 		}
 	}
 #endif
@@ -1071,14 +1090,21 @@ PVRSRV_ERROR FreeMemCallBackCommon(PVRSRV_KERNEL_MEM_INFO *psMemInfo,
 				freeExternal(psMemInfo);
 			case PVRSRV_MEMTYPE_DEVICE:
 			case PVRSRV_MEMTYPE_DEVICECLASS:
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-				if (psMemInfo->hExternalSyncInfo)
+#if defined(SUPPORT_ION)
+				if (psMemInfo->hIonSyncInfo)
 				{
 					/*
 						For syncs attached to Ion imported buffers we handle
 						things a little differently
 					*/
-					PVRSRVExternalBufferSyncInfoDecRef(psMemInfo->hExternalSyncInfo, psMemInfo);
+					PVRSRVIonBufferSyncInfoDecRef(psMemInfo->hIonSyncInfo, psMemInfo);
+				}
+				else
+#endif
+#if defined(SUPPORT_DMABUF)
+				if (psMemInfo->hDmaBufSyncInfo)
+				{
+					PVRSRVDmaBufSyncInfoDecRef(psMemInfo->hDmaBufSyncInfo, psMemInfo);
 				}
 				else
 #endif
@@ -1090,7 +1116,7 @@ PVRSRV_ERROR FreeMemCallBackCommon(PVRSRV_KERNEL_MEM_INFO *psMemInfo,
 				}
 				break;
 			default:
-				PVR_DPF((PVR_DBG_ERROR, "FreeMemCallBackCommon: Unknown memType: %d", psMemInfo->memType));
+				PVR_DPF((PVR_DBG_ERROR, "FreeMemCallBackCommon: Unknown memType"));
 				eError = PVRSRV_ERROR_INVALID_MEMINFO;
 		}
 	}
@@ -1393,377 +1419,6 @@ free_mainalloc:
 	return eError;
 }
 
-#if defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-PVRSRV_ERROR PVRSRVExternalBufferSyncAcquire(IMG_HANDLE hUnique,
-										IMG_HANDLE hDevCookie,
-										IMG_HANDLE hDevMemContext,
-										PVRSRV_EXTERNAL_SYNC_INFO **ppsExternalSyncInfo)
-{
-	PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo;
-	PVRSRV_ERROR eError;
-	IMG_BOOL bRet;
-
-	/* Check the hash to see if we already have a sync for this buffer */
-	psExternalSyncInfo = (PVRSRV_EXTERNAL_SYNC_INFO *) HASH_Retrieve(g_psExternalSyncHash, (IMG_UINTPTR_T) hUnique);
-	if (psExternalSyncInfo == 0)
-	{
-		/* This buffer is new to us, create the syncinfo for it */
-		eError = OSAllocMem(PVRSRV_PAGEABLE_SELECT,
-							sizeof(PVRSRV_EXTERNAL_SYNC_INFO),
-							(IMG_VOID **)&psExternalSyncInfo, IMG_NULL,
-							"Ion Synchronization Info");
-		if (eError != PVRSRV_OK)
-		{
-			return eError;
-		}
-
-		eError = PVRSRVAllocSyncInfoKM(hDevCookie,
-									   hDevMemContext,
-									   &psExternalSyncInfo->psSyncInfo);
-		if (eError != PVRSRV_OK)
-		{
-			OSFreeMem(PVRSRV_PAGEABLE_SELECT,
-					  sizeof(PVRSRV_EXTERNAL_SYNC_INFO),
-					  psExternalSyncInfo,
-					  IMG_NULL);
-
-			return eError;
-		}
-#if defined(SUPPORT_MEMINFO_IDS)
-		psExternalSyncInfo->ui64Stamp = ++g_ui64MemInfoID;
-#else
-		psExternalSyncInfo->ui64Stamp = 0;
-#endif
-		bRet = HASH_Insert(g_psExternalSyncHash, (IMG_UINTPTR_T) hUnique, (IMG_UINTPTR_T) psExternalSyncInfo);
-		if (!bRet)
-		{
-			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			PVRSRVKernelSyncInfoDecRef(psExternalSyncInfo->psSyncInfo, IMG_NULL);
-			OSFreeMem(PVRSRV_PAGEABLE_SELECT,
-					  sizeof(PVRSRV_EXTERNAL_SYNC_INFO),
-					  psExternalSyncInfo,
-					  IMG_NULL);
-
-			return eError;
-		}
-
-		psExternalSyncInfo->ui32RefCount = 0;
-		psExternalSyncInfo->hUnique = hUnique;
-	}
-
-	psExternalSyncInfo->ui32RefCount++;
-	*ppsExternalSyncInfo = psExternalSyncInfo;
-	return PVRSRV_OK;
-}
-
-IMG_VOID PVRSRVExternalBufferSyncRelease(PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo)
-{
-	psExternalSyncInfo->ui32RefCount--;
-
-	if (psExternalSyncInfo->ui32RefCount == 0)
-	{
-		PVRSRV_EXTERNAL_SYNC_INFO *psLookup;
-		/*
-			If we're holding the last reference to the syncinfo
-			then free it
-		*/
-		psLookup = (PVRSRV_EXTERNAL_SYNC_INFO *) HASH_Remove(g_psExternalSyncHash, (IMG_UINTPTR_T) psExternalSyncInfo->hUnique);
-		PVR_ASSERT(psLookup == psExternalSyncInfo);
-		PVRSRVKernelSyncInfoDecRef(psExternalSyncInfo->psSyncInfo, IMG_NULL);
-		OSFreeMem(PVRSRV_PAGEABLE_SELECT,
-				  sizeof(PVRSRV_EXTERNAL_SYNC_INFO),
-				  psExternalSyncInfo,
-				  IMG_NULL);
-	}
-}
-#endif //defined(SUPPORT_DRM_GEM) || defined(SUPPORT_ION)
-
-#if defined(SUPPORT_DRM_GEM)
-static PVRSRV_ERROR DmabufUnmapCallback(IMG_PVOID  pvParam,
-									 IMG_UINT32 ui32Param,
-									 IMG_BOOL   bDummy)
-{
-	PVRSRV_KERNEL_MEM_INFO	*psMemInfo = (PVRSRV_KERNEL_MEM_INFO *)pvParam;
-	
-	PVR_UNREFERENCED_PARAMETER(bDummy);
-
-	return FreeMemCallBackCommon(psMemInfo, ui32Param, PVRSRV_FREE_CALLBACK_ORIGIN_ALLOCATOR);
-}
-
-/*!
-******************************************************************************
-
- @Function	PVRSRVMapDmabufKM
-
- @Description
-
- Map a DMABUF buffer into the specified device memory context
-
- @Input	   psPerProc : PerProcess data
- @Input    hDevCookie : Device node cookie
- @Input    hDevMemHeap : Heap dmabuf handles are mapped into
- @Input    ui32NumBuffers : Number of dmabuf handles to map. (If one handle is being
-                            mapped, this should be 1, not 0.)
- @Input    phDmabuf : Array of ui32NumBuffers dmabuf handles (fds)
- @Input    ui32Flags : Mapping flags
- @Input    ui32ChunkCount : If ui32NumBuffers is 1, this is the number of
-                            "chunks" specified to be mapped into device-virtual
-                            address space. If ui32NumBuffers > 1, it is ignored.
- @Input    pauiOffset : Array of offsets in device-virtual address space to map
-                        "chunks" of physical from the dmabuf allocation.
- @Input    pauiSize : Array of sizes in bytes of device-virtual address space to
-                      map "chunks" of physical from the dmabuf allocation.
- @Input    puiDmabufBufferSize : Size in bytes of resulting device-virtual mapping.
- @Output   ppsKernelMemInfo: Output kernel meminfo if successful
-
- @Return   PVRSRV_ERROR  :
-
-******************************************************************************/
-IMG_EXPORT
-PVRSRV_ERROR PVRSRVMapDmabufKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
-								  IMG_HANDLE hDevCookie,
-								  IMG_HANDLE hDevMemHeap,
-								  IMG_UINT32 ui32NumFDs,
-								  IMG_INT32  *pi32BufferFDs,
-								  IMG_UINT32 ui32Flags,
-								  IMG_UINT32 ui32ChunkCount,
-								  IMG_SIZE_T *pauiOffset,
-								  IMG_SIZE_T *pauiSize,
-								  IMG_SIZE_T *puiDmabufBufferSize,
-								  PVRSRV_KERNEL_MEM_INFO **ppsKernelMemInfo,
-								  IMG_UINT64 *pui64Stamp)
-{
-	PVRSRV_DEVICE_NODE *psDeviceNode; 
-	PVRSRV_KERNEL_MEM_INFO *psNewKernelMemInfo;
-	IMG_SYS_PHYADDR *pasSysPhysAddr;
-	IMG_SYS_PHYADDR *pasAdjustedSysPhysAddr;
-	PVRSRV_MEMBLK *psMemBlock;
-	PVRSRV_ERROR eError;
-	IMG_HANDLE hPriv;
-	IMG_HANDLE hUnique;
-	BM_HANDLE hBuffer;
-	IMG_SIZE_T uiMapSize = 0;
-	IMG_SIZE_T uiAdjustOffset = 0;
-	IMG_UINT32 ui32PageCount;
-	IMG_UINT32 i;
-	IMG_BOOL bAllocSync = (ui32Flags & PVRSRV_MEM_NO_SYNCOBJ)?IMG_FALSE:IMG_TRUE;
-
-	if ((hDevCookie == IMG_NULL) || (ui32ChunkCount == 0)
-		 || (hDevMemHeap == IMG_NULL) || (ppsKernelMemInfo == IMG_NULL))
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid params", __FUNCTION__));
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	for (i=0;i<ui32ChunkCount;i++)
-	{
-		if ((pauiOffset[i] & HOST_PAGEMASK) != 0)
-		{
-			PVR_DPF((PVR_DBG_ERROR,"%s: Chunk offset is not page aligned", __FUNCTION__));
-			return PVRSRV_ERROR_INVALID_PARAMS;
-		}
-
-		if ((pauiSize[i] & HOST_PAGEMASK) != 0)
-		{
-			PVR_DPF((PVR_DBG_ERROR,"%s: Chunk size is not page aligned", __FUNCTION__));
-			return PVRSRV_ERROR_INVALID_PARAMS;
-		}
-		uiMapSize += pauiSize[i];
-	}
-
-	psDeviceNode = (PVRSRV_DEVICE_NODE *)hDevCookie;
-
-	if(OSAllocMem(PVRSRV_PAGEABLE_SELECT,
-					sizeof(PVRSRV_KERNEL_MEM_INFO),
-					(IMG_VOID **)&psNewKernelMemInfo, IMG_NULL,
-					"Kernel Memory Info") != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR,"%s: Failed to alloc memory for block", __FUNCTION__));
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
-	OSMemSet(psNewKernelMemInfo, 0, sizeof(PVRSRV_KERNEL_MEM_INFO));
-
-	/* Import the DMABUF buffer into our dmabuf_client and DMA map it */
-	eError = DmabufImportBufferAndAcquirePhysAddr(ui32NumFDs,
-											   pi32BufferFDs,
-											   &ui32PageCount,
-											   &pasSysPhysAddr,
-											   &psNewKernelMemInfo->pvLinAddrKM,
-											   &hPriv,
-											   &hUnique);
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to get dmabuf buffer/buffer phys addr", __FUNCTION__));
-		goto exitFailedImport;
-	}
-
-	/*
-		Make sure the number of pages detected by the dmabuf import are at least
-		the size of the total chunked region
-	*/
-	if(ui32PageCount * PAGE_SIZE < uiMapSize)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: dmabuf allocator returned fewer page addresses "
-								"than specified chunk size(s)", __FUNCTION__));
-		eError = PVRSRV_ERROR_INVALID_PARAMS;
-		goto exitFailedAdjustedAlloc; 
-	}
-
-	/*
-		An Dmabuf buffer might have a number of "chunks" in it which need to be
-		mapped virtually continuous so we need to create a new array of
-		addresses based on this chunk data for the actual wrap
-	*/
-	if(OSAllocMem(PVRSRV_PAGEABLE_SELECT,
-					sizeof(IMG_SYS_PHYADDR) * (uiMapSize/HOST_PAGESIZE()),
-					(IMG_VOID **)&pasAdjustedSysPhysAddr, IMG_NULL,
-					"Dmabuf adjusted system address array") != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR,"%s: Failed to alloc memory for adjusted array", __FUNCTION__));
-		goto exitFailedAdjustedAlloc;
-	}
-	OSMemSet(pasAdjustedSysPhysAddr, 0, sizeof(IMG_SYS_PHYADDR) * (uiMapSize/HOST_PAGESIZE()));
-
-	for (i=0;i<ui32ChunkCount;i++)
-	{
-		OSMemCopy(&pasAdjustedSysPhysAddr[uiAdjustOffset],
-				  &pasSysPhysAddr[pauiOffset[i]/HOST_PAGESIZE()],
-				  (pauiSize[i]/HOST_PAGESIZE()) * sizeof(IMG_SYS_PHYADDR));
-
-		uiAdjustOffset += pauiSize[i]/HOST_PAGESIZE();
-	}
-
-	/* Wrap the returned addresses into our memory context */
-	if (!BM_Wrap(hDevMemHeap,
-				 uiMapSize,
-				 0,
-				 IMG_FALSE,
-				 pasAdjustedSysPhysAddr,
-				 IMG_NULL,
-				 &ui32Flags,	/* This function clobbers our bits in ui32Flags */
-				 &hBuffer))
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to wrap dmabuf buffer", __FUNCTION__));
-		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-		goto exitFailedWrap;
-	}
-
-	/* Fill in "Implementation dependant" section of mem info */
-	psMemBlock = &psNewKernelMemInfo->sMemBlk;
-	psMemBlock->sDevVirtAddr = BM_HandleToDevVaddr(hBuffer);
-	psMemBlock->hOSMemHandle = BM_HandleToOSMemHandle(hBuffer);
-	psMemBlock->hBuffer = (IMG_HANDLE) hBuffer;
-	psMemBlock->hOSWrapMem = hPriv;			/* Saves creating a new element as we know hOSWrapMem will not be used */
-	psMemBlock->psIntSysPAddr = pasAdjustedSysPhysAddr;
-
-	psNewKernelMemInfo->ui32Flags = ui32Flags;
-	psNewKernelMemInfo->sDevVAddr = psMemBlock->sDevVirtAddr;
-	psNewKernelMemInfo->uAllocSize = uiMapSize;
-	psNewKernelMemInfo->memType = PVRSRV_MEMTYPE_DMABUF;
-	PVRSRVKernelMemInfoIncRef(psNewKernelMemInfo);
-
-	/* Clear the Backup buffer pointer as we do not have one at this point. We only allocate this as we are going up/down */
-	psNewKernelMemInfo->pvSysBackupBuffer = IMG_NULL;
-
-	if (!bAllocSync)
-	{
-		psNewKernelMemInfo->psKernelSyncInfo = IMG_NULL;
-	}
-	else
-	{
-		PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo;
-		BM_HEAP *psBMHeap;
-		IMG_HANDLE hDevMemContext;
-
-		psBMHeap = (BM_HEAP*)hDevMemHeap;
-		hDevMemContext = (IMG_HANDLE)psBMHeap->pBMContext;
-
-		eError = PVRSRVExternalBufferSyncInfoIncRef(hUnique,
-											   hDevCookie,
-											   hDevMemContext,
-											   &psExternalSyncInfo,
-											   psNewKernelMemInfo);
-		if(eError != PVRSRV_OK)
-		{
-			goto exitFailedSync;
-		}
-		psNewKernelMemInfo->hExternalSyncInfo = psExternalSyncInfo;
-		psNewKernelMemInfo->psKernelSyncInfo = ExternalBufferSyncGetKernelSyncInfo(psExternalSyncInfo);
-		*pui64Stamp = ExternalBufferSyncGetStamp(psExternalSyncInfo);
-	}
-
-	/* register with the resman */
-	psNewKernelMemInfo->sMemBlk.hResItem = ResManRegisterRes(psPerProc->hResManContext,
-															 RESMAN_TYPE_DEVICEMEM_DMABUF,
-															 psNewKernelMemInfo,
-															 0,
-															 &DmabufUnmapCallback);
-	if (psNewKernelMemInfo->sMemBlk.hResItem == IMG_NULL)
-	{
-		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-		goto exitFailedResman;
-	}
-
-	psNewKernelMemInfo->memType = PVRSRV_MEMTYPE_DMABUF;
-
-	/*
-		As the user doesn't tell us the size, just the "chunk" information
-		return actual size of the Dmabuf buffer so we can mmap it.
-	*/
-	*puiDmabufBufferSize = ui32PageCount * HOST_PAGESIZE();
-	*ppsKernelMemInfo = psNewKernelMemInfo;
-	return PVRSRV_OK;
-
-exitFailedResman:
-	if (psNewKernelMemInfo->psKernelSyncInfo)
-	{
-		PVRSRVExternalBufferSyncInfoDecRef(psNewKernelMemInfo->hExternalSyncInfo, psNewKernelMemInfo);
-	}
-exitFailedSync:
-	BM_Free(hBuffer, ui32Flags);
-exitFailedWrap:
-	OSFreeMem(PVRSRV_PAGEABLE_SELECT,
-			  sizeof(IMG_SYS_PHYADDR) * uiAdjustOffset,
-			  pasAdjustedSysPhysAddr,
-			  IMG_NULL);
-exitFailedAdjustedAlloc:
-	DmabufUnimportBufferAndReleasePhysAddr(hPriv);
-exitFailedImport:
-	OSFreeMem(PVRSRV_PAGEABLE_SELECT,
-			  sizeof(PVRSRV_KERNEL_MEM_INFO),
-			  psNewKernelMemInfo,
-			  IMG_NULL);
-
-	return eError;
-}
-
-/*!
-******************************************************************************
-
- @Function	PVRSRVUnmapDmabufKM
-
- @Description
-
- Frees a dmabuf buffer mapped with PVRSRVMapDmabufKM, including the mem_info structure
-
- @Input	   psMemInfo :
-
- @Return   PVRSRV_ERROR  :
-
-******************************************************************************/
-IMG_EXPORT
-PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapDmabufKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
-{
-	if (!psMemInfo)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	return ResManFreeResByPtr(psMemInfo->sMemBlk.hResItem, CLEANUP_WITH_POLL);
-}
-#endif	/* SUPPORT_DRM_GEM */
-
 #if defined(SUPPORT_ION)
 static PVRSRV_ERROR IonUnmapCallback(IMG_PVOID  pvParam,
 									 IMG_UINT32 ui32Param,
@@ -1774,6 +1429,90 @@ static PVRSRV_ERROR IonUnmapCallback(IMG_PVOID  pvParam,
 	PVR_UNREFERENCED_PARAMETER(bDummy);
 
 	return FreeMemCallBackCommon(psMemInfo, ui32Param, PVRSRV_FREE_CALLBACK_ORIGIN_ALLOCATOR);
+}
+
+PVRSRV_ERROR PVRSRVIonBufferSyncAcquire(IMG_HANDLE hUnique,
+										IMG_HANDLE hDevCookie,
+										IMG_HANDLE hDevMemContext,
+										PVRSRV_ION_SYNC_INFO **ppsIonSyncInfo)
+{
+	PVRSRV_ION_SYNC_INFO *psIonSyncInfo;
+	PVRSRV_ERROR eError;
+	IMG_BOOL bRet;
+
+	/* Check the hash to see if we already have a sync for this buffer */
+	psIonSyncInfo = (PVRSRV_ION_SYNC_INFO *) HASH_Retrieve(g_psIonSyncHash, (IMG_UINTPTR_T) hUnique);
+	if (psIonSyncInfo == 0)
+	{
+		/* This buffer is new to us, create the syncinfo for it */
+		eError = OSAllocMem(PVRSRV_PAGEABLE_SELECT,
+							sizeof(PVRSRV_ION_SYNC_INFO),
+							(IMG_VOID **)&psIonSyncInfo, IMG_NULL,
+							"Ion Synchronization Info");
+		if (eError != PVRSRV_OK)
+		{
+			return eError;
+		}
+
+		eError = PVRSRVAllocSyncInfoKM(hDevCookie,
+									   hDevMemContext,
+									   &psIonSyncInfo->psSyncInfo);
+		if (eError != PVRSRV_OK)
+		{
+			OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+					  sizeof(PVRSRV_ION_SYNC_INFO),
+					  psIonSyncInfo,
+					  IMG_NULL);
+
+			return eError;
+		}
+#if defined(SUPPORT_MEMINFO_IDS)
+		psIonSyncInfo->ui64Stamp = ++g_ui64MemInfoID;
+#else
+		psIonSyncInfo->ui64Stamp = 0;
+#endif
+		bRet = HASH_Insert(g_psIonSyncHash, (IMG_UINTPTR_T) hUnique, (IMG_UINTPTR_T) psIonSyncInfo);
+		if (!bRet)
+		{
+			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+
+			PVRSRVKernelSyncInfoDecRef(psIonSyncInfo->psSyncInfo, IMG_NULL);
+			OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+					  sizeof(PVRSRV_ION_SYNC_INFO),
+					  psIonSyncInfo,
+					  IMG_NULL);
+
+			return eError;
+		}
+
+		psIonSyncInfo->ui32RefCount = 0;
+		psIonSyncInfo->hUnique = hUnique;
+	}
+
+	psIonSyncInfo->ui32RefCount++;
+	*ppsIonSyncInfo = psIonSyncInfo;
+	return PVRSRV_OK;
+}
+
+IMG_VOID PVRSRVIonBufferSyncRelease(PVRSRV_ION_SYNC_INFO *psIonSyncInfo)
+{
+	psIonSyncInfo->ui32RefCount--;
+
+	if (psIonSyncInfo->ui32RefCount == 0)
+	{
+		PVRSRV_ION_SYNC_INFO *psLookup;
+		/*
+			If we're holding the last reference to the syncinfo
+			then free it
+		*/
+		psLookup = (PVRSRV_ION_SYNC_INFO *) HASH_Remove(g_psIonSyncHash, (IMG_UINTPTR_T) psIonSyncInfo->hUnique);
+		PVR_ASSERT(psLookup == psIonSyncInfo);
+		PVRSRVKernelSyncInfoDecRef(psIonSyncInfo->psSyncInfo, IMG_NULL);
+		OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+				  sizeof(PVRSRV_ION_SYNC_INFO),
+				  psIonSyncInfo,
+				  IMG_NULL);
+	}
 }
 
 /*!
@@ -1836,7 +1575,8 @@ PVRSRV_ERROR PVRSRVMapIonHandleKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 	IMG_BOOL bAllocSync = (ui32Flags & PVRSRV_MEM_NO_SYNCOBJ)?IMG_FALSE:IMG_TRUE;
 
 	if ((hDevCookie == IMG_NULL) || (ui32ChunkCount == 0)
-		 || (hDevMemHeap == IMG_NULL) || (ppsKernelMemInfo == IMG_NULL))
+		 || (hDevMemHeap == IMG_NULL) || (ppsKernelMemInfo == IMG_NULL)
+		 || (psPerProcEnv == IMG_NULL))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid params", __FUNCTION__));
 		return PVRSRV_ERROR_INVALID_PARAMS;
@@ -1959,25 +1699,25 @@ PVRSRV_ERROR PVRSRVMapIonHandleKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 	}
 	else
 	{
-		PVRSRV_EXTERNAL_SYNC_INFO *psExternalSyncInfo;
+		PVRSRV_ION_SYNC_INFO *psIonSyncInfo;
 		BM_HEAP *psBMHeap;
 		IMG_HANDLE hDevMemContext;
 
 		psBMHeap = (BM_HEAP*)hDevMemHeap;
 		hDevMemContext = (IMG_HANDLE)psBMHeap->pBMContext;
 
-		eError = PVRSRVExternalBufferSyncInfoIncRef(hUnique,
+		eError = PVRSRVIonBufferSyncInfoIncRef(hUnique,
 											   hDevCookie,
 											   hDevMemContext,
-											   &psExternalSyncInfo,
+											   &psIonSyncInfo,
 											   psNewKernelMemInfo);
 		if(eError != PVRSRV_OK)
 		{
 			goto exitFailedSync;
 		}
-		psNewKernelMemInfo->hExternalSyncInfo = psExternalSyncInfo;
-		psNewKernelMemInfo->psKernelSyncInfo = ExternalBufferSyncGetKernelSyncInfo(psExternalSyncInfo);
-		*pui64Stamp = ExternalBufferSyncGetStamp(psExternalSyncInfo);
+		psNewKernelMemInfo->hIonSyncInfo = psIonSyncInfo;
+		psNewKernelMemInfo->psKernelSyncInfo = IonBufferSyncGetKernelSyncInfo(psIonSyncInfo);
+		*pui64Stamp = IonBufferSyncGetStamp(psIonSyncInfo);
 	}
 
 	/* register with the resman */
@@ -2005,10 +1745,14 @@ PVRSRV_ERROR PVRSRVMapIonHandleKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 exitFailedResman:
 	if (psNewKernelMemInfo->psKernelSyncInfo)
 	{
-		PVRSRVExternalBufferSyncInfoDecRef(psNewKernelMemInfo->hExternalSyncInfo, psNewKernelMemInfo);
+		PVRSRVIonBufferSyncInfoDecRef(psNewKernelMemInfo->hIonSyncInfo, psNewKernelMemInfo);
 	}
 exitFailedSync:
-	BM_Free(hBuffer, ui32Flags);
+	BM_Free(hBuffer, ui32Flags
+				#if defined (PVRSRV_DEVMEM_TIME_STATS)
+					, IMG_NULL
+				#endif
+				);
 exitFailedWrap:
 	OSFreeMem(PVRSRV_PAGEABLE_SELECT,
 			  sizeof(IMG_SYS_PHYADDR) * uiAdjustOffset,
@@ -2050,6 +1794,333 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapIonHandleKM(PVRSRV_KERNEL_MEM_INFO *psMemIn
 	return ResManFreeResByPtr(psMemInfo->sMemBlk.hResItem, CLEANUP_WITH_POLL);
 }
 #endif	/* SUPPORT_ION */
+
+#if defined(SUPPORT_DMABUF)
+static PVRSRV_ERROR DmaBufUnmapCallback(IMG_PVOID  pvParam,
+									 IMG_UINT32 ui32Param,
+									 IMG_BOOL   bDummy)
+{
+	PVRSRV_KERNEL_MEM_INFO	*psMemInfo = (PVRSRV_KERNEL_MEM_INFO *)pvParam;
+	
+	PVR_UNREFERENCED_PARAMETER(bDummy);
+
+	return FreeMemCallBackCommon(psMemInfo, ui32Param, PVRSRV_FREE_CALLBACK_ORIGIN_ALLOCATOR);
+}
+
+PVRSRV_ERROR PVRSRVDmaBufSyncAcquire(IMG_HANDLE hUnique,
+										IMG_HANDLE hPriv,
+										IMG_HANDLE hDevCookie,
+										IMG_HANDLE hDevMemContext,
+										PVRSRV_DMABUF_SYNC_INFO **ppsDmaBufSyncInfo)
+{
+	PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo;
+	PVRSRV_ERROR eError;
+	IMG_BOOL bRet;
+
+	/*
+	 * If the import has a unique handle, check the hash to see if we
+	 * already have a sync for the buffer.
+	 */
+	psDmaBufSyncInfo = hUnique ? (PVRSRV_DMABUF_SYNC_INFO *) HASH_Retrieve(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique) : NULL;
+	if (!psDmaBufSyncInfo)
+	{
+		/* Create the syncinfo for the import */
+		eError = OSAllocMem(PVRSRV_PAGEABLE_SELECT,
+							sizeof(PVRSRV_DMABUF_SYNC_INFO),
+							(IMG_VOID **)&psDmaBufSyncInfo, IMG_NULL,
+							"DMA-BUF Synchronization Info");
+		if (eError != PVRSRV_OK)
+		{
+			goto ErrorAllocDmaBufSyncInfo;
+		}
+
+		eError = PVRSRVAllocSyncInfoKM(hDevCookie,
+									   hDevMemContext,
+									   &psDmaBufSyncInfo->psSyncInfo);
+		if (eError != PVRSRV_OK)
+		{
+			goto ErrorAllocSyncInfo;
+		}
+#if defined(SUPPORT_MEMINFO_IDS)
+		psDmaBufSyncInfo->ui64Stamp = ++g_ui64MemInfoID;
+#else
+		psDmaBufSyncInfo->ui64Stamp = 0;
+#endif
+		psDmaBufSyncInfo->ui32RefCount = 0;
+		psDmaBufSyncInfo->hUnique = hUnique;
+
+		psDmaBufSyncInfo->psSyncInfo->hFenceContext = PVRLinuxFenceContextCreate(psDmaBufSyncInfo->psSyncInfo, hPriv);
+		if (!psDmaBufSyncInfo->psSyncInfo->hFenceContext)
+		{
+			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto ErrorCreateFenceContext;
+		}
+
+		if (hUnique)
+		{
+			bRet = HASH_Insert(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique, (IMG_UINTPTR_T) psDmaBufSyncInfo);
+			if (!bRet)
+			{
+				eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+				goto ErrorHashInsert;
+			}
+		}
+	}
+
+	psDmaBufSyncInfo->ui32RefCount++;
+	*ppsDmaBufSyncInfo = psDmaBufSyncInfo;
+	return PVRSRV_OK;
+
+ErrorHashInsert:
+	PVRLinuxFenceContextDestroy(psDmaBufSyncInfo->psSyncInfo->hFenceContext);
+ErrorCreateFenceContext:
+	PVRSRVKernelSyncInfoDecRef(psDmaBufSyncInfo->psSyncInfo, IMG_NULL);
+ErrorAllocSyncInfo:
+	OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+			  sizeof(PVRSRV_DMABUF_SYNC_INFO),
+			  psDmaBufSyncInfo,
+			  IMG_NULL);
+ErrorAllocDmaBufSyncInfo:
+	return eError;
+}
+
+IMG_VOID PVRSRVDmaBufSyncRelease(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo)
+{
+	psDmaBufSyncInfo->ui32RefCount--;
+
+	if (psDmaBufSyncInfo->ui32RefCount == 0)
+	{
+		/*
+			If we're holding the last reference to the syncinfo
+			then free it
+		*/
+		if (psDmaBufSyncInfo->hUnique)
+		{
+			PVRSRV_DMABUF_SYNC_INFO *psLookup = (PVRSRV_DMABUF_SYNC_INFO *) HASH_Remove(g_psDmaBufSyncHash, (IMG_UINTPTR_T) psDmaBufSyncInfo->hUnique);
+			(void)psLookup;
+			PVR_ASSERT(psLookup == psDmaBufSyncInfo);
+		}
+		PVRLinuxFenceContextDestroy(psDmaBufSyncInfo->psSyncInfo->hFenceContext);
+		PVRSRVKernelSyncInfoDecRef(psDmaBufSyncInfo->psSyncInfo, IMG_NULL);
+		OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+				  sizeof(PVRSRV_DMABUF_SYNC_INFO),
+				  psDmaBufSyncInfo,
+				  IMG_NULL);
+	}
+}
+
+/*!
+******************************************************************************
+
+ @Function	PVRSRVMapDmaBufKM
+
+ @Description
+
+ Map a dma_buf into the specified device memory context
+
+ @Input	   psPerProc : PerProcess data.
+ @Input    hDevCookie : Device node cookie.
+ @Input    hDevMemHeap : Heap the buffers are mapped into.
+ @Input    ui32NumFDs : Number of DMA Buf FDs.
+ @Input    pi32DmaBufFD : Array of DMA Buf FDs.
+ @Input    puiDmaBufOffset : Array of offsets into each DMA Buf.
+ @Input    puiSize : Array of sizes of each DMA Buf chunk.
+ @Input    ui32Flags : Mapping flags.
+ @Input    puiDmaBufSize : Size in bytes of resulting device-virtual mapping.
+ @Output   ppsKernelMemInfo: Output kernel meminfo if successful.
+ @Output   puiMemInfoOffset : Array of offsets of each chunk in the meminfo.
+
+ @Return   PVRSRV_ERROR  :
+
+******************************************************************************/
+IMG_EXPORT
+PVRSRV_ERROR PVRSRVMapDmaBufKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
+								  IMG_HANDLE hDevCookie,
+								  IMG_HANDLE hDevMemHeap,
+								  IMG_UINT32 ui32Flags,
+								  IMG_UINT32 ui32NumFDs,
+								  IMG_INT32 *pi32DmaBufFD,
+								  IMG_SIZE_T *puiDmaBufOffset,
+								  IMG_SIZE_T *puiDmaBufSize,
+								  PVRSRV_KERNEL_MEM_INFO **ppsKernelMemInfo,
+								  IMG_SIZE_T *puiSize,
+								  IMG_SIZE_T *puiMemInfoOffset,
+								  IMG_UINT64 *pui64Stamp)
+{
+	PVRSRV_DEVICE_NODE *psDeviceNode; 
+	PVRSRV_KERNEL_MEM_INFO *psNewKernelMemInfo;
+	IMG_SYS_PHYADDR *pasSysPhysAddr;
+	PVRSRV_MEMBLK *psMemBlock;
+	PVRSRV_ERROR eError;
+	IMG_HANDLE hPriv;
+	IMG_HANDLE hUnique;
+	BM_HANDLE hBuffer;
+	IMG_SIZE_T uiMapSize = 0;
+	IMG_UINT32 ui32PageCount;
+	IMG_BOOL bAllocSync = (ui32Flags & PVRSRV_MEM_NO_SYNCOBJ) ? IMG_FALSE : IMG_TRUE;
+
+	if ((hDevCookie == IMG_NULL) || (hDevMemHeap == IMG_NULL)
+		|| (ppsKernelMemInfo == IMG_NULL))
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid params", __FUNCTION__));
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	psDeviceNode = (PVRSRV_DEVICE_NODE *)hDevCookie;
+
+	if (OSAllocMem(PVRSRV_PAGEABLE_SELECT,
+					sizeof(PVRSRV_KERNEL_MEM_INFO),
+					(IMG_VOID **)&psNewKernelMemInfo, IMG_NULL,
+					"Kernel Memory Info") != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"%s: Failed to alloc memory for block", __FUNCTION__));
+		return PVRSRV_ERROR_OUT_OF_MEMORY;
+	}
+	OSMemSet(psNewKernelMemInfo, 0, sizeof(PVRSRV_KERNEL_MEM_INFO));
+
+	/* Import the DMA Buffer */
+	eError = DmaBufImportAndAcquirePhysAddr(ui32NumFDs,
+											   pi32DmaBufFD,
+											   puiDmaBufOffset,
+											   puiDmaBufSize,
+											   &ui32PageCount,
+											   &pasSysPhysAddr,
+											   puiMemInfoOffset,
+											   &psNewKernelMemInfo->pvLinAddrKM,
+											   &hPriv,
+											   &hUnique);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to get dma-buf phys addr", __FUNCTION__));
+		goto exitFailedImport;
+	}
+
+	uiMapSize = ui32PageCount * HOST_PAGESIZE();
+
+	/* Wrap the returned addresses into our memory context */
+	if (!BM_Wrap(hDevMemHeap,
+				 uiMapSize,
+				 0,
+				 IMG_FALSE,
+				 pasSysPhysAddr,
+				 IMG_NULL,
+				 &ui32Flags,	/* This function clobbers our bits in ui32Flags */
+				 &hBuffer))
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to wrap dma-buf", __FUNCTION__));
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto exitFailedWrap;
+	}
+
+	/* Fill in "Implementation dependant" section of mem info */
+	psMemBlock = &psNewKernelMemInfo->sMemBlk;
+	psMemBlock->sDevVirtAddr = BM_HandleToDevVaddr(hBuffer);
+	psMemBlock->hOSMemHandle = BM_HandleToOSMemHandle(hBuffer);
+	psMemBlock->hBuffer = (IMG_HANDLE) hBuffer;
+	psMemBlock->hOSWrapMem = hPriv;			/* Saves creating a new element as we know hOSWrapMem will not be used */
+	psMemBlock->psIntSysPAddr = pasSysPhysAddr;
+
+	psNewKernelMemInfo->ui32Flags = ui32Flags;
+	psNewKernelMemInfo->sDevVAddr = psMemBlock->sDevVirtAddr;
+	psNewKernelMemInfo->uAllocSize = uiMapSize;
+	psNewKernelMemInfo->memType = PVRSRV_MEMTYPE_DMABUF;
+	PVRSRVKernelMemInfoIncRef(psNewKernelMemInfo);
+
+	if (!bAllocSync)
+	{
+		psNewKernelMemInfo->psKernelSyncInfo = IMG_NULL;
+	}
+	else
+	{
+		PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo;
+		BM_HEAP *psBMHeap;
+		IMG_HANDLE hDevMemContext;
+
+		psBMHeap = (BM_HEAP*)hDevMemHeap;
+		hDevMemContext = (IMG_HANDLE)psBMHeap->pBMContext;
+
+		eError = PVRSRVDmaBufSyncInfoIncRef(hUnique,
+											   hPriv,
+											   hDevCookie,
+											   hDevMemContext,
+											   &psDmaBufSyncInfo,
+											   psNewKernelMemInfo);
+		if(eError != PVRSRV_OK)
+		{
+			goto exitFailedSync;
+		}
+		psNewKernelMemInfo->hDmaBufSyncInfo = psDmaBufSyncInfo;
+		psNewKernelMemInfo->psKernelSyncInfo = psDmaBufSyncInfo->psSyncInfo;
+		*pui64Stamp = DmaBufSyncGetStamp(psDmaBufSyncInfo);
+	}
+
+	/* register with the resman */
+	psNewKernelMemInfo->sMemBlk.hResItem = ResManRegisterRes(psPerProc->hResManContext,
+															 RESMAN_TYPE_DEVICEMEM_DMABUF,
+															 psNewKernelMemInfo,
+															 0,
+															 &DmaBufUnmapCallback);
+	if (psNewKernelMemInfo->sMemBlk.hResItem == IMG_NULL)
+	{
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto exitFailedResman;
+	}
+
+	psNewKernelMemInfo->memType = PVRSRV_MEMTYPE_DMABUF;
+
+	/* Return actual size of the imported memory so we can mmap it */
+	*puiSize = uiMapSize;
+	*ppsKernelMemInfo = psNewKernelMemInfo;
+	return PVRSRV_OK;
+
+exitFailedResman:
+	if (psNewKernelMemInfo->psKernelSyncInfo)
+	{
+		PVRSRVDmaBufSyncInfoDecRef(psNewKernelMemInfo->hDmaBufSyncInfo, psNewKernelMemInfo);
+	}
+exitFailedSync:
+	BM_Free(hBuffer, ui32Flags
+				#if defined (PVRSRV_DEVMEM_TIME_STATS)
+					, IMG_NULL
+				#endif
+				);
+
+exitFailedWrap:
+	DmaBufUnimportAndReleasePhysAddr(hPriv);
+exitFailedImport:
+	OSFreeMem(PVRSRV_PAGEABLE_SELECT,
+			  sizeof(PVRSRV_KERNEL_MEM_INFO),
+			  psNewKernelMemInfo,
+			  IMG_NULL);
+
+	return eError;
+}
+
+/*!
+******************************************************************************
+
+ @Function	PVRSRVUnmapDmaBufKM
+
+ @Description
+
+ Releases a dma_buf mapped with PVRSRVMapDmaBufKM, including the mem_info structure
+
+ @Input	   psMemInfo :
+
+ @Return   PVRSRV_ERROR  :
+
+******************************************************************************/
+IMG_EXPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapDmaBufKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
+{
+	if (!psMemInfo)
+	{
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	return ResManFreeResByPtr(psMemInfo->sMemBlk.hResItem, CLEANUP_WITH_POLL);
+}
+#endif	/* SUPPORT_DMABUF */
 
 /*!
 ******************************************************************************
@@ -2294,7 +2365,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVWrapExtMemoryKM(IMG_HANDLE				hDevCookie,
 		}
 		else
 		{
-			PVR_DPF((PVR_DBG_ERROR, "PVRSRVWrapExtMemoryKM: invalid parameter, no address specificed"));
+			PVR_DPF((PVR_DBG_ERROR, "PVRSRVWrapExtMemoryKM: invalid parameter, no address specified"));
 		}
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
@@ -2404,7 +2475,9 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVWrapExtMemoryKM(IMG_HANDLE				hDevCookie,
 									&psMemInfo->psKernelSyncInfo);
 	if(eError != PVRSRV_OK)
 	{
-		goto ErrorExitPhase4;
+		FreeDeviceMem(psMemInfo);
+		/*  FreeDeviceMem will free the meminfo so jump straight to ErrorExitPhase2 */
+		goto ErrorExitPhase2;
 	}
 
 	/* increment the refcount */
@@ -2447,27 +2520,12 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVWrapExtMemoryKM(IMG_HANDLE				hDevCookie,
 	return PVRSRV_OK;
 
 	/* error handling: */
-
-ErrorExitPhase4:
-	if(psMemInfo)
-	{
-		FreeDeviceMem(psMemInfo);
-		/*
-			FreeDeviceMem will free the meminfo so set
-			it to NULL to avoid double free below
-		*/
-		psMemInfo = IMG_NULL;
-	}
-
 ErrorExitPhase3:
-	if(psMemInfo)
-	{
-		OSFreeMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(PVRSRV_KERNEL_MEM_INFO), psMemInfo, IMG_NULL);
-		/*not nulling pointer, out of scope*/
-	}
+	OSFreeMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(PVRSRV_KERNEL_MEM_INFO), psMemInfo, IMG_NULL);
+	/*not nulling pointer, out of scope*/
 
 ErrorExitPhase2:
-	if(psIntSysPAddr)
+	if(hOSWrapMem)
 	{
 		OSReleasePhysPageAddr(hOSWrapMem);
 	}
@@ -3116,7 +3174,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVMapDeviceClassMemoryKM(PVRSRV_PER_PROCESS_DATA	*
 		if (eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"PVRSRVMapDeviceClassMemoryKM: AllocMemTilingRange failed"));
-			goto ErrorExitPhase3;
+
+			if (psMemInfo->psKernelSyncInfo)
+			{
+				PVRSRVKernelSyncInfoDecRef(psMemInfo->psKernelSyncInfo, psMemInfo);
+			}
+			FreeDeviceMem(psMemInfo);
+
+			/* FreeDeviceMem will free the meminfo so jump straight to the final exit */
+			goto ErrorExitPhase1;
 		}
 	}
 #endif
@@ -3178,36 +3244,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVMapDeviceClassMemoryKM(PVRSRV_PER_PROCESS_DATA	*
 #endif
 	return PVRSRV_OK;
 
-#if defined(SUPPORT_MEMORY_TILING)
-ErrorExitPhase3:
-	if(psMemInfo)
-	{
-		if (psMemInfo->psKernelSyncInfo)
-		{
-			PVRSRVKernelSyncInfoDecRef(psMemInfo->psKernelSyncInfo, psMemInfo);
-		}
-
-		FreeDeviceMem(psMemInfo);
-		/*
-			FreeDeviceMem will free the meminfo so set
-			it to NULL to avoid double free below
-		*/
-		psMemInfo = IMG_NULL;
-	}
-#endif
-
 ErrorExitPhase2:
-	if(psMemInfo)
-	{
-		OSFreeMem(PVRSRV_PAGEABLE_SELECT, sizeof(PVRSRV_KERNEL_MEM_INFO), psMemInfo, IMG_NULL);
-	}
+	OSFreeMem(PVRSRV_PAGEABLE_SELECT, sizeof(PVRSRV_KERNEL_MEM_INFO), psMemInfo, IMG_NULL);
 
 ErrorExitPhase1:
-	if(psDCMapInfo)
-	{
-		OSFreeMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(PVRSRV_KERNEL_MEM_INFO), psDCMapInfo, IMG_NULL);
-	}
-
+	OSFreeMem(PVRSRV_OS_PAGEABLE_HEAP, sizeof(PVRSRV_DC_MAPINFO), psDCMapInfo, IMG_NULL);
 	return eError;
 }
 
@@ -3241,27 +3282,53 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInitDeviceMem(IMG_VOID)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 
-#if defined(SUPPORT_ION) || defined(SUPPORT_DRM_GEM)
+#if defined(SUPPORT_ION)
 	/*
-		For Ion and GEM buffers we need to store which ones we know about so
+		For Ion buffers we need to store which ones we know about so
 		we don't give the same buffer a different sync
 	*/
-	PVR_DPF((PVR_DBG_ERROR,"PVRSRVInitDeviceMem: Creating external hash"));
-	g_psExternalSyncHash = HASH_Create(EXTERNAL_SYNC_HASH_SIZE);
-	if (g_psExternalSyncHash == IMG_NULL)
+	g_psIonSyncHash = HASH_Create(ION_SYNC_HASH_SIZE);
+	if (!g_psIonSyncHash)
 	{
-	PVR_DPF((PVR_DBG_ERROR,"PVRSRVInitDeviceMem: Creating external hash failed"));
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto Error;
+	}
+#endif
+#if defined(SUPPORT_DMABUF)
+	g_psDmaBufSyncHash = HASH_Create(DMABUF_SYNC_HASH_SIZE);
+	if (!g_psDmaBufSyncHash)
+	{
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto Error;
 	}
 #endif
 
+#if defined(SUPPORT_ION) || defined(SUPPORT_DMABUF)
+	return PVRSRV_OK;
+Error:
+#endif
+#if defined(SUPPORT_DMABUF)
+	if (g_psDmaBufSyncHash)
+	{
+		HASH_Delete(g_psDmaBufSyncHash);
+	}
+#endif
+#if defined(SUPPORT_ION)
+	if (g_psIonSyncHash)
+	{
+		HASH_Delete(g_psIonSyncHash);
+	}
+#endif
 	return eError;
 }
 
 IMG_VOID IMG_CALLCONV PVRSRVDeInitDeviceMem(IMG_VOID)
 {
-#if defined(SUPPORT_ION) || defined(SUPPORT_DRM_GEM)
-	HASH_Delete(g_psExternalSyncHash);
+#if defined(SUPPORT_DMABUF)
+	HASH_Delete(g_psDmaBufSyncHash);
+#endif
+#if defined(SUPPORT_ION)
+	HASH_Delete(g_psIonSyncHash);
 #endif
 }
 
