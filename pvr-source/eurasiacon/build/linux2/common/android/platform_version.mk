@@ -38,117 +38,117 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-# Figure out the version of Android we're building against.
+# If there's no build.prop file in the expected location, bail out. Tell the
+# user which file we were trying to read in case TARGET_DEVICE was not set.
 #
-ifeq ($(strip $(PLATFORM_VERSION)),)
-BUILD_PROP := $(ANDROID_PRODUCT_OUT)/system/build.prop
-BUILD_DEFS := $(ANDROID_BUILD_TOP)/build/core/version_defaults.mk
-ifneq ($(wildcard $(BUILD_PROP)),)
-# Extract version.release from the build.prop file. If it's not in the build.prop,
-# the Make variables won't be defined, and fallback handling will take place.
-#
-# $(eval $(shell cat $(BUILD_PROP) | grep '^ro.build.version.release=' | \
-# 	sed -e 's,ro.build.version.release,PLATFORM_VERSION,'))
-PLATFORM_VERSION := $(shell grep '^ro.build.version.release=' \
-	$(BUILD_PROP) | cut -f2 -d'=' | cut -f1 -d'-')
-else ifneq ($(wildcard $(BUILD_DEFS)),)
-$(warning *** No device prop file ($(BUILD_PROP)). Extracting from \
-	build/core/version_defaults.mk)
-# Android version information doesn't permeate here. Set it up manually,
-# but avoid including the whole of core/version_defaults.mk
-#
-# $(eval $(shell cat $(ANDROID_BUILD_TOP)/build/core/version_defaults.mk |\
-# 	grep 'PLATFORM_VERSION\s.*='))
-PLATFORM_VERSION := $(strip $(shell grep 'PLATFORM_VERSION\s.*=' \
-	$(BUILD_DEFS) | cut -f2 -d'=' | cut -f1 -d'-'))
-else
-$(warning *** No device prop file ($(BUILD_PROP)) or build env \
-	($(BUILD_DEFS)). Falling back to ICS default)
-PLATFORM_VERSION := 4.0.3
-endif
+BUILD_PROP := $(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/build.prop
+ifeq ($(wildcard $(BUILD_PROP)),)
+$(warning *** Could not determine Android version.  Did you set ANDROID_ROOT,\
+OUT_DIR and TARGET_DEVICE in your environment correctly?)
+$(error Error reading $(BUILD_PROP))
 endif
 
-$(info PLATFORM_VERSION=$(PLATFORM_VERSION))
+# Extract version.release and version.codename from the build.prop file.
+# If either of the values aren't in the build.prop, the Make variables won't
+# be defined, and fallback handling will take place.
+#
+define newline
 
-define version-starts-with
-$(shell echo $(PLATFORM_VERSION) | grep -q ^$(1); \
+
+endef
+$(eval $(subst #,$(newline),$(shell cat $(BUILD_PROP) | \
+	grep '^ro.build.version.release=\|^ro.build.version.codename=' | \
+	sed -e 's,ro.build.version.release=,PLATFORM_RELEASE=,' \
+	    -e 's,ro.build.version.codename=,PLATFORM_CODENAME=,' | tr '\n' '#')))
+
+define release-starts-with
+$(shell echo $(PLATFORM_RELEASE) | grep -q ^$(1); \
 	[ "$$?" = "0" ] && echo 1 || echo 0)
 endef
 
 # ro.build.version.release contains the version number for release builds, or
 # the version codename otherwise. In this case we need to assume that the
 # version of Android we're building against has the features that are in the
-# final release of that version, so we set PLATFORM_VERSION to the
+# final release of that version, so we set PLATFORM_RELEASE to the
 # corresponding release number.
 #
 # NOTE: It's the _string_ ordering that matters here, not the version number
 # ordering. You need to make sure that strings that are sub-strings of other
 # checked strings appear _later_ in this list.
 #
-# e.g. 'JellyBeanMR' starts with 'JellyBean', but it is not JellyBean.
+# e.g. 'KitKatMR' starts with 'KitKat', but it is not KitKat.
 #
-ifeq ($(call version-starts-with,JellyBeanMR1),1)
-PLATFORM_VERSION := 4.2
-else ifeq ($(call version-starts-with,JellyBeanMR),1)
-PLATFORM_VERSION := 4.3
-else ifeq ($(call version-starts-with,JellyBean),1)
-PLATFORM_VERSION := 4.1
-else ifeq ($(call version-starts-with,KeyLimePie),1)
-PLATFORM_VERSION := 4.4
-else ifeq ($(call version-starts-with,KitKat),1)
-PLATFORM_VERSION := 4.4
-else ifeq ($(shell echo $(PLATFORM_VERSION) | grep -qE "[A-Za-z]+"; echo $$?),0)
-PLATFORM_VERSION := 5.0
+# NOTE: The version codenames for Android stopped after KitKat, don't read
+# too much into the below names. They are mostly placeholders/reminders.
+#
+ifeq ($(call release-starts-with,KitKatMR),1)
+PLATFORM_RELEASE := 4.4.1
+else ifeq ($(call release-starts-with,KitKat),1)
+PLATFORM_RELEASE := 4.4
+else ifeq ($(call release-starts-with,LollipopMR1),1)
+PLATFORM_RELEASE := 5.1
+else ifeq ($(call release-starts-with,Lollipop),1)
+PLATFORM_RELEASE := 5.0
+else ifeq ($(call release-starts-with,Marshmallow),1)
+PLATFORM_RELEASE := 6.0
+else ifeq ($(PLATFORM_CODENAME),AOSP)
+# AOSP (master) will normally have PLATFORM_CODENAME set to AOSP
+PLATFORM_RELEASE := 6.0.60
+else ifeq ($(shell echo $(PLATFORM_RELEASE) | grep -qE "[A-Za-z]+"; echo $$?),0)
+PLATFORM_RELEASE := 6.1
 endif
 
-PLATFORM_VERSION_MAJ   := $(shell echo $(PLATFORM_VERSION) | cut -f1 -d'.')
-PLATFORM_VERSION_MIN   := $(shell echo $(PLATFORM_VERSION) | cut -f2 -d'.')
-PLATFORM_VERSION_PATCH := $(shell echo $(PLATFORM_VERSION) | cut -f3 -d'.')
+# Workaround for master. Sometimes there is an AOSP version ahead of
+# the current master version number, but master still has more features.
+#
+ifeq ($(PLATFORM_RELEASE),6.0.60)
+PLATFORM_RELEASE := 6.1
+is_aosp_master := 1
+endif
+
+PLATFORM_RELEASE_MAJ   := $(shell echo $(PLATFORM_RELEASE) | cut -f1 -d'.')
+PLATFORM_RELEASE_MIN   := $(shell echo $(PLATFORM_RELEASE) | cut -f2 -d'.')
+PLATFORM_RELEASE_PATCH := $(shell echo $(PLATFORM_RELEASE) | cut -f3 -d'.')
 
 # Not all versions have a patchlevel; fix that up here
 #
-ifeq ($(PLATFORM_VERSION_PATCH),)
-PLATFORM_VERSION_PATCH := 0
+ifeq ($(PLATFORM_RELEASE_PATCH),)
+PLATFORM_RELEASE_PATCH := 0
 endif
 
 # Macros to help categorize support for features and API_LEVEL for tests.
 #
-is_at_least_jellybean := \
-	$(shell ( test $(PLATFORM_VERSION_MAJ) -gt 4 || \
-				( test $(PLATFORM_VERSION_MAJ) -eq 4 && \
-				  test $(PLATFORM_VERSION_MIN) -ge 1 ) ) && echo 1 || echo 0)
-is_at_least_jellybean_mr1 := \
-	$(shell ( test $(PLATFORM_VERSION_MAJ) -gt 4 || \
-				( test $(PLATFORM_VERSION_MAJ) -eq 4 && \
-				  test $(PLATFORM_VERSION_MIN) -ge 2 ) ) && echo 1 || echo 0)
-is_at_least_jellybean_mr2 := \
-	$(shell ( test $(PLATFORM_VERSION_MAJ) -gt 4 || \
-				( test $(PLATFORM_VERSION_MAJ) -eq 4 && \
-				  test $(PLATFORM_VERSION_MIN) -ge 3 ) ) && echo 1 || echo 0)
-is_at_least_kitkat := \
-	$(shell ( test $(PLATFORM_VERSION_MAJ) -gt 4 || \
-				( test $(PLATFORM_VERSION_MAJ) -eq 4 && \
-				  test $(PLATFORM_VERSION_MIN) -ge 4 ) ) && echo 1 || echo 0)
+is_at_least_lollipop := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 5 ) && echo 1 || echo 0)
+is_at_least_lollipop_mr1 := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 5 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 5 && \
+				  test $(PLATFORM_RELEASE_MIN) -gt 0 ) ) && echo 1 || echo 0)
+is_at_least_marshmallow := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 6 ) && echo 1 || echo 0)
 
-# FIXME: Assume "future versions" are >=5.0, but we don't really know
+# Assume "future versions" are >6.0, but we don't really know
 is_future_version := \
-	$(shell ( test $(PLATFORM_VERSION_MAJ) -ge 5 ) && echo 1 || echo 0)
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 6 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 6 && \
+				  test $(PLATFORM_RELEASE_MIN) -gt 0 ) ) && echo 1 || echo 0)
 
 # Picking an exact match of API_LEVEL for the platform we're building
 # against can avoid compatibility theming and affords better integration.
 #
 ifeq ($(is_future_version),1)
-API_LEVEL := 20
+API_LEVEL := 23
+else ifeq ($(is_at_least_marshmallow),1)
+API_LEVEL := 23
+else ifeq ($(is_at_least_lollipop_mr1),1)
+API_LEVEL := 22
+else ifeq ($(is_at_least_lollipop),1)
+API_LEVEL := 21
+#API_LEVEL := 20 was l-preview
 else ifeq ($(is_at_least_kitkat),1)
 API_LEVEL := 19
-else ifeq ($(is_at_least_jellybean_mr2),1)
-API_LEVEL := 18
-else ifeq ($(is_at_least_jellybean_mr1),1)
-API_LEVEL := 17
-else ifeq ($(is_at_least_jellybean),1)
-API_LEVEL := 16
 else
-$(error Must build against Android >= 4.1)
+$(error Must build against Android >= 4.4)
 endif
 
 # Each DDK is tested against only a single version of the platform.
@@ -156,6 +156,6 @@ endif
 #
 ifeq ($(is_future_version),1)
 $(info WARNING: Android version is newer than this DDK supports)
-else ifneq ($(is_at_least_jellybean_mr2),1)
+else ifneq ($(is_at_least_lollipop_mr1),1)
 $(info WARNING: Android version is older than this DDK supports)
 endif
