@@ -93,11 +93,7 @@ extern struct ion_device *omap_ion_device;
 #error CONFIG_DSSCOMP support requires CONFIG_ION_OMAP
 #endif /* defined(CONFIG_ION_OMAP) */
 #if defined(CONFIG_DRM_OMAP_DMM_TILER)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
-#include <../drivers/gpu/drm/omapdrm/omap_dmm_tiler.h>
-#else
 #include <../drivers/staging/omapdrm/omap_dmm_tiler.h>
-#endif
 #include <../drivers/video/omap2/dsscomp/tiler-utils.h>
 #elif defined(CONFIG_TI_TILER)
 #include <mach/tiler.h>
@@ -972,10 +968,7 @@ void OMAPLFBSwapHandler(OMAPLFB_BUFFER *psBuffer)
 				if (bPreviouslyNotVSynced || psSwapChain->iBlankEvents != iBlankEvents)
 				{
 					psSwapChain->iBlankEvents = iBlankEvents;
-					if (eMode == OMAPLFB_UPDATE_MODE_AUTO)
-					{
-						psSwapChain->bNotVSynced = !WaitForVSyncSettle(psDevInfo);
-					}
+					psSwapChain->bNotVSynced = !WaitForVSyncSettle(psDevInfo);
 				} else if (psBuffer->ulSwapInterval != 0)
 				{
 					psSwapChain->bNotVSynced = !OMAPLFBWaitForVSync(psDevInfo);
