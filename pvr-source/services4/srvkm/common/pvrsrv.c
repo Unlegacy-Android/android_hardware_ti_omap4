@@ -59,7 +59,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "lists.h"
 
 IMG_UINT32	g_ui32InitFlags;
-IMG_UINT32  g_iDrmFd = -1;
 
 /* mark which parts of Services were initialised */
 #define		INIT_DATA_ENABLE_PDUMPINIT	0x1U
@@ -459,7 +458,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInit(PSYS_DATA psSysData)
 	g_ui32InitFlags |= INIT_DATA_ENABLE_PDUMPINIT;
 #endif
 
-#if defined(SUPPORT_ION) || defined(SUPPORT_DRM_GEM)
+#if defined(SUPPORT_ION) || defined(SUPPORT_DMABUF)
 	eError = PVRSRVInitDeviceMem();
 	if (eError != PVRSRV_OK)
 		goto Error;
@@ -503,7 +502,7 @@ IMG_VOID IMG_CALLCONV PVRSRVDeInit(PSYS_DATA psSysData)
 	PERFDEINIT();
 
 
-#if defined(SUPPORT_ION) || defined(SUPPORT_DRM_GEM)
+#if defined(SUPPORT_ION) || defined(SUPPORT_DMABUF)
 	if ((g_ui32InitFlags & INIT_DATA_ENABLE_DEVMEM) > 0)
 	{
 		PVRSRVDeInitDeviceMem();
@@ -1016,18 +1015,23 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32*	pui32LinMemAddr,
 		/* For the Emulator we want the system to stop when a lock-up is detected so the state can be analysed.
 		 * Also the Emulator is much slower than real silicon so timeouts are not valid. 
 		 */
+		if((*pui32LinMemAddr & ui32Mask) == ui32Value)
+		{
+			return PVRSRV_OK;
+		}
+
 		do
 		{
-			if((*pui32LinMemAddr & ui32Mask) == ui32Value)
-			{
-				return PVRSRV_OK;
-			}
-
 			#if defined(__linux__)
 			OSWaitus(ui32PollPeriodus);
 			#else
 			OSReleaseThreadQuanta();
 			#endif	
+
+			if((*pui32LinMemAddr & ui32Mask) == ui32Value)
+			{
+				return PVRSRV_OK;
+			}
 
 		} while (ui32Timeoutus); /* Endless loop only for the Emulator */
 	}
@@ -1040,15 +1044,15 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32*	pui32LinMemAddr,
 			PVR_ASSERT(ui32PollPeriodus >= 1000);
 		}
 
+		ui32ActualValue = (*pui32LinMemAddr & ui32Mask);
+		if(ui32ActualValue == ui32Value)
+		{
+			return PVRSRV_OK;
+		}
+
 		/* PRQA S 3415,4109 1 */ /* macro format critical - leave alone */
 		LOOP_UNTIL_TIMEOUT(ui32Timeoutus)
 		{
-			ui32ActualValue = (*pui32LinMemAddr & ui32Mask);
-			if(ui32ActualValue == ui32Value)
-			{
-				return PVRSRV_OK;
-			}
-			
 			if (bAllowPreemption)
 			{
 				OSSleepms(ui32PollPeriodus / 1000);
@@ -1057,6 +1061,13 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32*	pui32LinMemAddr,
 			{
 				OSWaitus(ui32PollPeriodus);
 			}
+
+			ui32ActualValue = (*pui32LinMemAddr & ui32Mask);
+			if(ui32ActualValue == ui32Value)
+			{
+				return PVRSRV_OK;
+			}
+
 		} END_LOOP_UNTIL_TIMEOUT();
 	
 		PVR_DPF((PVR_DBG_ERROR,"PollForValueKM: Timeout. Expected 0x%x but found 0x%x (mask 0x%x).",
@@ -1217,9 +1228,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 										|PVRSRV_MISC_INFO_FREEMEM_PRESENT
 										|PVRSRV_MISC_INFO_GET_REF_COUNT_PRESENT
 										|PVRSRV_MISC_INFO_GET_PAGE_SIZE_PRESENT
-										|PVRSRV_MISC_INFO_FORCE_SWAP_TO_SYSTEM_PRESENT
-										|PVRSRV_MISC_INFO_GET_DRM_FD_PRESENT
-										|PVRSRV_MISC_INFO_SET_DRM_FD_PRESENT))
+										|PVRSRV_MISC_INFO_FORCE_SWAP_TO_SYSTEM_PRESENT))
 	{
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVGetMiscInfoKM: invalid state request flags"));
 		return PVRSRV_ERROR_INVALID_PARAMS;
@@ -1413,12 +1422,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 
 			if(psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_FLUSH)
 			{
-				if(!OSFlushCPUCacheRangeKM(psKernelMemInfo->sMemBlk.hOSMemHandle,
-										   0,
-										   psMiscInfo->sCacheOpCtl.pvBaseVAddr,
-										   psMiscInfo->sCacheOpCtl.ui32Length))
+				if(psMiscInfo->sCacheOpCtl.ui32Length!=0)
 				{
-					return PVRSRV_ERROR_CACHEOP_FAILED;
+					if(!OSFlushCPUCacheRangeKM(psKernelMemInfo->sMemBlk.hOSMemHandle,
+											   0,
+											   psMiscInfo->sCacheOpCtl.pvBaseVAddr,
+											   psMiscInfo->sCacheOpCtl.ui32Length))
+					{
+						return PVRSRV_ERROR_CACHEOP_FAILED;
+					}
 				}
 			}
 			else if(psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN)
@@ -1480,18 +1492,6 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 		psMiscInfo->ui32StatePresent |= PVRSRV_MISC_INFO_FORCE_SWAP_TO_SYSTEM_PRESENT;
 	}
 #endif /* defined(SUPPORT_PVRSRV_DEVICE_CLASS) */
-	if ((psMiscInfo->ui32StateRequest & PVRSRV_MISC_INFO_GET_DRM_FD_PRESENT) != 0UL)
-	{
-		PVR_DPF((PVR_DBG_ERROR,"PVRSRVGetMiscInfoKM: GetDrmFD: %d", g_iDrmFd));
-		psMiscInfo->iDrmFd = g_iDrmFd;
-		psMiscInfo->ui32StatePresent |= PVRSRV_MISC_INFO_GET_DRM_FD_PRESENT;
-	}
-	if ((psMiscInfo->ui32StateRequest & PVRSRV_MISC_INFO_SET_DRM_FD_PRESENT) != 0UL)
-	{
-		g_iDrmFd = psMiscInfo->iDrmFd;
-		PVR_DPF((PVR_DBG_ERROR,"PVRSRVGetMiscInfoKM: SetDrmFD: %d", g_iDrmFd));
-		psMiscInfo->ui32StatePresent |= PVRSRV_MISC_INFO_SET_DRM_FD_PRESENT;
-	}
 
 	return PVRSRV_OK;
 }

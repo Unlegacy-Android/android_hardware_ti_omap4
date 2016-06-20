@@ -91,7 +91,7 @@ typedef struct _PVRSRV_SGX_KERNEL_CCB_
  *****************************************************************************/
 typedef struct _PVRSRV_SGX_CCB_CTL_
 {
-	IMG_UINT32				ui32WriteOffset;		/*!< write offset into array of commands (MUST be alligned to 16 bytes!) */
+	IMG_UINT32				ui32WriteOffset;		/*!< write offset into array of commands (MUST be aligned to 16 bytes!) */
 	IMG_UINT32				ui32ReadOffset;			/*!< read offset into array of commands */
 } PVRSRV_SGX_CCB_CTL;
 
@@ -177,19 +177,9 @@ typedef struct _SGXMKIF_CMDTA_SHARED_
 	/* sync criteria used for TA/3D dependency synchronisation */
 	PVRSRV_DEVICE_SYNC_OBJECT	sTA3DDependency;
 
-#if defined(SUPPORT_SGX_GENERALISED_SYNCOBJECTS)
-	/* SRC and DST syncs */
-	IMG_UINT32					ui32NumTASrcSyncs;
-	PVRSRV_DEVICE_SYNC_OBJECT	asTASrcSyncs[SGX_MAX_TA_SRC_SYNCS];
-	IMG_UINT32					ui32NumTADstSyncs;
-	PVRSRV_DEVICE_SYNC_OBJECT	asTADstSyncs[SGX_MAX_TA_DST_SYNCS];
-	IMG_UINT32					ui32Num3DSrcSyncs;
-	PVRSRV_DEVICE_SYNC_OBJECT	as3DSrcSyncs[SGX_MAX_3D_SRC_SYNCS];
-#else
 	/* source dependency details */
 	IMG_UINT32			ui32NumSrcSyncs;
 	PVRSRV_DEVICE_SYNC_OBJECT	asSrcSyncs[SGX_MAX_SRC_SYNCS_TA];
-#endif
 
 	CTL_STATUS			sCtlTAStatusInfo[SGX_MAX_TA_STATUS_VALS];
 	CTL_STATUS			sCtl3DStatusInfo[SGX_MAX_3D_STATUS_VALS];
@@ -293,8 +283,8 @@ typedef struct _SGXMKIF_HWDEVICE_SYNC_LIST_
  *****************************************************************************/
 #define PVRSRV_USSE_EDM_POWMAN_IDLE_COMPLETE				(1UL << 2)	/*!< Signal from ukernel->Host indicating SGX is idle */
 #define PVRSRV_USSE_EDM_POWMAN_POWEROFF_COMPLETE			(1UL << 3)	/*!< Signal from ukernel->Host indicating SGX can be powered down */
-#define PVRSRV_USSE_EDM_POWMAN_POWEROFF_RESTART_IMMEDIATE	(1UL << 4)	/*!< Signal from ukernel->Host indicating there is work to do immediately */
-#define PVRSRV_USSE_EDM_POWMAN_NO_WORK						(1UL << 5)	/*!< Signal from ukernel->Host indicating no work to do */
+#define PVRSRV_USSE_EDM_POWMAN_POWEROFF_RESTART_IMMEDIATE	(1UL << 4)	/*!< Signal from ukernel->Host indicating there is work to be done immediately */
+#define PVRSRV_USSE_EDM_POWMAN_NO_WORK						(1UL << 5)	/*!< Signal from ukernel->Host indicating nothing to do */
 
 /*!
  *****************************************************************************

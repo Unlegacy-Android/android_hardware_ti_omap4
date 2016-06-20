@@ -54,4 +54,4 @@ endif
 TOOLCHAIN ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj
 TOOLCHAIN2 ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/system
 
-LIBGCC := $(shell $(CROSS_COMPILE)gcc -print-libgcc-file-name)
+LIBGCC := $(shell $(CROSS_COMPILE)gcc -m32 -print-libgcc-file-name 2>/dev/null)

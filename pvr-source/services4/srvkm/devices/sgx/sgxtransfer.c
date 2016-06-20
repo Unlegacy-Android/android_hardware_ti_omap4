@@ -62,6 +62,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_sync.h"
 #endif
 
+#if defined(SUPPORT_DMABUF)
+#include "pvr_linux_fence.h"
+#endif
+
 IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSFER_SGX_KICK *psKick)
 {
 	PVRSRV_KERNEL_MEM_INFO		*psCCBMemInfo = (PVRSRV_KERNEL_MEM_INFO *)psKick->hCCBMemInfo;
@@ -76,22 +80,11 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 	IMG_BOOL					abDstSyncEnable[SGX_MAX_TRANSFER_SYNC_OPS];
 	IMG_UINT32					ui32RealDstSyncNum = 0;
 
+#if defined(SUPPORT_DMABUF)
+	IMG_UINT32					ui32FenceTag;
+#endif
 
-#if defined(PDUMP)
-	IMG_BOOL bPersistentProcess = IMG_FALSE;
-	/*
-	 *	For persistent processes, the HW kicks should not go into the
-	 *	extended init phase; only keep memory transactions from the
-	 *	window system which are necessary to run the client app.
-	 */
-	{
-		PVRSRV_PER_PROCESS_DATA* psPerProc = PVRSRVFindPerProcessData();
-		if(psPerProc != IMG_NULL)
-		{
-			bPersistentProcess = psPerProc->bPDumpPersistent;
-		}
-	}
-#endif /* PDUMP */
+
 #if defined(FIX_HW_BRN_31620)
 	hDevMemContext = psKick->hDevMemContext;
 #endif
@@ -214,6 +207,20 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 	{
 		IMG_UINT32 i = 0;
 
+#if defined(SUPPORT_DMABUF)
+		eError = PVRLinuxFenceProcess(&ui32FenceTag,
+				psKick->ui32NumSrcSync,
+				psKick->ahSrcSyncInfo,
+				abSrcSyncEnable,
+				psKick->ui32NumDstSync,
+				psKick->ahDstSyncInfo,
+				abDstSyncEnable);
+
+		if (eError != PVRSRV_OK)
+		{
+			return eError;
+		}
+#endif
 		for (loop = 0; loop < psKick->ui32NumSrcSync; loop++)
 		{
 			if (abSrcSyncEnable[loop])
@@ -281,7 +288,7 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		}
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-		if (ui32RealDstSyncNum < SGX_MAX_TRANSFER_SYNC_OPS - 2 && psKick->iFenceFd > 0)
+		if (ui32RealDstSyncNum <= (SGX_MAX_DST_SYNCS_TQ - 1) && psKick->iFenceFd > 0)
 		{
 			IMG_HANDLE ahSyncInfo[SGX_MAX_SRC_SYNCS_TA];
 			PVRSRV_DEVICE_SYNC_OBJECT *apsDevSyncs = &psSharedTransferCmd->asDstSyncs[ui32RealDstSyncNum];
@@ -561,6 +568,15 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		/* Client will retry, so undo the sync ops pending increment(s) done above. */
 		if ((psKick->ui32Flags & SGXMKIF_TQFLAGS_KEEPPENDING) == 0UL)
 		{
+#if defined(SUPPORT_DMABUF)
+			PVRLinuxFenceRelease(ui32FenceTag,
+						psKick->ui32NumSrcSync,
+						psKick->ahSrcSyncInfo,
+						abSrcSyncEnable,
+						psKick->ui32NumDstSync,
+						psKick->ahDstSyncInfo,
+						abDstSyncEnable);
+#endif
 			for (loop = 0; loop < psKick->ui32NumSrcSync; loop++)
 			{
 				if (abSrcSyncEnable[loop])
@@ -607,15 +623,17 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 			SyncRollBackWriteOp(psSyncInfo, SYNC_OP_CLASS_TQ_3D);
 		}
 	}
-
 	else if (PVRSRV_OK != eError)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "SGXSubmitTransferKM: SGXScheduleCCBCommandKM failed."));
 		PVR_TTRACE(PVRSRV_TRACE_GROUP_TRANSFER, PVRSRV_TRACE_CLASS_FUNCTION_EXIT,
 				TRANSFER_TOKEN_SUBMIT);
+#if defined(SUPPORT_DMABUF) && defined(NO_HARDWARE)
+		PVRLinuxFenceCheckAll();
+#endif
 		return eError;
 	}
-	
+
 
 #if defined(NO_HARDWARE)
 	if ((psKick->ui32Flags & SGXMKIF_TQFLAGS_NOSYNCUPDATE) == 0)
@@ -940,6 +958,9 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmit2DKM(IMG_HANDLE hDevHandle, PVRSRV_2D_SGX_KICK 
 
 		psSyncInfo->psSyncData->ui32WriteOpsComplete = psSyncInfo->psSyncData->ui32WriteOpsPending;
 	}
+#if defined(SUPPORT_DMABUF)
+	PVRLinuxFenceCheckAll();
+#endif
 #endif
 
 	return eError;

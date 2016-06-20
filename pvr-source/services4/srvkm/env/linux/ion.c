@@ -140,62 +140,133 @@ IMG_VOID IonDeinit(IMG_VOID)
 
 #else /* defined(CONFIG_ION_INCDHAD1) */
 
-#if defined(CONFIG_ION_DUMMY)
-
-/* Real ion with sharing (dummy) */
-
-extern struct ion_device *idev;
-struct ion_device *gpsIonDev;
-
-PVRSRV_ERROR IonInit(IMG_VOID)
-{
-        gpsIonDev = idev;
-        return PVRSRV_OK;
-}
-
-
-IMG_VOID IonDeinit(IMG_VOID)
-{
-        gpsIonDev = IMG_NULL;
-}
-
-#else /* defined(CONFIG_ION_DUMMY) */
-
-
 /* "Reference" ion implementation */
 
 #include SUPPORT_ION_PRIV_HEADER
 #include <linux/version.h>
+#include "ion_sys_private.h"
+#include "lma_heap_ion.h"
 
 static struct ion_heap **gapsIonHeaps;
 struct ion_device *gpsIonDev;
 
-#ifndef ION_CARVEOUT_MEM_BASE
-#define ION_CARVEOUT_MEM_BASE 0
+#if defined(LMA)
+struct ion_platform_data gsTCIonConfig = {
+        .nr = 1,
+        .heaps =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,39))
+#else
+                (struct ion_platform_heap [])
 #endif
+                {
+                        {
+                                /* This heap must be first. The base address and size are filled
+                                   in from data passed down by sysconfig.c. */
+                                .type = ION_HEAP_TYPE_CUSTOM,
+                                .name = "tc_local_mem",
+                                .id = ION_HEAP_TYPE_CUSTOM,
+                                .base = 0,                      /* filled in later */
+                                .size = 0,                      /* filled in later */
+                        }
+                }
+};
 
-#ifndef ION_CARVEOUT_MEM_SIZE
-#define ION_CARVEOUT_MEM_SIZE 0
+PVRSRV_ERROR IonInit(void *pvPrivateData)
+{
+        PVRSRV_ERROR eError = PVRSRV_OK;
+        int i;
+
+        ION_TC_PRIVATE_DATA sPrivateData = *(ION_TC_PRIVATE_DATA *)pvPrivateData;
+
+        /* Fill in the heap base and size according to the private data. */
+        gsTCIonConfig.heaps[0].base = sPrivateData.uiHeapBase;
+        gsTCIonConfig.heaps[0].size = sPrivateData.uiHeapSize;
+
+        gapsIonHeaps = kzalloc(sizeof(struct ion_heap *) * gsTCIonConfig.nr,
+                                                   GFP_KERNEL);
+        gpsIonDev = ion_device_create(NULL);
+        if (IS_ERR_OR_NULL(gpsIonDev))
+        {
+                kfree(gapsIonHeaps);
+                return PVRSRV_ERROR_OUT_OF_MEMORY;
+        }
+
+        for (i = 0; i < gsTCIonConfig.nr; i++)
+        {
+                struct ion_platform_heap *psPlatHeapData = &gsTCIonConfig.heaps[i];
+
+                switch (psPlatHeapData->type)
+                {
+                        case ION_HEAP_TYPE_CUSTOM:
+                                /* Custom heap: this is used to mean a TC-specific heap,
+                                   which allocates from local memory. */
+                                gapsIonHeaps[i] = lma_heap_create(psPlatHeapData);
+                                break;
+                        default:
+                                /* For any other type of heap, hand this to ion to create as
+                                   appropriate. We don't necessarily need any of these -
+                                   this just gives us the flexibility to have another kind
+                                   of heap if necessary. */
+                                gapsIonHeaps[i] = ion_heap_create(psPlatHeapData);
+                                break;
+                }
+
+                if (IS_ERR_OR_NULL(gapsIonHeaps[i]))
+                {
+                        printk("%s: Failed to create ion heap '%s'", __func__, psPlatHeapData->name);
+                        IonDeinit();
+			return PVRSRV_ERROR_OUT_OF_MEMORY;
+                }
+
+                ion_device_add_heap(gpsIonDev, gapsIonHeaps[i]);
+        }
+
+        return eError;
+}
+
+void IonDeinit(void)
+{
+        int i;
+        for (i = 0; i < gsTCIonConfig.nr; i++)
+                if (gapsIonHeaps[i])
+                        ion_heap_destroy(gapsIonHeaps[i]);
+        kfree(gapsIonHeaps);
+        ion_device_destroy(gpsIonDev);
+}
+
+#else
+
+#if defined(ION_CARVEOUT_MEM_BASE) && defined(ION_CARVEOUT_MEM_SIZE)
+/* Only define the carveout heap on boards with BASE and SIZE defined,
+ * otherwise crashes may be seen when empty cache flushes are issued
+ * (seen on the MIPS architecture).
+ */
+#define ION_HAS_CARVEOUT_HEAP
 #endif
 
 static struct ion_platform_data gsGenericConfig =
 {
+#if defined(ION_HAS_CARVEOUT_HEAP)
 	.nr = 3,
+#else
+	.nr = 2,
+#endif
 	.heaps =
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,39))
 	(struct ion_platform_heap [])
 #endif
 	{
 		{
-			.type = ION_HEAP_TYPE_SYSTEM_CONTIG,
-			.name = "system_contig",
-			.id   = ION_HEAP_TYPE_SYSTEM_CONTIG,
-		},
-		{
 			.type = ION_HEAP_TYPE_SYSTEM,
 			.name = "system",
 			.id   = ION_HEAP_TYPE_SYSTEM,
 		},
+		{
+			.type = ION_HEAP_TYPE_DMA,
+			.name = "dma",
+			.id   = ION_HEAP_TYPE_DMA,
+		},
+#if defined(ION_HAS_CARVEOUT_HEAP)
 		{
 			.type = ION_HEAP_TYPE_CARVEOUT,
 			.name = "carveout",
@@ -203,6 +274,7 @@ static struct ion_platform_data gsGenericConfig =
 			.base = ION_CARVEOUT_MEM_BASE,
 			.size = ION_CARVEOUT_MEM_SIZE,
 		},
+#endif /* defined(ION_HAS_CARVEOUT_HEAP) */
 	}
 };
 
@@ -262,7 +334,8 @@ IMG_VOID IonDeinit(IMG_VOID)
 	kfree(gapsIonHeaps);
 	ion_device_destroy(gpsIonDev);
 }
-#endif /* defined(CONFIG_ION_DUMMY) */
+
+#endif /* defined(LMA) */
 
 #endif /* defined(CONFIG_ION_INCDHAD1) */
 

@@ -298,6 +298,9 @@ static PVRSRV_ERROR InitDevInfo(PVRSRV_PER_PROCESS_DATA *psPerProc,
 	psDevInfo->ui32MasterClkGateStatus2Reg = psInitInfo->ui32MasterClkGateStatus2Reg;
 	psDevInfo->ui32MasterClkGateStatus2Mask = psInitInfo->ui32MasterClkGateStatus2Mask;
 #endif /* SGX_FEATURE_MP */
+#if defined(SGX_FEATURE_AUTOCLOCKGATING)
+	psDevInfo->bDisableClockGating = psInitInfo->bDisableClockGating;
+#endif
 
 
 	/* Initialise Dev Data */
@@ -1377,7 +1380,11 @@ IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 				host thinks the fault is correct
 			*/
 			ui32RegVal = OSReadHWReg(psDevInfo->pvRegsBaseKM, EUR_CR_BIF_INT_STAT);
+			#if defined(EUR_CR_BIF_INT_STAT_PF_N_RW_MASK)
 			if (ui32RegVal & EUR_CR_BIF_INT_STAT_PF_N_RW_MASK)
+			#else
+			if (ui32RegVal & EUR_CR_BIF_INT_STAT_FAULT_TYPE_MASK)	
+			#endif
 			{
 				ui32RegVal = OSReadHWReg(psDevInfo->pvRegsBaseKM, EUR_CR_BIF_FAULT);
 				ui32RegVal &= EUR_CR_BIF_FAULT_ADDR_MASK;
@@ -2102,12 +2109,10 @@ static IMG_VOID SGX_MISRHandler (IMG_VOID *pvData)
 		HWRecoveryResetSGX(psDeviceNode, 0, ISR_ID);
 	}
 
-#if defined(OS_SUPPORTS_IN_LISR)
 	if (psDeviceNode->bReProcessDeviceCommandComplete)
 	{
 		SGXScheduleProcessQueuesKM(psDeviceNode);
 	}
-#endif
 
 	SGXTestActivePowerEvent(psDeviceNode, ISR_ID);
 	
@@ -2307,11 +2312,33 @@ PVRSRV_ERROR SGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDeviceMemoryHeap->DevMemHeapType = DEVICE_MEMORY_HEAP_PERCONTEXT;
 	/* set the default (4k). System can override these as required */
 	psDeviceMemoryHeap->ui32DataPageSize = SGX_MMU_PAGE_SIZE;
-#if !defined(SUPPORT_SGX_GENERAL_MAPPING_HEAP)
+#if !defined(SUPPORT_SGX_GENERAL_MAPPING_HEAP) && !defined(SGX5300)
 	/* specify the mapping heap ID for this device */
 	psDevMemoryInfo->ui32MappingHeapID = (IMG_UINT32)(psDeviceMemoryHeap - psDevMemoryInfo->psDeviceMemoryHeap);
 #endif
 	psDeviceMemoryHeap++;/* advance to the next heap */
+
+#if defined(SGX_FEATURE_ADDRESS_SPACE_EXTENSION)
+   /************* Texture Heap ***************/
+	psDeviceMemoryHeap->ui32HeapID = HEAP_ID( PVRSRV_DEVICE_TYPE_SGX, SGX_TEXTURE_HEAP_ID);
+	psDeviceMemoryHeap->sDevVAddrBase.uiAddr = SGX_TEXTURE_HEAP_BASE;
+	psDeviceMemoryHeap->ui32HeapSize = SGX_TEXTURE_HEAP_SIZE;
+	psDeviceMemoryHeap->ui32Attribs = PVRSRV_HAP_WRITECOMBINE
+	                                | PVRSRV_MEM_RAM_BACKED_ALLOCATION
+	                                | PVRSRV_HAP_SINGLE_PROCESS;
+ 
+	psDeviceMemoryHeap->pszName = "Texture";
+	psDeviceMemoryHeap->pszBSName = "Texture BS";
+	psDeviceMemoryHeap->DevMemHeapType = DEVICE_MEMORY_HEAP_PERCONTEXT;
+	/* set the default (4k). System can override these as required */
+	psDeviceMemoryHeap->ui32DataPageSize = SGX_MMU_PAGE_SIZE;
+	/* The mapping heap ID should be texture heap for SGX5300 */
+#if !defined(SUPPORT_SGX_GENERAL_MAPPING_HEAP) && defined(SGX5300)
+	/* specify the mapping heap ID for this device */
+	psDevMemoryInfo->ui32MappingHeapID = (IMG_UINT32)(psDeviceMemoryHeap - psDevMemoryInfo->psDeviceMemoryHeap);
+#endif 
+	psDeviceMemoryHeap++;/* advance to the next heap */
+#endif
 
 #if defined(SUPPORT_MEMORY_TILING)
 	/************* VPB tiling ***************/
@@ -2686,16 +2713,16 @@ PVRSRV_ERROR SGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 		ui32BuildOptionsMismatch = ui32BuildOptions ^ psDevInfo->ui32ClientBuildOptions;
 		if ( (psDevInfo->ui32ClientBuildOptions & ui32BuildOptionsMismatch) != 0)
 		{
-			PVR_LOG(("(FAIL) SGXInit: Mismatch in client-side and KM driver build options; "
-				"extra options present in client-side driver: (0x%x). Please check sgx_options.h",
-				psDevInfo->ui32ClientBuildOptions & ui32BuildOptionsMismatch ));
+			PVR_LOG(("(FAIL) SGXInit: Mismatch in client-side and KM driver build options."));
+			PVR_LOG(("Extra options present in client-side driver: (0x%x). Please check sgx_options.h",
+					 psDevInfo->ui32ClientBuildOptions & ui32BuildOptionsMismatch));
 		}
 
 		if ( (ui32BuildOptions & ui32BuildOptionsMismatch) != 0)
 		{
-			PVR_LOG(("(FAIL) SGXInit: Mismatch in client-side and KM driver build options; "
-				"extra options present in KM: (0x%x). Please check sgx_options.h",
-				ui32BuildOptions & ui32BuildOptionsMismatch ));
+			PVR_LOG(("(FAIL) SGXInit: Mismatch in client-side and KM driver build options."));
+			PVR_LOG(("Extra options present in KM: (0x%x). Please check sgx_options.h",
+					 ui32BuildOptions & ui32BuildOptionsMismatch));
 		}
 		eError = PVRSRV_ERROR_BUILD_MISMATCH;
 		goto chk_exit;

@@ -1,5 +1,5 @@
 /*************************************************************************/ /*!
-@Title          Ion driver inter-operability code.
+@Title          Services Ion synchronisation integration
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -39,35 +39,35 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __IMG_LINUX_ION_H__
-#define __IMG_LINUX_ION_H__
-
-#if defined(SUPPORT_ION)
-
-#include SUPPORT_ION_HEADER
-
+#include "img_defs.h"
 #include "img_types.h"
-#include "servicesext.h"
+#include "servicesint.h"
 
-#if defined(LMA)
-PVRSRV_ERROR IonInit(void *pvPrivateData);
-#else
-PVRSRV_ERROR IonInit(IMG_VOID);
-#endif
+#ifndef __ION_SYNC_H__
+#define __ION_SYNC_H__
 
-IMG_VOID IonDeinit(IMG_VOID);
+typedef struct _PVRSRV_ION_SYNC_INFO_ {
+	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo;
+	IMG_HANDLE				hUnique;
+	IMG_UINT32				ui32RefCount;
+	IMG_UINT64				ui64Stamp;
+} PVRSRV_ION_SYNC_INFO;
 
-PVRSRV_ERROR IonImportBufferAndAcquirePhysAddr(IMG_HANDLE hIonDev,
-											   IMG_UINT32 ui32NumFDs,
-											   IMG_INT32  *pi32BufferFDs,
-											   IMG_UINT32 *pui32PageCount,
-											   IMG_SYS_PHYADDR **ppsSysPhysAddr,
-											   IMG_PVOID *ppvKernAddr0,
-											   IMG_HANDLE *phPriv,
-											   IMG_HANDLE *phUnique);
+PVRSRV_ERROR PVRSRVIonBufferSyncAcquire(IMG_HANDLE hUnique,
+										IMG_HANDLE hDevCookie,
+										IMG_HANDLE hDevMemContext,
+										PVRSRV_ION_SYNC_INFO **ppsIonSyncInfo);
 
-IMG_VOID IonUnimportBufferAndReleasePhysAddr(IMG_HANDLE hPriv);
+IMG_VOID PVRSRVIonBufferSyncRelease(PVRSRV_ION_SYNC_INFO *psIonSyncInfo);
 
-#endif /* defined(SUPPORT_ION) */
+static INLINE PVRSRV_KERNEL_SYNC_INFO *IonBufferSyncGetKernelSyncInfo(PVRSRV_ION_SYNC_INFO *psIonSyncInfo)
+{
+	return psIonSyncInfo->psSyncInfo;
+}
 
-#endif /* __IMG_LINUX_ION_H__ */
+static INLINE IMG_UINT64 IonBufferSyncGetStamp(PVRSRV_ION_SYNC_INFO *psIonSyncInfo)
+{
+	return psIonSyncInfo->ui64Stamp;
+}
+
+#endif /* __ION_SYNC_H__ */

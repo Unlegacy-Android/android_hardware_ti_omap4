@@ -462,17 +462,18 @@ IMG_VOID PVRSRVDebugPrintf	(
 		}
 		else
 		{
-			const IMG_CHAR *pszShortName = strrchr(pszFileName, '/') + 1;
-			if(pszShortName)
-				pszFileName = pszShortName;
 			if (ui32DebugLevel & DBGPRIV_BUFFERED)
 			{
 				/* We don't need the full path here */
+				const IMG_CHAR *pszShortName = strrchr(pszFileName, '/') + 1;
+				if(pszShortName)
+					pszFileName = pszShortName;
+
 				AddToBufferCCB(pszFileName, ui32Line, pszBuf);
 			}
 			else
 			{
-				printk(KERN_INFO "%s (File: %s, Line: %d)\n", pszBuf, pszFileName, ui32Line);
+				printk(KERN_INFO "%s\n", pszBuf);
 			}
 		}
 
@@ -504,7 +505,7 @@ IMG_INT PVRDebugProcSetLevel(struct file *file, const IMG_CHAR *buffer, IMG_UINT
 			return -EINVAL;
 		if (data_buffer[count - 1] != '\n')
 			return -EINVAL;
-		if (sscanf(data_buffer, "%i", &gPVRDebugLevel) == 0)
+		if (sscanf(data_buffer, "%u", &gPVRDebugLevel) == 0)
 			return -EINVAL;
 		gPVRDebugLevel &= (1 << DBGPRIV_DBGLEVEL_COUNT) - 1;
 	}

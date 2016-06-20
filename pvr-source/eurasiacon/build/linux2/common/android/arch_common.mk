@@ -56,23 +56,40 @@ SYS_CFLAGS := \
 SYS_INCLUDES := \
  -isystem $(ANDROID_ROOT)/bionic/libc/arch-$(ANDROID_ARCH)/include \
  -isystem $(ANDROID_ROOT)/bionic/libc/include \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/common \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/arch-$(ANDROID_ARCH) \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/uapi \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/uapi/asm-$(ANDROID_ARCH) \
  -isystem $(ANDROID_ROOT)/bionic/libm/include \
  -isystem $(ANDROID_ROOT)/bionic/libm/include/$(ANDROID_ARCH) \
  -isystem $(ANDROID_ROOT)/bionic/libthread_db/include \
+ -isystem $(ANDROID_ROOT)/external/libunwind/include \
  -isystem $(ANDROID_ROOT)/frameworks/base/include \
- -isystem $(ANDROID_ROOT)/system/core/include \
  -isystem $(ANDROID_ROOT)/hardware/libhardware/include \
- -isystem $(ANDROID_ROOT)/external/openssl/include \
+ -isystem $(ANDROID_ROOT)/hardware/libhardware_legacy/include \
+ -isystem $(ANDROID_ROOT)/system/core/include \
+ -isystem $(ANDROID_ROOT)/system/core/libsync/include \
  -isystem $(ANDROID_ROOT)/system/media/camera/include \
- -isystem $(ANDROID_ROOT)/hardware/libhardware_legacy/include
+ -isystem $(ANDROID_ROOT)/external/libdrm \
+ -isystem $(ANDROID_ROOT)/external/libdrm/include/drm
+
+ifneq ($(wildcard $(ANDROID_ROOT)/external/boringssl/src/include),)
+SYS_INCLUDES += \
+ -isystem $(ANDROID_ROOT)/external/boringssl/src/include
+else
+SYS_INCLUDES += \
+ -isystem $(ANDROID_ROOT)/external/openssl/include
+endif
+
+# Obsolete libc includes
+SYS_INCLUDES += \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/common \
+ -isystem $(ANDROID_ROOT)/bionic/libc/kernel/arch-$(ANDROID_ARCH)
 
 # This is comparing PVR_BUILD_DIR to see if it is omap and adding 
 # includes required for it's HWC
 ifeq ($(notdir $(abspath .)),omap_android)
 SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/kernel-headers
+ -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/kernel-headers \
+ -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/ion
 endif
 
 ifeq ($(_CLANG),true)

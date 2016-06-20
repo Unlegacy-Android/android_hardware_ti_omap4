@@ -152,7 +152,11 @@ typedef struct _PVRSRV_KERNEL_MEM_INFO_
 	/* ptr to associated kernel sync info - NULL if no sync */
 	struct _PVRSRV_KERNEL_SYNC_INFO_	*psKernelSyncInfo;
 
-	IMG_HANDLE				hExternalSyncInfo;
+	IMG_HANDLE				hIonSyncInfo;
+
+#if defined(SUPPORT_DMABUF)
+	IMG_HANDLE				hDmaBufSyncInfo;
+#endif
 
 	PVRSRV_MEMTYPE				memType;
 
@@ -185,6 +189,10 @@ typedef struct _PVRSRV_KERNEL_MEM_INFO_
 	} sShareMemWorkaround;
 #if defined (MEM_TRACK_INFO_DEBUG)
 	IMG_CHAR heapId[128];
+#endif
+#if defined (PVRSRV_DEVMEM_TIME_STATS)
+	IMG_UINT32 ui32TimeToDevMap;
+	IMG_UINT32 *pui32TimeToDevUnmap;	/* API user to provide space for storing "unmap" time */
 #endif
 } PVRSRV_KERNEL_MEM_INFO;
 
@@ -220,6 +228,9 @@ typedef struct _PVRSRV_KERNEL_SYNC_INFO_
 	/* Unique ID of the sync object */
 	IMG_UINT32		ui32UID;
 
+#if defined(SUPPORT_DMABUF)
+	IMG_HANDLE		hFenceContext;
+#endif
 	/* Pointer for list manager */
 	struct _PVRSRV_KERNEL_SYNC_INFO_ *psNext;
 	struct _PVRSRV_KERNEL_SYNC_INFO_ **ppsThis;

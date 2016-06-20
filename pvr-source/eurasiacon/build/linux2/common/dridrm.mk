@@ -59,3 +59,20 @@ $(eval $(call TunableBothConfigMake,PVR_DRI_DRM_NOT_PCI))
 
 $(eval $(call TunableKernelConfigC,PVR_DRI_DRM_PLATFORM_DEV,))
 
+
+
+ifeq ($(SUPPORT_DRI_DRM_PLUGIN),1)
+PVR_DRI_CLIENT_DRIVER := pvrsrvkm
+else
+# The X and Wayland window systems derive the client driver name from a
+# display driver DRM device node. The Surfaceless window system derives it
+# from a render node.
+ifeq ($(WINDOW_SYSTEM),surfaceless)
+PVR_DRI_CLIENT_DRIVER := pvr
+else
+PVR_DRI_CLIENT_DRIVER := $(if $(PVR_DRM_MODESET_DRIVER_NAME),$(PVR_DRM_MODESET_DRIVER_NAME),pvr)
+endif
+endif
+
+PVR_DRI_GET_EXTENSIONS_ENTRY_POINT := __driDriverGetExtensions_$(PVR_DRI_CLIENT_DRIVER)
+

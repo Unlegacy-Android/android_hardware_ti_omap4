@@ -220,6 +220,9 @@ typedef struct _PVRSRV_SGXDEV_INFO_
 	IMG_UINT32				ui32MasterClkGateStatus2Reg;
 	IMG_UINT32				ui32MasterClkGateStatus2Mask;
 #endif /* SGX_FEATURE_MP */
+#if defined(SGX_FEATURE_AUTOCLOCKGATING)
+	IMG_BOOL				bDisableClockGating;
+#endif
 	SGX_INIT_SCRIPTS		sScripts;
 
 	/* Members associated with dummy PD needed for BIF reset */
@@ -251,8 +254,6 @@ typedef struct _PVRSRV_SGXDEV_INFO_
 #if defined(FIX_HW_BRN_31272) || defined(FIX_HW_BRN_31780) || defined(FIX_HW_BRN_33920)
 	PVRSRV_KERNEL_MEM_INFO			*psKernelSGXPTLAWriteBackMemInfo;
 #endif
-
-	IMG_UINT32				ui32Flags;
 
 	/* memory tiling range usage */
 	IMG_UINT32				ui32MemTilingUsage;
@@ -471,19 +472,9 @@ typedef struct _SGX_CCB_KICK_KM_
 	/* CCB offset of data structure associated with this kick */
 	IMG_UINT32	ui32CCBOffset;
 
-#if defined(SUPPORT_SGX_GENERALISED_SYNCOBJECTS)
-	/* SRC and DST syncs */
-	IMG_UINT32	ui32NumTASrcSyncs;
-	IMG_HANDLE	ahTASrcKernelSyncInfo[SGX_MAX_TA_SRC_SYNCS];
-	IMG_UINT32	ui32NumTADstSyncs;
-	IMG_HANDLE	ahTADstKernelSyncInfo[SGX_MAX_TA_DST_SYNCS];
-	IMG_UINT32	ui32Num3DSrcSyncs;
-	IMG_HANDLE	ah3DSrcKernelSyncInfo[SGX_MAX_3D_SRC_SYNCS];
-#else
 	/* SRC syncs */
 	IMG_UINT32	ui32NumSrcSyncs;
 	IMG_HANDLE	ahSrcKernelSyncInfo[SGX_MAX_SRC_SYNCS_TA];
-#endif
 
 	/* TA/3D dependency data */
 	IMG_BOOL	bTADependency;
