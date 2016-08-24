@@ -54,6 +54,10 @@ SYS_CFLAGS := \
  -I$(ANDROID_ROOT)/hardware/libhardware/include \
  -I$(ANDROID_ROOT)/external/openssl/include
 
+ifeq ($(USE_TI_LIBION),1)
+SYS_CFLAGS += -DUSE_TI_LIBION
+endif
+
 SYS_EXE_LDFLAGS := \
  -Bdynamic -nostdlib -Wl,-dynamic-linker,/system/bin/linker \
  -lc -ldl -lcutils

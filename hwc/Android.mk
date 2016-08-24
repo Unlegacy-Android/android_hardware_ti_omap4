@@ -8,13 +8,19 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/../vendor/lib/hw
 LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardware_legacy libz
 
 LOCAL_SRC_FILES := hwc.c rgz_2d.c dock_image.c sw_vsync.c display.c
+LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\" -Wall -Werror
 
 ifeq ($(BOARD_USE_TI_LIBION),true)
 LOCAL_SHARED_LIBRARIES += libion_ti
+LOCAL_CFLAGS += -DUSE_TI_LIBION
 else
 LOCAL_SHARED_LIBRARIES += libion
 LOCAL_SRC_FILES += ../libion/ion_ti_custom.c
 LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
+endif
+
+ifdef OMAP_ENHANCEMENT_S3D
+LOCAL_CFLAGS += -DOMAP_ENHANCEMENT_S3D
 endif
 
 LOCAL_STATIC_LIBRARIES := libpng
@@ -22,7 +28,6 @@ LOCAL_STATIC_LIBRARIES := libpng
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_MODULE := hwcomposer.omap4
-LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\" -Wall -Werror
 LOCAL_C_INCLUDES += external/libpng external/zlib
 
 LOCAL_C_INCLUDES += \
