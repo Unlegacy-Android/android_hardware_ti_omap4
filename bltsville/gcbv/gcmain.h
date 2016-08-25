@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -74,6 +75,8 @@ typedef uint64_t u64;
 #define div64_u64(x, y) ((x) / (y))
 #define div64_s64(x, y) ((x) / (y))
 
+#undef PAGE_SIZE
+#undef PAGE_MASK
 #define PAGE_SHIFT              12
 #define PAGE_SIZE               (1 << PAGE_SHIFT)
 #define PAGE_MASK               (~(PAGE_SIZE-1))

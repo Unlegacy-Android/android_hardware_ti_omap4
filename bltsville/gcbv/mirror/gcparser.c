@@ -1649,7 +1649,7 @@ exit:
 	return bverror;
 }
 
-void process_dest_rotation(struct bvbltparams *bvbltparams,
+void process_dest_rotation(__unused struct bvbltparams *bvbltparams,
 			   struct gcbatch *batch)
 {
 	GCENTER(GCZONE_DEST);
@@ -1767,7 +1767,7 @@ void process_dest_rotation(struct bvbltparams *bvbltparams,
 }
 
 enum bverror parse_source(struct bvbltparams *bvbltparams,
-			  struct gcbatch *batch,
+			  __unused struct gcbatch *batch,
 			  struct bvrect *srcrect,
 			  struct surfaceinfo *srcinfo)
 {

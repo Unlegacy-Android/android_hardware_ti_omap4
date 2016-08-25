@@ -1382,7 +1382,7 @@ enum bverror bv_blt(struct bvbltparams *bvbltparams)
 	unsigned int op, type, blend, format;
 	unsigned int batchexec = 0;
 	bool nop = false;
-	struct gcbatch *gcbatch;
+	struct gcbatch *gcbatch = NULL;
 	struct bvrect *dstrect;
 	int src1used, src2used, maskused;
 	struct surfaceinfo srcinfo[2];
@@ -1727,8 +1727,8 @@ enum bverror bv_blt(struct bvbltparams *bvbltparams)
 					bverror = do_fill(bvbltparams,
 							  gcbatch,
 							  &srcinfo[i]);
-				} else if ((srcw == dstrect->width) &&
-					   (srch == dstrect->height)) {
+				} else if ((srcw == (int)dstrect->width) &&
+					   (srch == (int)dstrect->height)) {
 					GCDBG(GCZONE_BLIT, "  op: bitblit.\n");
 					bverror = do_blit(bvbltparams,
 							  gcbatch,

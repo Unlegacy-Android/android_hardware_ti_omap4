@@ -685,7 +685,7 @@ static void rotate_gcrect(int angle,
  * Setup destination rotation parameters.
  */
 
-void process_rotation(struct bvbltparams *bvbltparams,
+void process_rotation(__unused struct bvbltparams *bvbltparams,
 		      struct gcbatch *batch,
 		      struct surfaceinfo *srcinfo,
 		      int adjangle)

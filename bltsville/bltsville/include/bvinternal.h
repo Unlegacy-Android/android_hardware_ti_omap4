@@ -19,7 +19,7 @@
  */
 
 #ifndef BVINTERNAL_H
-#define BVINTENRAL_H
+#define BVINTERNAL_H
 
 /*
  * bvbuffmap - The bvbuffmap structure is used to track resources

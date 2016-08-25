@@ -69,8 +69,8 @@ GCDBG_FILTERDEF(buffer, GCZONE_NONE,
  * Batch/command buffer management.
  */
 
-enum bverror do_end(struct bvbltparams *bvbltparams,
-		    struct gcbatch *gcbatch)
+enum bverror do_end(__unused struct bvbltparams *bvbltparams,
+		    __unused struct gcbatch *gcbatch)
 {
 	return BVERR_NONE;
 }
