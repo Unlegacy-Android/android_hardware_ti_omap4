@@ -100,11 +100,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
 #endif
             if((ret < 0) || ((int)handle == -ENOMEM)) {
                 ret = ion_alloc_tiler(mIonFd, (size_t)size, 1, TILER_PIXEL_FMT_PAGE,
-#ifdef USE_TI_LIBION
                 OMAP_ION_HEAP_TILER_MASK, &handle, &stride);
-#else
-                OMAP_ION_HEAP_TILER_MASK, (ion_user_handle_t*)&handle, &stride);
-#endif
             }
 
             if((ret < 0) || ((int)handle == -ENOMEM)) {
