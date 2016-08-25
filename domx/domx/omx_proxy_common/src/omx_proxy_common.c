@@ -168,7 +168,7 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 		goto EXIT;
 	}
 	if (ion_data.handle)
-		*handle1 = ion_data.handle;
+		*handle1 = (void *)ion_data.handle;
 	else
 	{
 	    DOMX_ERROR("Registration failed - Invalid fd passed for Y buffer");
@@ -188,7 +188,7 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 	   goto EXIT;
 	   }
 	if (ion_data.handle)
-	    *handle2 = ion_data.handle;
+	    *handle2 = (void *)ion_data.handle;
 	else	 {
 	     DOMX_ERROR("Registration failed - Invalid fd passed for UV buffer");
 	     eRPCError = RPC_OMX_ErrorBadParameter;
@@ -257,7 +257,7 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 			goto EXIT;
 		}
 		if (ion_data.handle)
-			*handle1 = ion_data.handle;
+			*handle1 = (void *)ion_data.handle;
 		else
 		{
 		    DOMX_ERROR("Registration failed - Invalid fd passed");
@@ -311,7 +311,7 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
 #endif
 			status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
 			if (status < 0) {
-				DOMX_ERROR("UnregisterBuffer ioctl call failed for handle2: 0x%x",handle2);
+				DOMX_ERROR("UnregisterBuffer ioctl call failed for handle2: 0x%p",handle2);
 				eRPCError = RPC_OMX_ErrorInsufficientResources;
 			}
 		}
@@ -357,7 +357,7 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
  */
 /* ===========================================================================*/
 OMX_ERRORTYPE PROXY_EventHandler(OMX_HANDLETYPE hComponent,
-    OMX_PTR pAppData, OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2,
+    __unused OMX_PTR pAppData, OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2,
     OMX_PTR pEventData)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -516,7 +516,7 @@ static OMX_ERRORTYPE PROXY_EmptyBufferDone(OMX_HANDLETYPE hComponent,
 /* ===========================================================================*/
 OMX_ERRORTYPE PROXY_FillBufferDone(OMX_HANDLETYPE hComponent,
     OMX_U32 remoteBufHdr, OMX_U32 nfilledLen, OMX_U32 nOffset, OMX_U32 nFlags,
-    OMX_TICKS nTimeStamp, OMX_HANDLETYPE hMarkTargetComponent,
+    OMX_TICKS nTimeStamp, __unused OMX_HANDLETYPE hMarkTargetComponent,
     OMX_PTR pMarkData)
 {
 
@@ -833,7 +833,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		pCompPrv->tBufList[currentBuffer].bufferAccessors[0].pBufferHandle = newbuffer_prop.sBuffer_accessor.pBufferHandle;
 		pCompPrv->tBufList[currentBuffer].bufferAccessors[0].pBufferMappedAddress = newbuffer_prop.sBuffer_accessor.pBufferMappedAddress;
 		pCompPrv->tBufList[currentBuffer].bufferAccessors[0].bufferFd = newbuffer_prop.sBuffer_accessor.bufferFd;
-		pMemptr = (OMX_U8*)pCompPrv->tBufList[currentBuffer].bufferAccessors[0].bufferFd;
+		pMemptr = (OMX_U8*) pCompPrv->tBufList[currentBuffer].bufferAccessors[0].bufferFd;
 		DOMX_DEBUG ("Ion handle recieved = %x",pCompPrv->tBufList[currentBuffer].bufferAccessors[0].pBufferHandle);
 
 	/*No need to increment Allocated buffers here.
@@ -1373,7 +1373,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		hComponent, pCompPrv, nParamIndex, pParamStruct);
 
-	switch(nParamIndex)
+	switch((unsigned int)nParamIndex)
 	{
 #ifdef ENABLE_GRALLOC_BUFFERS
 		case OMX_TI_IndexUseNativeBuffers:
@@ -1501,7 +1501,7 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		 hComponent, pCompPrv, nParamIndex, pParamStruct);
 
-	switch(nParamIndex)
+	switch((unsigned int)nParamIndex)
 	{
 #ifndef DOMX_TUNA
 		case OMX_TI_IndexUseBufferDescriptor:
@@ -2011,7 +2011,7 @@ OMX_ERRORTYPE PROXY_GetExtensionIndex(OMX_IN OMX_HANDLETYPE hComponent,
  */
 /* ===========================================================================*/
 static OMX_ERRORTYPE PROXY_ComponentRoleEnum(OMX_IN OMX_HANDLETYPE hComponent,
-    OMX_OUT OMX_U8 * cRole, OMX_IN OMX_U32 nIndex)
+    __unused OMX_OUT OMX_U8 * cRole, __unused OMX_IN OMX_U32 nIndex)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 
@@ -2119,9 +2119,9 @@ static OMX_ERRORTYPE PROXY_SetCallbacks(OMX_HANDLETYPE hComponent,
  *
  */
 /* ===========================================================================*/
-static OMX_ERRORTYPE PROXY_UseEGLImage(OMX_HANDLETYPE hComponent,
-    OMX_BUFFERHEADERTYPE ** ppBufferHdr,
-    OMX_U32 nPortIndex, OMX_PTR pAppPrivate, void *pBuffer)
+static OMX_ERRORTYPE PROXY_UseEGLImage(__unused OMX_HANDLETYPE hComponent,
+    __unused OMX_BUFFERHEADERTYPE ** ppBufferHdr,
+    __unused OMX_U32 nPortIndex, __unused OMX_PTR pAppPrivate, __unused void *pBuffer)
 {
 	return OMX_ErrorNotImplemented;
 }

@@ -79,7 +79,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
     pIonParams = ((MEMPLUGIN_ION_PARAMS *)pMemPluginHdl->pPluginExtendedInfo);
     MEMPLUGIN_BUFFER_PARAMS_INIT(newBuffer_params);
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
-    switch (nParamIndex)
+    switch ((unsigned int)nParamIndex)
     {
 #ifndef DOMX_TUNA
 	case OMX_TI_IndexParamComponentBufferAllocation: {
@@ -118,7 +118,7 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
 		}
 		bufferalloc->pBuf[0] = (OMX_PTR)newBuffer_prop.sBuffer_accessor.bufferFd;
 		eError = __PROXY_SetParameter(hComponent,
-					      OMX_TI_IndexParamComponentBufferAllocation,
+					      (unsigned int)OMX_TI_IndexParamComponentBufferAllocation,
 					      bufferalloc, &bufferalloc->pBuf[0], 1);
                 if (eError != OMX_ErrorNone) {
                    MemPlugin_Free(pCompPrv->pMemPluginHandle,pCompPrv->nMemmgrClientDesc, &newBuffer_params,&newBuffer_prop);
@@ -230,7 +230,7 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
 			goto EXIT;
 		}
 
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, newBuffer_prop.sBuffer_accessor.bufferFd,-1,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, newBuffer_prop.sBuffer_accessor.bufferFd, -1,
                                                            &pCamPrv->sInternalBuffers[i][1].pRegBufferHandle, NULL, IONPointers);
         PROXY_checkRpcError();
         pVtcConfig->IonBufhdl[1] = pCamPrv->sInternalBuffers[i][1].pRegBufferHandle;
@@ -239,7 +239,7 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
         DOMX_DEBUG("DOMX: ION Buffer#%d: UV: 0x%x, eError: 0x%x eRPCError: 0x%x\n", i, pVtcConfig->IonBufhdl[1],eError,eRPCError);
 
         eError = __PROXY_SetParameter(hComponent,
-                                      OMX_TI_IndexParamVtcSlice,
+                                      (unsigned int)OMX_TI_IndexParamVtcSlice,
                                       pVtcConfig,
                                       pVtcConfig->IonBufhdl, 2);
         if (eError != OMX_ErrorNone) {

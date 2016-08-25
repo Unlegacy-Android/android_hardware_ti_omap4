@@ -62,7 +62,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_Init(char *cMemPluginName, void **pMemPluginHandle
         goto EXIT;
     }
 
-    while(MemPlugins_Map[i].pMemPluginConfig != 0)
+    while(MemPlugins_Map[i].cMemPluginName[0] != '\0')
     {
         if(strcmp(MemPlugins_Map[i].cMemPluginName,cMemPluginName) == 0)
         {
@@ -163,7 +163,7 @@ EXIT:
     }
     return eError;
 }
-MEMPLUGIN_ERRORTYPE MemPlugin_Configure(void *pMemPluginHandle, void *pConfigData)
+MEMPLUGIN_ERRORTYPE MemPlugin_Configure(__unused void *pMemPluginHandle, __unused void *pConfigData)
 {
     //implementation to be added later
 EXIT:

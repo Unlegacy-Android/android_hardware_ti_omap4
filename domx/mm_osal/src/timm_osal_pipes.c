@@ -58,6 +58,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -179,7 +180,7 @@ EXIT:
 /* ========================================================================== */
 
 TIMM_OSAL_ERRORTYPE TIMM_OSAL_WriteToPipe(TIMM_OSAL_PTR pPipe,
-    void *pMessage, TIMM_OSAL_U32 size, TIMM_OSAL_S32 timeout)
+    void *pMessage, TIMM_OSAL_U32 size, __unused TIMM_OSAL_S32 timeout)
 {
 	TIMM_OSAL_ERRORTYPE bReturnStatus = TIMM_OSAL_ERR_UNKNOWN;
 	TIMM_OSAL_U32 lSizeWritten = -1;
@@ -222,7 +223,7 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_WriteToPipe(TIMM_OSAL_PTR pPipe,
 /* ========================================================================== */
 
 TIMM_OSAL_ERRORTYPE TIMM_OSAL_WriteToFrontOfPipe(TIMM_OSAL_PTR pPipe,
-    void *pMessage, TIMM_OSAL_U32 size, TIMM_OSAL_S32 timeout)
+    void *pMessage, TIMM_OSAL_U32 size, __unused TIMM_OSAL_S32 timeout)
 {
 
 	TIMM_OSAL_ERRORTYPE bReturnStatus = TIMM_OSAL_ERR_UNKNOWN;
@@ -357,7 +358,7 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_ReadFromPipe(TIMM_OSAL_PTR pPipe,
 */
 /* ========================================================================== */
 
-TIMM_OSAL_ERRORTYPE TIMM_OSAL_ClearPipe(TIMM_OSAL_PTR pPipe)
+TIMM_OSAL_ERRORTYPE TIMM_OSAL_ClearPipe(__unused TIMM_OSAL_PTR pPipe)
 {
 	TIMM_OSAL_ERRORTYPE bReturnStatus = TIMM_OSAL_ERR;
 

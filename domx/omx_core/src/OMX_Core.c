@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 
 
 /* #include "OMX_RegLib.h" */
@@ -529,7 +530,7 @@ OMX_API OMX_ERRORTYPE OMX_APIENTRY OMX_SetupTunnel(OMX_IN OMX_HANDLETYPE
 *
 **************************************************************************/
 OMX_API OMX_ERRORTYPE OMX_APIENTRY OMX_ComponentNameEnum(OMX_OUT OMX_STRING
-                                                         cComponentName, OMX_IN OMX_U32 nNameLength, OMX_IN OMX_U32 nIndex)
+                                                         cComponentName, __unused OMX_IN OMX_U32 nNameLength, OMX_IN OMX_U32 nIndex)
 {
     OMX_ERRORTYPE    eError = OMX_ErrorNone;
 
@@ -855,23 +856,23 @@ EXIT:
     return (eError);
 }
 
-OMX_ERRORTYPE ComponentTable_EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
-                                          OMX_IN OMX_PTR pAppData,
-                                          OMX_IN OMX_EVENTTYPE eEvent,
-                                          OMX_IN OMX_U32 nData1, OMX_IN OMX_U32 nData2, OMX_IN OMX_PTR pEventData)
+OMX_ERRORTYPE ComponentTable_EventHandler(__unused OMX_IN OMX_HANDLETYPE hComponent,
+                                          __unused OMX_IN OMX_PTR pAppData,
+                                          __unused OMX_IN OMX_EVENTTYPE eEvent,
+                                          __unused OMX_IN OMX_U32 nData1, __unused OMX_IN OMX_U32 nData2, __unused OMX_IN OMX_PTR pEventData)
 {
     return (OMX_ErrorNotImplemented);
 }
 
-OMX_ERRORTYPE ComponentTable_EmptyBufferDone(OMX_OUT OMX_HANDLETYPE
-                                             hComponent, OMX_OUT OMX_PTR pAppData,
-                                             OMX_OUT OMX_BUFFERHEADERTYPE *pBuffer)
+OMX_ERRORTYPE ComponentTable_EmptyBufferDone(__unused OMX_OUT OMX_HANDLETYPE
+                                             hComponent, __unused OMX_OUT OMX_PTR pAppData,
+                                             __unused OMX_OUT OMX_BUFFERHEADERTYPE *pBuffer)
 {
     return (OMX_ErrorNotImplemented);
 }
 
-OMX_ERRORTYPE ComponentTable_FillBufferDone(OMX_OUT OMX_HANDLETYPE hComponent,
-                                            OMX_OUT OMX_PTR pAppData, OMX_OUT OMX_BUFFERHEADERTYPE *pBuffer)
+OMX_ERRORTYPE ComponentTable_FillBufferDone(__unused OMX_OUT OMX_HANDLETYPE hComponent,
+                                            __unused OMX_OUT OMX_PTR pAppData, __unused OMX_OUT OMX_BUFFERHEADERTYPE *pBuffer)
 {
     return (OMX_ErrorNotImplemented);
 }

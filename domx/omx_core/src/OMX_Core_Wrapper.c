@@ -63,24 +63,24 @@ OMX_BOOL TIOMXConfigParserRedirect(OMX_PTR aInputParameters,
 	return Status;
 }
 #endif
-OMX_ERRORTYPE TIComponentTable_EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
-    OMX_IN OMX_PTR pAppData,
-    OMX_IN OMX_EVENTTYPE eEvent,
-    OMX_IN OMX_U32 nData1, OMX_IN OMX_U32 nData2, OMX_IN OMX_PTR pEventData)
+OMX_ERRORTYPE TIComponentTable_EventHandler(__unused OMX_IN OMX_HANDLETYPE hComponent,
+    __unused OMX_IN OMX_PTR pAppData,
+    __unused OMX_IN OMX_EVENTTYPE eEvent,
+    __unused OMX_IN OMX_U32 nData1, __unused OMX_IN OMX_U32 nData2, __unused OMX_IN OMX_PTR pEventData)
 {
 	return OMX_ErrorNotImplemented;
 }
 
-OMX_ERRORTYPE TIComponentTable_EmptyBufferDone(OMX_OUT OMX_HANDLETYPE
-    hComponent, OMX_OUT OMX_PTR pAppData,
-    OMX_OUT OMX_BUFFERHEADERTYPE * pBuffer)
+OMX_ERRORTYPE TIComponentTable_EmptyBufferDone(__unused OMX_OUT OMX_HANDLETYPE
+    hComponent, __unused OMX_OUT OMX_PTR pAppData,
+    __unused OMX_OUT OMX_BUFFERHEADERTYPE * pBuffer)
 {
 	return OMX_ErrorNotImplemented;
 }
 
-OMX_ERRORTYPE TIComponentTable_FillBufferDone(OMX_OUT OMX_HANDLETYPE
-    hComponent, OMX_OUT OMX_PTR pAppData,
-    OMX_OUT OMX_BUFFERHEADERTYPE * pBuffer)
+OMX_ERRORTYPE TIComponentTable_FillBufferDone(__unused OMX_OUT OMX_HANDLETYPE
+    hComponent, __unused OMX_OUT OMX_PTR pAppData,
+    __unused OMX_OUT OMX_BUFFERHEADERTYPE * pBuffer)
 {
 	return OMX_ErrorNotImplemented;
 }
@@ -154,8 +154,8 @@ OMX_API OMX_ERRORTYPE TIOMX_SetupTunnel(OMX_IN OMX_HANDLETYPE hOutput,
 	return OMX_SetupTunnel(hOutput, nPortOutput, hInput, nPortInput);
 }
 
-OMX_API OMX_ERRORTYPE TIOMX_GetContentPipe(OMX_OUT OMX_HANDLETYPE * hPipe,
-    OMX_IN OMX_STRING szURI)
+OMX_API OMX_ERRORTYPE TIOMX_GetContentPipe(__unused OMX_OUT OMX_HANDLETYPE * hPipe,
+    __unused OMX_IN OMX_STRING szURI)
 {
 
 	TIMM_OSAL_Entering("TIOMX_GetContentPipe\n");

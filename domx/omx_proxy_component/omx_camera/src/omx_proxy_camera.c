@@ -147,6 +147,9 @@ EXIT:
    return eError;
 }
 
+OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX_TI_PARAM_VTCSLICE *pVtcConfig,
+											OMX_U32 nFrmWidth, OMX_U32 nFrmHeight);
+
 /* ===========================================================================*/
 /**
  * @name _OMX_CameraVtcAllocateMemory
@@ -186,14 +189,14 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
         if (tState == OMX_StateLoaded) {
             DOMX_DEBUG("%s: Current state returned is %d", __func__, tState);
 
-            if(OMX_GetParameter(hComponent, OMX_TI_IndexParamVtcSlice, &tVtcConfig) == OMX_ErrorNone) {
+            if(OMX_GetParameter(hComponent, (unsigned int)OMX_TI_IndexParamVtcSlice, &tVtcConfig) == OMX_ErrorNone) {
                 if (tVtcConfig.nSliceHeight != 0 ) {
                     OMX_CONFIG_BOOLEANTYPE tVstabParam;
                     OMX_PARAM_VIDEONOISEFILTERTYPE tVnfParam;
                     OMX_TI_PARAM_VTCSLICE *pVtcConfig = &tVtcConfig;
 
                     tFrameDim.nPortIndex = PREVIEW_PORT; //Preview Port
-                    if(OMX_GetParameter(hComponent, OMX_TI_IndexParam2DBufferAllocDimension, &tFrameDim) == OMX_ErrorNone){
+                    if(OMX_GetParameter(hComponent, (unsigned int)OMX_TI_IndexParam2DBufferAllocDimension, &tFrameDim) == OMX_ErrorNone){
                         DOMX_DEBUG("Acquired OMX_TI_IndexParam2DBufferAllocDimension data. nWidth = %d, nHeight = %d.\n\n", tFrameDim.nWidth, tFrameDim.nHeight);
                         nFrmWidth = tFrameDim.nWidth;
                         nFrmHeight = tFrameDim.nHeight;
@@ -205,13 +208,13 @@ static OMX_ERRORTYPE _OMX_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hCompone
 
                     _PROXY_OMX_INIT_PARAM(&tVnfParam, OMX_PARAM_VIDEONOISEFILTERTYPE);
                     _PROXY_OMX_INIT_PARAM(&tVstabParam, OMX_CONFIG_BOOLEANTYPE);
-                    eError = OMX_GetParameter(hComponent, OMX_IndexParamFrameStabilisation, &tVstabParam);
+                    eError = OMX_GetParameter(hComponent, (unsigned int)OMX_IndexParamFrameStabilisation, &tVstabParam);
                     if(eError != OMX_ErrorNone) {
                         DOMX_ERROR("OMX_GetParameter for OMX_IndexParamFrameStabilisation returned error %x", eError);
                         goto EXIT;
                     }
                     tVnfParam.nPortIndex = PREVIEW_PORT;
-                    eError = OMX_GetParameter(hComponent, OMX_IndexParamVideoNoiseFilter, &tVnfParam);
+                    eError = OMX_GetParameter(hComponent, (unsigned int)OMX_IndexParamVideoNoiseFilter, &tVnfParam);
                     if(eError != OMX_ErrorNone) {
                         DOMX_ERROR("OMX_GetParameter for OMX_IndexParamVideoNoiseFilter returned error %x", eError);
                         goto EXIT;
@@ -350,7 +353,8 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
         }
 #endif
     } else if (eCmd == OMX_CommandPortDisable) {
-        int i, j;
+        unsigned int i;
+        int j;
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             if ((i == nParam) || (nParam == OMX_ALL)) {
                 for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
@@ -402,7 +406,7 @@ static OMX_ERRORTYPE CameraGetConfig(OMX_IN OMX_HANDLETYPE
 	OMX_PTR pTempSharedBuff = NULL;
 	OMX_U32 status = 0;
 
-	switch (nParamIndex)
+	switch ((unsigned int)nParamIndex)
 	{
 	case OMX_TI_IndexConfigAAAskipBuffer:
 	case OMX_TI_IndexConfigCamCapabilities:
@@ -467,7 +471,7 @@ static OMX_ERRORTYPE CameraSetConfig(OMX_IN OMX_HANDLETYPE
 	OMX_PTR pTempSharedBuff = NULL;
 	OMX_U32 status = 0;
 
-	switch (nParamIndex)
+	switch ((unsigned int)nParamIndex)
 	{
 	case OMX_TI_IndexConfigAAAskipBuffer:
 	case OMX_TI_IndexConfigCamCapabilities:
@@ -513,6 +517,10 @@ static OMX_ERRORTYPE CameraSetConfig(OMX_IN OMX_HANDLETYPE
 	return eError;
 }
 
+OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
+    hComponent, OMX_IN OMX_INDEXTYPE nParamIndex,
+    OMX_INOUT OMX_PTR pComponentParameterStructure);
+
 static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     hComponent, OMX_IN OMX_INDEXTYPE nParamIndex,
     OMX_INOUT OMX_PTR pComponentParameterStructure)
@@ -522,7 +530,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
     pCompPrv = (PROXY_COMPONENT_PRIVATE *)hComp->pComponentPrivate;
 
-    switch (nParamIndex)
+    switch ((unsigned int)nParamIndex)
     {
 #ifndef DOMX_TUNA
 	case OMX_TI_IndexParamComponentBufferAllocation:

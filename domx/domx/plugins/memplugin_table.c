@@ -48,5 +48,5 @@ MEMPLUGIN_TABLETYPE    MemPlugins_Map[] =
 {
     { "MEMPLUGIN_ION",    &MemPlugin_ION_Init },
     //   {"MEMPLUGIN_DRM" ,  &MemPlugin_DRM_Configure},
-    { 0, 0 }
+    { "\0", NULL }
 };

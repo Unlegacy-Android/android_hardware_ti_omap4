@@ -236,8 +236,8 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_SemaphoreRelease(TIMM_OSAL_PTR pSemaphore)
 *
 */
 /* ========================================================================== */
-TIMM_OSAL_ERRORTYPE TIMM_OSAL_SemaphoreReset(TIMM_OSAL_PTR pSemaphore,
-    TIMM_OSAL_U32 uInitCount)
+TIMM_OSAL_ERRORTYPE TIMM_OSAL_SemaphoreReset(__unused TIMM_OSAL_PTR pSemaphore,
+    __unused TIMM_OSAL_U32 uInitCount)
 {
 	/*  TIMM_OSAL_SEMAPHORE *pHandle = (TIMM_OSAL_SEMAPHORE *)pSemaphore;
 	   STATUS  status;

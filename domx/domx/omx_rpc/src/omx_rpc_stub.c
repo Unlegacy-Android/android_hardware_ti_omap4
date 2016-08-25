@@ -166,7 +166,7 @@
 /* ===========================================================================*/
 RPC_OMX_ERRORTYPE RPC_GetHandle(OMX_HANDLETYPE hRPCCtx,
     OMX_STRING cComponentName, OMX_PTR pAppData,
-    OMX_CALLBACKTYPE * pCallBacks, OMX_ERRORTYPE * eCompReturn)
+    __unused OMX_CALLBACKTYPE * pCallBacks, OMX_ERRORTYPE * eCompReturn)
 {
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	TIMM_OSAL_ERRORTYPE eError = TIMM_OSAL_ERR_NONE;
@@ -325,7 +325,7 @@ RPC_OMX_ERRORTYPE RPC_SetParameter(OMX_HANDLETYPE hRPCCtx,
 	RPC_getPacket(nPacketSize, pPacket);
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
-	if (pLocBufNeedMap != NULL && (pLocBufNeedMap - pCompParam) >= 0 ) {
+	if (pLocBufNeedMap != NULL && ((long int)pLocBufNeedMap - (long int)pCompParam) >= 0 ) {
 		if (nNumOfLocalBuf == 1) {
 			RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
 				RPC_OMX_MAP_INFO_TYPE);
@@ -334,7 +334,7 @@ RPC_OMX_ERRORTYPE RPC_SetParameter(OMX_HANDLETYPE hRPCCtx,
 			RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_TWO_BUF,
 				RPC_OMX_MAP_INFO_TYPE);
 		}
-		nOffset = (pLocBufNeedMap - pCompParam) +
+		nOffset = ((long int)pLocBufNeedMap - (long int)pCompParam) +
 			sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
 			sizeof(OMX_HANDLETYPE) + sizeof(OMX_INDEXTYPE);
 	} else {
@@ -401,10 +401,10 @@ RPC_OMX_ERRORTYPE RPC_GetParameter(OMX_HANDLETYPE hRPCCtx,
 	RPC_getPacket(nPacketSize, pPacket);
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
-	if (pLocBufNeedMap != NULL && (pLocBufNeedMap - pCompParam) >= 0 ) {
+	if (pLocBufNeedMap != NULL && ((long int)pLocBufNeedMap - (long int)pCompParam) >= 0 ) {
 		RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
 			RPC_OMX_MAP_INFO_TYPE);
-		nOffset = (pLocBufNeedMap - pCompParam) +
+		nOffset = ((long int)pLocBufNeedMap - (long int)pCompParam) +
 			sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
 			sizeof(OMX_HANDLETYPE) + sizeof(OMX_INDEXTYPE);
 	} else {
@@ -480,10 +480,10 @@ RPC_OMX_ERRORTYPE RPC_SetConfig(OMX_HANDLETYPE hRPCCtx,
 	RPC_getPacket(nPacketSize, pPacket);
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
-	if (pLocBufNeedMap != NULL && (pLocBufNeedMap - pCompConfig) >= 0 ) {
+	if (pLocBufNeedMap != NULL && ((long int)pLocBufNeedMap - (long int)pCompConfig) >= 0 ) {
 		RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
 			RPC_OMX_MAP_INFO_TYPE);
-		nOffset = (pLocBufNeedMap - pCompConfig) +
+		nOffset = ((long int)pLocBufNeedMap - (long int)pCompConfig) +
 			sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
 			sizeof(OMX_HANDLETYPE) + sizeof(OMX_INDEXTYPE);
 	} else {
@@ -547,10 +547,10 @@ RPC_OMX_ERRORTYPE RPC_GetConfig(OMX_HANDLETYPE hRPCCtx,
 	RPC_getPacket(nPacketSize, pPacket);
 	RPC_initPacket(pPacket, pOmxPacket, pData, nFxnIdx, nPacketSize);
 
-	if (pLocBufNeedMap != NULL && (pLocBufNeedMap - pCompConfig) >= 0 ) {
+	if (pLocBufNeedMap != NULL && ((long int)pLocBufNeedMap - (long int)pCompConfig) >= 0 ) {
 		RPC_SETFIELDVALUE(pData, nPos, RPC_OMX_MAP_INFO_ONE_BUF,
 			RPC_OMX_MAP_INFO_TYPE);
-		nOffset = (pLocBufNeedMap - pCompConfig) +
+		nOffset = ((long int)pLocBufNeedMap - (long int)pCompConfig) +
 			sizeof(RPC_OMX_MAP_INFO_TYPE) + sizeof(OMX_U32) +
 			sizeof(OMX_HANDLETYPE) + sizeof(OMX_INDEXTYPE);
 	} else {
@@ -1419,27 +1419,27 @@ RPC_OMX_ERRORTYPE RPC_FillThisBuffer(OMX_HANDLETYPE hRPCCtx,
  *
  */
 /* ===========================================================================*/
-OMX_ERRORTYPE RPC_EventHandler(OMX_HANDLETYPE hRPCCtx, OMX_PTR pAppData,
-    OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2, OMX_PTR pEventData)
+OMX_ERRORTYPE RPC_EventHandler(__unused OMX_HANDLETYPE hRPCCtx, __unused OMX_PTR pAppData,
+    __unused OMX_EVENTTYPE eEvent, __unused OMX_U32 nData1, __unused OMX_U32 nData2, __unused OMX_PTR pEventData)
 {
-	return RPC_OMX_ErrorNone;
+	return (OMX_ERRORTYPE)RPC_OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE RPC_EmptyBufferDone(OMX_HANDLETYPE hRPCCtx, OMX_PTR pAppData,
-    OMX_BUFFERHEADERTYPE * pBuffer)
+OMX_ERRORTYPE RPC_EmptyBufferDone(__unused OMX_HANDLETYPE hRPCCtx, __unused OMX_PTR pAppData,
+    __unused OMX_BUFFERHEADERTYPE * pBuffer)
 {
-	return RPC_OMX_ErrorNone;
+	return (OMX_ERRORTYPE)RPC_OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE RPC_FillBufferDone(OMX_HANDLETYPE hRPCCtx, OMX_PTR pAppData,
-    OMX_BUFFERHEADERTYPE * pBuffer)
+OMX_ERRORTYPE RPC_FillBufferDone(__unused OMX_HANDLETYPE hRPCCtx, __unused OMX_PTR pAppData,
+    __unused OMX_BUFFERHEADERTYPE * pBuffer)
 {
-	return RPC_OMX_ErrorNone;
+	return (OMX_ERRORTYPE)RPC_OMX_ErrorNone;
 }
 
 RPC_OMX_ERRORTYPE RPC_ComponentTunnelRequest(OMX_HANDLETYPE hRPCCtx,
     OMX_IN OMX_U32 nPort, OMX_HANDLETYPE hTunneledRemoteHandle,
-    OMX_U32 nTunneledPort, OMX_INOUT OMX_TUNNELSETUPTYPE * pTunnelSetup,
+    OMX_U32 nTunneledPort, __unused OMX_INOUT OMX_TUNNELSETUPTYPE * pTunnelSetup,
     OMX_ERRORTYPE * eCompReturn)
 {
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;

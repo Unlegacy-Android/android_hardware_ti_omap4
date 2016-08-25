@@ -108,7 +108,7 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_CreateTask(TIMM_OSAL_PTR * pTask,
     TIMM_OSAL_TaskProc pFunc,
     TIMM_OSAL_U32 uArgc,
     TIMM_OSAL_PTR pArgv,
-    TIMM_OSAL_U32 uStackSize, TIMM_OSAL_U32 uPriority, TIMM_OSAL_S8 * pName)
+    TIMM_OSAL_U32 uStackSize, TIMM_OSAL_U32 uPriority, __unused TIMM_OSAL_S8 * pName)
 {
 
 	TIMM_OSAL_ERRORTYPE bReturnStatus = TIMM_OSAL_ERR_UNKNOWN;

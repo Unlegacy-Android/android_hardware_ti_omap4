@@ -141,10 +141,10 @@ static OMX_ERRORTYPE LOCAL_PROXY_VC1E_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponen
 
 static OMX_ERRORTYPE LOCAL_PROXY_VC1E_ComponentDeInit(OMX_HANDLETYPE hComponent);
 
-RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
-                                     OMX_PTR *handle1, OMX_PTR *handle2,
-                                     PROXY_BUFFER_TYPE proxyBufferType);
-RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
+extern RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
+				     OMX_PTR *handle1, OMX_PTR *handle2,
+				     PROXY_BUFFER_TYPE proxyBufferType);
+extern RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, OMX_PTR handle2, PROXY_BUFFER_TYPE proxyBufferType);
 #endif
 
 
@@ -613,7 +613,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
             tParamSetNPA.nPortIndex = OMX_VC1E_INPUT_PORT;
             tParamSetNPA.bEnabled = OMX_FALSE;
             //Call NPA on OMX encoder on ducati.
-            PROXY_SetParameter(hComponent, OMX_TI_IndexParamBufferPreAnnouncement, &tParamSetNPA);
+            PROXY_SetParameter(hComponent, (unsigned int)OMX_TI_IndexParamBufferPreAnnouncement, &tParamSetNPA);
             pCompPrv->proxyPortBuffers[pStoreMetaData->nPortIndex].proxyBufferType = EncoderMetadataPointers;
             DOMX_DEBUG("Moving to Metadatamode done");
 
@@ -856,7 +856,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             goto EXIT; //need to restore lenght fields in pBufferHdr
         }
 #ifdef ENABLE_GRALLOC_BUFFER
-        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer,
+        eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer, -1,
                                        &pAuxBuf0, &pAuxBuf1,
                                        GrallocPointers);
         PROXY_checkRpcError();
@@ -889,8 +889,7 @@ EXIT:
         pBufferHdr->nFilledLen = nFilledLen;
         pBufferHdr->nAllocLen = nAllocLen;
 #ifdef ENABLE_GRALLOC_BUFFER
-        RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0);
-        RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf1);
+        RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0, pAuxBuf1, GrallocPointers);
 #endif
     }
     DOMX_EXIT("%s eError: %d", __FUNCTION__, eError);
@@ -1020,7 +1019,7 @@ int COLORCONVERT_AllocateBuffer(OMX_HANDLETYPE hComponent, OMX_U32 nStride)
     PROXY_assert(eError == OMX_ErrorNone, eError, " Error in Proxy GetParameter");
     err = pProxy->mAllocDev->alloc(pProxy->mAllocDev, (int) tParam.nWidth, (int) tParam.nHeight,
                                    (int) HAL_PIXEL_FORMAT_TI_NV12, (int) GRALLOC_USAGE_HW_RENDER,
-                                   (const struct native_handle_t * *)(&(pProxy->gralloc_handle[pProxy->nCurBufIndex])), (int *) &nStride);
+                                   (buffer_handle_t *)(&(pProxy->gralloc_handle[pProxy->nCurBufIndex])), (int *) &nStride);
     PROXY_assert(!err, err, " Error in allocating Gralloc buffers");
     eOSALStatus = TIMM_OSAL_WriteToPipe(pProxy->hBufPipe, (void *) &pProxy->nCurBufIndex, sizeof(OMX_U32), TIMM_OSAL_SUSPEND);
     PROXY_assert(eOSALStatus == TIMM_OSAL_ERR_NONE, OMX_ErrorBadParameter, "Pipe write failed");
@@ -1132,7 +1131,7 @@ int COLORCONVERT_open(void * *hCC, PROXY_COMPONENT_PRIVATE *pCompPrv)
 int COLORCONVERT_PlatformOpaqueToNV12(void *hCC,
                                       void *pSrc[COLORCONVERT_MAX_SUB_BUFFERS],
                                       void *pDst[COLORCONVERT_MAX_SUB_BUFFERS],
-                                      int nWidth, int nHeight, int nStride,
+                                      int nWidth, int nHeight, __unused int nStride,
                                       int nSrcBufType, int nDstBufType)
 {
     IMG_gralloc_module_public_t const   *module = hCC;
@@ -1157,7 +1156,7 @@ int COLORCONVERT_PlatformOpaqueToNV12(void *hCC,
  *
  */
 /* ===========================================================================*/
-int COLORCONVERT_close(void *hCC, PROXY_COMPONENT_PRIVATE *pCompPrv)
+int COLORCONVERT_close(__unused void *hCC, PROXY_COMPONENT_PRIVATE *pCompPrv)
 {
     OMX_PROXY_ENCODER_PRIVATE   *pProxy = NULL;
 

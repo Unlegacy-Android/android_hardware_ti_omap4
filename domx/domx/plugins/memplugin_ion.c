@@ -88,7 +88,7 @@ EXIT:
     return eError;
 }
 
-MEMPLUGIN_ERRORTYPE MemPlugin_ION_Open(void *pMemPluginHandle,OMX_U32 *pClient)
+MEMPLUGIN_ERRORTYPE MemPlugin_ION_Open(__unused void *pMemPluginHandle,OMX_U32 *pClient)
 {
     MEMPLUGIN_ERRORTYPE    eError = MEMPLUGIN_ERROR_NONE;
     OMX_U32 memClient = 0;
@@ -115,7 +115,7 @@ EXIT:
     return eError;
 }
 
-MEMPLUGIN_ERRORTYPE MemPlugin_ION_Close(void *pMemPluginHandle, OMX_U32 nClient)
+MEMPLUGIN_ERRORTYPE MemPlugin_ION_Close(__unused void *pMemPluginHandle, OMX_U32 nClient)
 {
     MEMPLUGIN_ERRORTYPE    eError = MEMPLUGIN_ERROR_NONE;
 
@@ -124,7 +124,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Close(void *pMemPluginHandle, OMX_U32 nClient)
 EXIT:
     return eError;
 }
-MEMPLUGIN_ERRORTYPE MemPlugin_ION_Configure(void *pMemPluginHandle, void *pConfigData)
+MEMPLUGIN_ERRORTYPE MemPlugin_ION_Configure(__unused void *pMemPluginHandle, __unused void *pConfigData)
 {
     //implementation to be added later
 EXIT:
@@ -137,7 +137,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
 {
     OMX_S16 ret;
     struct ion_handle *temp;
-    size_t stride;
+    size_t stride = 0;
     MEMPLUGIN_ERRORTYPE eError = MEMPLUGIN_ERROR_NONE;
     MEMPLUGIN_ION_PARAMS sIonParams;
     MEMPLUGIN_OBJECT    *pMemPluginHdl = (MEMPLUGIN_OBJECT *)pMemPluginHandle;
@@ -242,7 +242,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
                                 sIonParams.map_flags,
                                 sIonParams.nOffset,
                                 (unsigned char **) &(pIonBufferProp->sBuffer_accessor.pBufferMappedAddress),
-                                &(pIonBufferProp->sBuffer_accessor.bufferFd));
+                                (int *)&(pIonBufferProp->sBuffer_accessor.bufferFd));
 
         if(ret < 0)
         {
@@ -278,7 +278,7 @@ EXIT:
       }
 }
 
-MEMPLUGIN_ERRORTYPE MemPlugin_ION_Free(void *pMemPluginHandle,OMX_U32 nClient,
+MEMPLUGIN_ERRORTYPE MemPlugin_ION_Free(__unused void *pMemPluginHandle,OMX_U32 nClient,
                                     MEMPLUGIN_BUFFER_PARAMS *pIonBufferParams,
                                     MEMPLUGIN_BUFFER_PROPERTIES *pIonBufferProp)
 {

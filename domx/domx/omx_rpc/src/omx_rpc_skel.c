@@ -247,83 +247,83 @@ RPC_OMX_ERRORTYPE RPC_SKEL_EventHandler(void *data)
  *
  */
 /* ===========================================================================*/
-RPC_OMX_ERRORTYPE RPC_SKEL_GetHandle(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetHandle(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_SetParameter(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_SetParameter(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_GetParameter(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetParameter(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_FreeHandle(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_FreeHandle(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_EmptyThisBuffer(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_EmptyThisBuffer(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_FillThisBuffer(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_FillThisBuffer(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_UseBuffer(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_UseBuffer(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_FreeBuffer(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_FreeBuffer(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_SetConfig(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_SetConfig(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_GetConfig(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetConfig(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_GetState(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetState(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_SendCommand(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_SendCommand(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_GetComponentVersion(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetComponentVersion(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_GetExtensionIndex(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_GetExtensionIndex(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_AllocateBuffer(uint32_t size, uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_AllocateBuffer(__unused uint32_t size, __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }
 
-RPC_OMX_ERRORTYPE RPC_SKEL_ComponentTunnelRequest(uint32_t size,
-    uint32_t * data)
+RPC_OMX_ERRORTYPE RPC_SKEL_ComponentTunnelRequest(__unused uint32_t size,
+    __unused uint32_t * data)
 {
 	return RPC_OMX_ErrorNone;
 }

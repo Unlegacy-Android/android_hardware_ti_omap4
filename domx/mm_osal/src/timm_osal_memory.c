@@ -114,8 +114,8 @@ TIMM_OSAL_ERRORTYPE TIMM_OSAL_DeleteMemoryPool(void)
 */
 /* ========================================================================== */
 TIMM_OSAL_PTR TIMM_OSAL_Malloc(TIMM_OSAL_U32 size,
-    TIMM_OSAL_BOOL bBlockContiguous,
-    TIMM_OSAL_U32 unBlockAlignment, TIMMOSAL_MEM_SEGMENTID tMemSegId)
+    __unused TIMM_OSAL_BOOL bBlockContiguous,
+    TIMM_OSAL_U32 unBlockAlignment, __unused TIMMOSAL_MEM_SEGMENTID tMemSegId)
 {
 
 	TIMM_OSAL_PTR pData = TIMM_OSAL_NULL;

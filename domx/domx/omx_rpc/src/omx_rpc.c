@@ -100,7 +100,7 @@ void *RPC_CallbackThread(void *data);
 */
 /* ===========================================================================*/
 
-RPC_OMX_ERRORTYPE RPC_InstanceInit(OMX_STRING cComponentName,
+RPC_OMX_ERRORTYPE RPC_InstanceInit(__unused OMX_STRING cComponentName,
     OMX_HANDLETYPE * phRPCCtx)
 {
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
