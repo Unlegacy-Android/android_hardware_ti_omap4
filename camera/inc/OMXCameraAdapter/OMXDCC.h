@@ -30,7 +30,7 @@ private:
 
     OMX_ERRORTYPE initDCC(OMX_HANDLETYPE hComponent);
     OMX_ERRORTYPE sendDCCBufPtr(OMX_HANDLETYPE hComponent, CameraBuffer *dccBuffer);
-    size_t readDCCdir(OMX_PTR buffer, const android::Vector<android::String8 *> &dirPaths);
+    size_t readDCCdir(OMX_U8* buffer, const android::Vector<android::String8 *> &dirPaths);
 
 private:
 
