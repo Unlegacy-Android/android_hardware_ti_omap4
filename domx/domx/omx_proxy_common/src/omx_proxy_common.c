@@ -156,7 +156,11 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
             goto EXIT;
         }
         ion_data.fd = fd1;
+#ifdef USE_TI_LIBION
 	ion_data.handle = NULL;
+#else
+	ion_data.handle = 0;
+#endif
 	status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &ion_data);
 	if (status < 0) {
 		DOMX_ERROR("RegisterBuffer ioctl call failed");
@@ -172,7 +176,11 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 		goto EXIT;
 	}
         ion_data.fd = fd2;
+#ifdef USE_TI_LIBION
 	ion_data.handle = NULL;
+#else
+	ion_data.handle = 0;
+#endif
 	status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &ion_data);
 	if (status < 0) {
 	   DOMX_ERROR("RegisterBuffer ioctl call failed");
@@ -235,9 +243,13 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
     }
     else if(proxyBufferType == VirtualPointers || proxyBufferType == IONPointers || proxyBufferType == EncoderMetadataPointers)
     {
-        struct ion_fd_data ion_data;
-        ion_data.fd = fd1;
+		struct ion_fd_data ion_data;
+		ion_data.fd = fd1;
+#ifdef USE_TI_LIBION
 		ion_data.handle = NULL;
+#else
+		ion_data.handle = 0;
+#endif
 		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONREGISTER, &ion_data);
 		if (status < 0) {
 			DOMX_ERROR("RegisterBuffer ioctl call failed");
@@ -279,7 +291,11 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
 	}
     if(proxyBufferType == BufferDescriptorVirtual2D || proxyBufferType == GrallocPointers)
     {
+#ifdef USE_TI_LIBION
 		data.handle = handle1;
+#else
+		data.handle = (ion_user_handle_t)handle1;
+#endif
 		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
 		if (status < 0) {
 			DOMX_ERROR("UnregisterBuffer ioctl call failed for handle1: 0x%x",handle1);
@@ -288,7 +304,11 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
 		}
 		if(handle2 != NULL)
 		{
+#ifdef USE_TI_LIBION
 			data.handle = handle2;
+#else
+			data.handle = (ion_user_handle_t)handle2;
+#endif
 			status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
 			if (status < 0) {
 				DOMX_ERROR("UnregisterBuffer ioctl call failed for handle2: 0x%x",handle2);
@@ -300,7 +320,11 @@ RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle1, 
     }
     else if(proxyBufferType == VirtualPointers || proxyBufferType == IONPointers || proxyBufferType == EncoderMetadataPointers)
     {
-        data.handle = handle1;
+#ifdef USE_TI_LIBION
+		data.handle = handle1;
+#else
+		data.handle = (ion_user_handle_t)handle1;
+#endif
 		status = ioctl(pRPCCtx->fd_omx, OMX_IOCIONUNREGISTER, &data);
 		if (status < 0) {
 			DOMX_ERROR("UnregisterBuffer ioctl call failed");

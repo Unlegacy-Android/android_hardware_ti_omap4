@@ -165,8 +165,10 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
                                     sIonParams.alloc_flags,
 #ifndef USE_TI_LIBION
                                     0,
-#endif
+                                    (ion_user_handle_t *)&temp);
+#else
                                     &temp);
+#endif
         if(ret || (int)temp == -ENOMEM)
         {
             if(sIonParams.alloc_flags != OMAP_ION_HEAP_SECURE_INPUT)
@@ -230,7 +232,11 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
     if(pIonBufferParams->bMap == OMX_TRUE)
     {
         ret = (OMX_S16) ion_map(nClient,
+#ifdef USE_TI_LIBION
                                 pIonBufferProp->sBuffer_accessor.pBufferHandle,
+#else
+                                (ion_user_handle_t)pIonBufferProp->sBuffer_accessor.pBufferHandle,
+#endif
                                 pIonBufferParams->nWidth*pIonBufferParams->nHeight,
                                 sIonParams.prot,
                                 sIonParams.map_flags,
@@ -248,8 +254,12 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
     else
     {
         ret = (OMX_S16) ion_share(nClient,
+#ifdef USE_TI_LIBION
                                     pIonBufferProp->sBuffer_accessor.pBufferHandle,
-                                    &(pIonBufferProp->sBuffer_accessor.bufferFd));
+#else
+                                    (ion_user_handle_t)pIonBufferProp->sBuffer_accessor.pBufferHandle,
+#endif
+                                    (int *)&(pIonBufferProp->sBuffer_accessor.bufferFd));
         if(ret < 0)
         {
                 DOMX_ERROR("ION share returned error");
@@ -283,7 +293,11 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Free(void *pMemPluginHandle,OMX_U32 nClient,
     //close
     close(pIonBufferProp->sBuffer_accessor.bufferFd);
     //free
+#ifdef USE_TI_LIBION
     ion_free(nClient, (struct ion_handle*)pIonBufferProp->sBuffer_accessor.pBufferHandle);
+#else
+    ion_free(nClient, (ion_user_handle_t)pIonBufferProp->sBuffer_accessor.pBufferHandle);
+#endif
 
 EXIT:
       if (eError != MEMPLUGIN_ERROR_NONE) {
