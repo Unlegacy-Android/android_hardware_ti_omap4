@@ -39,7 +39,7 @@ namespace Utils {
 ///Message type
 struct Message
 {
-    unsigned int command;
+    int          command;
     void*        arg1;
     void*        arg2;
     void*        arg3;
