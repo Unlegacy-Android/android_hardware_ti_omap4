@@ -171,7 +171,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
 #endif
         if(ret || (int)temp == -ENOMEM)
         {
-            if(sIonParams.alloc_flags != OMAP_ION_HEAP_SECURE_INPUT)
+            if(sIonParams.alloc_flags != (1 << OMAP_ION_HEAP_SECURE_INPUT))
             {
                //for non default types of allocation - no retry with tiler 1d - throw error
 //STARGO: ducati secure heap is too small, need to allocate from heap
