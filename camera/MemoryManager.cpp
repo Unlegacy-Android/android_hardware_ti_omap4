@@ -92,10 +92,10 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
         for (int i = 0; i < numBufs; i++) {
             unsigned char *data;
 #ifdef USE_TI_LIBION
-            int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT,
+            int ret = ion_alloc(mIonFd, size, 0, 1 << OMAP_ION_HEAP_SECURE_INPUT,
                     &handle);
 #else
-            int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT, 0,
+            int ret = ion_alloc(mIonFd, size, 0, 1 << OMAP_ION_HEAP_SECURE_INPUT, 0,
                     (ion_user_handle_t*)&handle);
 #endif
             if((ret < 0) || ((int)handle == -ENOMEM)) {
