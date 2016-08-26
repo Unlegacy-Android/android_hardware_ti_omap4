@@ -1797,7 +1797,7 @@ static int hwc_prepare(struct hwc_composer_device_1 *dev, size_t numDisplays,
     if (needs_fb) {
         /* assign a z-layer for fb */
         if (fb_z < 0) {
-            if (!hwc_dev->blt_policy != BLTPOLICY_DISABLED && num->composited_layers)
+            if ((!hwc_dev->blt_policy) != BLTPOLICY_DISABLED && num->composited_layers)
                 ALOGE("**** should have assigned z-layer for fb");
             fb_z = z++;
         }
