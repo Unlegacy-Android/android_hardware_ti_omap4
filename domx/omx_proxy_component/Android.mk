@@ -125,6 +125,10 @@ ifdef TI_CAMERAHAL_USES_LEGACY_DOMX_DCC
 LOCAL_CFLAGS += -DUSES_LEGACY_DOMX_DCC
 endif
 
+ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),tuna)
+LOCAL_CFLAGS += -DDOMX_TUNA
+endif
+
 LOCAL_SRC_FILES:= omx_camera/src/omx_proxy_camera.c \
                   omx_camera/src/proxy_camera_android_glue.c
 
