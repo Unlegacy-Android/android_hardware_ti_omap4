@@ -27,12 +27,13 @@
 #include "OMXDCC.h"
 #include <utils/String8.h>
 #include <utils/Vector.h>
+#include "OMX_TI_IVCommon.h"
 
 namespace Ti {
 namespace Camera {
 
 #ifndef MOTOROLA_CAMERA
-android::String8 DCCHandler::DCCPath("/data/misc/camera/");
+android::String8 DCCHandler::DCCPath(DCC_PATH);
 #else
 android::String8 DCCHandler::DCCPath("/system/etc/omapcam/");
 #endif
