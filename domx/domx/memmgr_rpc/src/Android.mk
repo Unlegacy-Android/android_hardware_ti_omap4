@@ -18,6 +18,10 @@ LOCAL_C_INCLUDES += \
 
 LOCAL_CFLAGS += -D_Android
 
+ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),tuna)
+	LOCAL_CFLAGS += -DDOMX_TUNA
+endif
+
 LOCAL_SHARED_LIBRARIES := \
 	libOMX_CoreOsal \
 	libipcutils \
