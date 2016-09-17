@@ -52,7 +52,7 @@
 #define TILER_BUFF
 #define ALLOCATE_TILER_BUFFER_IN_PROXY
 // This has been enabled enbled only in Android.mk
-// #define ENABLE_GRALLOC_BUFFER
+// #define ENABLE_GRALLOC_BUFFERS
 /******************************************************************
  *   INCLUDE FILES
  ******************************************************************/

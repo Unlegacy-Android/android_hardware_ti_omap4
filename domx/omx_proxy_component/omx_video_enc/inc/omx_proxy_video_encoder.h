@@ -67,7 +67,7 @@
 #include "OMX_TI_Index.h"
 #include <MetadataBufferType.h>
 //GRALLOC includes
-#ifdef  ENABLE_GRALLOC_BUFFER
+#ifdef  ENABLE_GRALLOC_BUFFERS
 #include "native_handle.h"
 #include <hal_public.h>
 #include <VideoMetadata.h>

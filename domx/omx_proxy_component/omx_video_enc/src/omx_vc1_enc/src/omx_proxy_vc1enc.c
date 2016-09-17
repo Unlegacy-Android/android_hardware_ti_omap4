@@ -68,7 +68,7 @@
 #include "omx_proxy_video_encoder.h"
 
 #include <MetadataBufferType.h>
-#ifdef  ENABLE_GRALLOC_BUFFER
+#ifdef  ENABLE_GRALLOC_BUFFERS
 #include "native_handle.h"
 #include <hal_public.h>
 #include <VideoMetadata.h>
@@ -114,7 +114,7 @@ OMX_TICKS    nLastFrameRateUpdateTime = 0; /*Time stamp at last frame rate updat
 
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 /* Opaque color format requires below quirks to be enabled
- * ENABLE_GRALLOC_BUFFER
+ * ENABLE_GRALLOC_BUFFERS
  * ANDROID_QUIRCK_CHANGE_PORT_VALUES
  */
 #define OMX_VC1VE_NUM_INTERNAL_BUF (8)
@@ -724,7 +724,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
     TIMM_OSAL_ERRORTYPE       eOSALStatus = TIMM_OSAL_ERR_NONE;
     OMX_U32                   nBufIndex = 0, nSize=0, nRet=0;
 #endif
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
     OMX_PTR                pAuxBuf0 = NULL, pAuxBuf1 = NULL;
     RPC_OMX_ERRORTYPE      eRPCError = RPC_OMX_ErrorNone;
     OMX_ERRORTYPE          eCompReturn = OMX_ErrorNone;
@@ -771,7 +771,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
         nMetadataBufferType = *pTempBuffer;
 
         if( nMetadataBufferType == kMetadataBufferTypeCameraSource ) {
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
             video_metadata_t   *pVideoMetadataBuffer;
             DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeCameraSource");
 
@@ -797,7 +797,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             pBufferHdr->nOffset = pVideoMetadataBuffer->offset;
 #endif
         } else if( nMetadataBufferType == kMetadataBufferTypeGrallocSource ) {
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
             buffer_handle_t    tBufHandle;
             DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeGrallocSource");
 
@@ -855,7 +855,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             eError = OMX_ErrorBadParameter;
             goto EXIT; //need to restore lenght fields in pBufferHdr
         }
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
         eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer, -1,
                                        &pAuxBuf0, &pAuxBuf1,
                                        GrallocPointers);
@@ -872,7 +872,7 @@ OMX_ERRORTYPE LOCAL_PROXY_VC1E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
     eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
     if( pProxy->bAndroidOpaqueFormat
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
         && pGrallocHandle != NULL && pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12
 #endif
         ) {
@@ -888,7 +888,7 @@ EXIT:
         pBufferHdr->pBuffer = pBufferOrig;
         pBufferHdr->nFilledLen = nFilledLen;
         pBufferHdr->nAllocLen = nAllocLen;
-#ifdef ENABLE_GRALLOC_BUFFER
+#ifdef ENABLE_GRALLOC_BUFFERS
         RPC_UnRegisterBuffer(pCompPrv->hRemoteComp, pAuxBuf0, pAuxBuf1, GrallocPointers);
 #endif
     }
