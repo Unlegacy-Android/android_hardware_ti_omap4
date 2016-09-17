@@ -25,7 +25,6 @@ LOCAL_SHARED_LIBRARIES := \
 	libipc \
 	librcm \
 	libnotify \
-	libc \
 	liblog    \
 	libd2cmap
 

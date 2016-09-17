@@ -34,7 +34,6 @@ endif
 
 LOCAL_SHARED_LIBRARIES := \
     libmm_osal \
-    libc \
     liblog \
     libcutils
 
