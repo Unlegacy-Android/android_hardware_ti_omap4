@@ -1,0 +1,3 @@
+# DOMX
+eventfd2: 1
+pselect6: 1
