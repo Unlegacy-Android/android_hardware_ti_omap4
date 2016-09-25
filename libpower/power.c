@@ -213,6 +213,32 @@ static void omap_power_hint(struct power_module *module,
     }
 }
 
+#ifdef ANDROID_API_LP_MR1_OR_LATER
+static void omap_set_feature(struct power_module *module,
+                             feature_t feature, int state)
+{
+    struct omap_power_module *omap_device =
+               (struct omap_power_module *) module;
+
+    if (!omap_device->inited)
+        return;
+
+    switch (feature) {
+    case POWER_FEATURE_DOUBLE_TAP_TO_WAKE:
+#ifdef DOUBLE_TAP_TO_WAKE_PATH
+        sysfs_write(DOUBLE_TAP_TO_WAKE_PATH, (state ? "1" : "0"));
+#else
+        /* Silly code to avoid issue of "state" being otherwised unused */
+        if (state)
+            return;
+#endif
+        break;
+    default:
+        break;
+    }
+}
+#endif
+
 static struct hw_module_methods_t power_module_methods = {
     .open = NULL,
 };
@@ -221,7 +247,11 @@ struct omap_power_module HAL_MODULE_INFO_SYM = {
     .base = {
         .common = {
             .tag = HARDWARE_MODULE_TAG,
+#ifdef ANDROID_API_LP_MR1_OR_LATER
+            .module_api_version = POWER_MODULE_API_VERSION_0_3,
+#else
             .module_api_version = POWER_MODULE_API_VERSION_0_2,
+#endif
             .hal_api_version = HARDWARE_HAL_API_VERSION,
             .id = POWER_HARDWARE_MODULE_ID,
             .name = "OMAP Power HAL",
@@ -232,6 +262,9 @@ struct omap_power_module HAL_MODULE_INFO_SYM = {
        .init = omap_power_init,
        .setInteractive = omap_power_set_interactive,
        .powerHint = omap_power_hint,
+#ifdef ANDROID_API_LP_MR1_OR_LATER
+       .setFeature = omap_set_feature,
+#endif
     },
 
     .lock = PTHREAD_MUTEX_INITIALIZER,
