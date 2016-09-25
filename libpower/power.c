@@ -28,13 +28,17 @@
 #define CPUFREQ_INTERACTIVE "/sys/devices/system/cpu/cpufreq/interactive/"
 #define CPUFREQ_CPU0 "/sys/devices/system/cpu/cpu0/cpufreq/"
 #define BOOSTPULSE_PATH (CPUFREQ_INTERACTIVE "boostpulse")
+#define SCALINGMAXFREQ_PATH (CPUFREQ_CPU0 "scaling_max_freq")
 
 #define MAX_FREQ_NUMBER 10
 #define NOM_FREQ_INDEX 2
+#define FREQ_BUF_SIZE 10
 
 static int freq_num;
 static char *freq_list[MAX_FREQ_NUMBER];
-static char *max_freq, *nom_freq;
+static char nom_freq[FREQ_BUF_SIZE] = "\0";
+static char max_freq[FREQ_BUF_SIZE] = "\0";
+
 
 struct omap_power_module {
     struct power_module base;
@@ -42,6 +46,7 @@ struct omap_power_module {
     int boostpulse_fd;
     int boostpulse_warned;
     int inited;
+    int screen_state;
 };
 
 static int str_to_tokens(char *str, char **token, int max_token_idx)
@@ -118,7 +123,7 @@ static void omap_power_init(struct power_module *module)
     struct omap_power_module *omap_device =
                                    (struct omap_power_module *) module;
     int tmp;
-    char freq_buf[MAX_FREQ_NUMBER*10];
+    char freq_buf[MAX_FREQ_NUMBER * FREQ_BUF_SIZE];
 
     tmp = sysfs_read(CPUFREQ_CPU0 "scaling_available_frequencies",
                                                    freq_buf, sizeof(freq_buf));
@@ -129,9 +134,9 @@ static void omap_power_init(struct power_module *module)
     if (!freq_num)
         return;
 
-    max_freq = freq_list[freq_num - 1];
+    strcpy(max_freq, freq_list[freq_num - 1]);
     tmp = (NOM_FREQ_INDEX > freq_num) ? freq_num : NOM_FREQ_INDEX;
-    nom_freq = freq_list[tmp - 1];
+    strcpy(nom_freq, freq_list[tmp - 1]);
 
     sysfs_write(CPUFREQ_INTERACTIVE "timer_rate", "20000");
     sysfs_write(CPUFREQ_INTERACTIVE "min_sample_time","60000");
@@ -170,8 +175,10 @@ static void omap_power_set_interactive(struct power_module *module,
 {
     struct omap_power_module *omap_device =
                                    (struct omap_power_module *) module;
+    char buf[FREQ_BUF_SIZE];
+    int len;
 
-    if (!omap_device->inited)
+    if (!omap_device->inited || omap_device->screen_state == on)
         return;
 
     /*
@@ -179,7 +186,18 @@ static void omap_power_set_interactive(struct power_module *module,
      * cpufreq policy.
      */
 
-    sysfs_write(CPUFREQ_CPU0 "scaling_max_freq", on ? max_freq : nom_freq);
+    /* Save the current setting to avoid overwriting custom user settings.
+     * Note this must be avoided on boot, so we check previous on state. */
+    if (omap_device->screen_state != -1) {
+        len = sysfs_read(SCALINGMAXFREQ_PATH, buf, sizeof(buf));
+        if (len > 0)
+            strcpy(omap_device->screen_state ? max_freq : nom_freq, buf);
+    }
+
+    sysfs_write(SCALINGMAXFREQ_PATH, on ? max_freq : nom_freq);
+
+    /* Update state on exit to allow referencing the previous state above. */
+    omap_device->screen_state = on;
 }
 
 static void omap_power_hint(struct power_module *module,
@@ -271,4 +289,5 @@ struct omap_power_module HAL_MODULE_INFO_SYM = {
     .boostpulse_fd = -1,
     .boostpulse_warned = 0,
     .inited = 0,
+    .screen_state = -1,
 };
