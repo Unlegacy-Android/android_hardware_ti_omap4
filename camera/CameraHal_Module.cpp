@@ -76,8 +76,10 @@ camera_module_t HAL_MODULE_INFO_SYM = {
     .get_vendor_tag_ops = NULL,
 #ifdef ANDROID_API_LP_OR_LATER
     .open_legacy = NULL,
+#ifdef ANDROID_API_MM_OR_LATER
     .set_torch_mode = NULL,
     .init = NULL,
+#endif
 #endif
     .reserved = {0},
 };
