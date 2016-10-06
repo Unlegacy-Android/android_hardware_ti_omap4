@@ -22,5 +22,6 @@
 
     <!-- Whether recents should use hardware layers for its taskviews. This flag can be enabled
     for devices where the java drawing of round rects may be slow -->
+    <add-resource type="bool" name="config_recents_use_hardware_layers"></add-resource>
     <bool name="config_recents_use_hardware_layers">true</bool>
 </resources>
