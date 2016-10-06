@@ -49,8 +49,13 @@ endif
 PRODUCT_PACKAGES += \
     libion.so \
     pvrsrvinit \
-    libEGL_POWERVR_SGX54X \
     libPVRScopeServices.so
+
+ifeq ($(ANDROID_API_LP_OR_LATER),true)
+PRODUCT_PACKAGES += libEGL_POWERVR_SGX54X
+else
+PRODUCT_PACKAGES += libEGL_POWERVR
+endif
 
 # compatiblity for older binaries
 PRODUCT_PACKAGES += \
