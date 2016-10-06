@@ -5,6 +5,12 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(LOCAL_PATH)/android-api.mk
 
+ifeq ($(ANDROID_API_LP_OR_LATER),true)
+libEGL_shim_name := libEGL_POWERVR_SGX54X
+else
+libEGL_shim_name := libEGL_POWERVR
+endif
+
 HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)
 OMAP4_DEBUG_MEMLEAK:= false
 
