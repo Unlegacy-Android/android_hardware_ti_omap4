@@ -15,6 +15,8 @@
 # This file lists the modules that are specific to OMAP4 but are used by
 # all OMAP4 devices.
 
+include $(LOCAL_PATH)/android-api.mk
+
 ifeq ($(ANDROID_API_LP_OR_LATER),true)
 DEVICE_PACKAGE_OVERLAYS += hardware/ti/omap4/overlay
 endif
@@ -49,8 +51,14 @@ endif
 PRODUCT_PACKAGES += \
     libion.so \
     pvrsrvinit \
-    libEGL_POWERVR_SGX54X \
     libPVRScopeServices.so
+
+ifeq ($(ANDROID_API_LP_OR_LATER),true)
+PRODUCT_PACKAGES += libEGL_POWERVR_SGX54X
+endif
+ifeq ($(ANDROID_API_LP_OR_LATER),false)
+PRODUCT_PACKAGES += libEGL_POWERVR
+endif
 
 # compatiblity for older binaries
 PRODUCT_PACKAGES += \
