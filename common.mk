@@ -15,9 +15,7 @@
 # This file lists the modules that are specific to OMAP4 but are used by
 # all OMAP4 devices.
 
-ifeq ($(ANDROID_API_LP_OR_LATER),true)
 DEVICE_PACKAGE_OVERLAYS += hardware/ti/omap4/overlay
-endif
 
 PRODUCT_PACKAGES += \
     libdomx \
