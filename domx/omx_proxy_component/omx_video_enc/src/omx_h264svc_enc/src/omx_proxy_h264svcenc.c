@@ -269,7 +269,7 @@ static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
             goto EXIT;
         }
         nMetadataBufferType = *pTempBuffer;
-        if( nMetadataBufferType == kMetadataBufferTypeCameraSource ) {
+        if( nMetadataBufferType == kMetadataBufferTypeNativeHandleSource ) {
             eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
             if( eError != OMX_ErrorNone ) {
                 DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d - Non Fatal Error", eError);
@@ -745,10 +745,10 @@ OMX_ERRORTYPE LOCAL_PROXY_H264SVCE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
         pTempBuffer = (OMX_U32 *) (pBufferHdr->pBuffer);
         nMetadataBufferType = *pTempBuffer;
 
-        if( nMetadataBufferType == kMetadataBufferTypeCameraSource ) {
+        if( nMetadataBufferType == kMetadataBufferTypeNativeHandleSource ) {
 #ifdef ENABLE_GRALLOC_BUFFERS
             video_metadata_t   *pVideoMetadataBuffer;
-            DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeCameraSource");
+            DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeNativeHandleSource");
 
             pVideoMetadataBuffer = (video_metadata_t *) ((OMX_U32 *)(pBufferHdr->pBuffer));
             pGrallocHandle = (IMG_native_handle_t *) (pVideoMetadataBuffer->handle);
@@ -769,7 +769,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264SVCE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             DOMX_DEBUG("%s Gralloc=0x%x, Y-fd=%d, UV-fd=%d", __FUNCTION__, pGrallocHandle,
                        pGrallocHandle->fd[0], pGrallocHandle->fd[1]);
 
-            pBufferHdr->nOffset = pVideoMetadataBuffer->offset;
+            pBufferHdr->nOffset = 0;//pVideoMetadataBuffer->offset;
 #endif
         } else if( nMetadataBufferType == kMetadataBufferTypeGrallocSource ) {
 #ifdef ENABLE_GRALLOC_BUFFERS

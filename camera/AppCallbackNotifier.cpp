@@ -1224,16 +1224,16 @@ void AppCallbackNotifier::notifyFrame()
                                 if (mExternalLocking) {
                                     unlockBufferAndUpdatePtrs(frame);
                                 }
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeNativeHandleSource;
                                 /* FIXME remove cast */
                                 videoMetadataBuffer->handle = (void *)vBuf->opaque;
-                                videoMetadataBuffer->offset = 0;
+                                //videoMetadataBuffer->offset = 0;
                               }
                             else
                               {
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeNativeHandleSource;
                                 videoMetadataBuffer->handle = camera_buffer_get_omx_ptr(frame->mBuffer);
-                                videoMetadataBuffer->offset = frame->mOffset;
+                                //videoMetadataBuffer->offset = frame->mOffset;
                               }
 
                             CAMHAL_LOGVB("mDataCbTimestamp : frame->mBuffer=0x%x, videoMetadataBuffer=0x%x, videoMedatadaBufferMemory=0x%x",

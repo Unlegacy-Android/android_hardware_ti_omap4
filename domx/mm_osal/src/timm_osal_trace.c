@@ -74,7 +74,7 @@
 #define TIMM_OSAL_DEBUG_TRACE_DETAIL 2
 #endif
 
-#define DEFAULT_TRACE_LEVEL TIMM_OSAL_TRACE_LEVEL_ERROR
+#define DEFAULT_TRACE_LEVEL TIMM_OSAL_TRACE_LEVEL_EXITING
 
 static int trace_level = -1;
 
@@ -124,9 +124,7 @@ void __TIMM_OSAL_TraceFunction(const __TIMM_OSAL_TRACE_LOCATION * loc,
 {
 	if (trace_level == -1)
 	{
-		char *val = getenv("TIMM_OSAL_DEBUG_TRACE_LEVEL");
-		trace_level =
-		    val ? strtol(val, NULL, 0) : DEFAULT_TRACE_LEVEL;
+		TIMM_OSAL_UpdateTraceLevel();
 	}
 
 	if (trace_level >= loc->level)
@@ -143,8 +141,7 @@ void __TIMM_OSAL_TraceFunction(const __TIMM_OSAL_TRACE_LOCATION * loc,
 		    loc->function);
 #endif
 #else // Prints function_name for ERROR, WARNING and ENTRY/EXIT
-	if ( (loc->level == TIMM_OSAL_TRACE_LEVEL_ERROR) || (loc->level == TIMM_OSAL_TRACE_LEVEL_WARNING) || (loc->level == TIMM_OSAL_TRACE_LEVEL_ENTERING) )
-		LOG_PRI(ANDROID_LOG_DEBUG, LOG_TAG, "%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
+		LOG_PRI(ANDROID_LOG_INFO, LOG_TAG, "%s:%d\t%s()\t", simplify_path(loc->file), loc->line,
 		    loc->function);
 #endif
 

@@ -3005,7 +3005,7 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
         // restart face detection with new rotation
         setFaceDetectionOrientation(mDeviceOrientation);
     }
-    CAMHAL_LOGVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
+    //CAMHAL_LOGVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
 
     LOG_FUNCTION_NAME_EXIT;
 }

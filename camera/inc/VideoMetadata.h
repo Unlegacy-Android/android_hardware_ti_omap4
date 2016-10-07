@@ -25,7 +25,7 @@ typedef struct
 {
     int metadataBufferType;
     void* handle;
-    int offset;
+    //int offset;
 }
 video_metadata_t;
 
