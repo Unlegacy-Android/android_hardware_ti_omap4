@@ -1224,16 +1224,23 @@ void AppCallbackNotifier::notifyFrame()
                                 if (mExternalLocking) {
                                     unlockBufferAndUpdatePtrs(frame);
                                 }
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                videoMetadataBuffer->eType = CAMERA_METADATA_BUFFER_TYPE;
                                 /* FIXME remove cast */
-                                videoMetadataBuffer->handle = (void *)vBuf->opaque;
+                                videoMetadataBuffer->pHandle = (native_handle_t*)vBuf->opaque;
+#ifndef ANDROID_API_N_OR_LATER
                                 videoMetadataBuffer->offset = 0;
+#endif
                               }
                             else
                               {
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = camera_buffer_get_omx_ptr(frame->mBuffer);
+                                /* FIXME?: This will likely be broken on N without mOffset. */
+                                videoMetadataBuffer->eType = CAMERA_METADATA_BUFFER_TYPE;
+                                /* NOTE: get_omx_ptr can *technically* return something other
+                                 *       than native_handle_t*, but not in this code path. */
+                                videoMetadataBuffer->pHandle = (native_handle_t*)camera_buffer_get_omx_ptr(frame->mBuffer);
+#ifndef ANDROID_API_N_OR_LATER
                                 videoMetadataBuffer->offset = frame->mOffset;
+#endif
                               }
 
                             CAMHAL_LOGVB("mDataCbTimestamp : frame->mBuffer=0x%x, videoMetadataBuffer=0x%x, videoMedatadaBufferMemory=0x%x",
@@ -1861,7 +1868,15 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
         /* FIXME remove cast */
         frame = mVideoMetadataBufferReverseMap.valueFor(videoMetadataBuffer);
         CAMHAL_LOGVB("Releasing frame with videoMetadataBuffer=0x%x, videoMetadataBuffer->handle=0x%x & frame handle=0x%x\n",
-                       videoMetadataBuffer, videoMetadataBuffer->handle, frame);
+                       videoMetadataBuffer, videoMetadataBuffer->pHandle, frame);
+#if defined(ANDROID_API_N_OR_LATER) && defined(CAMERAHAL_FREES_METADATA)
+        /* Stock N releases do not free metadata buffers, but a patch to
+         * frameworks/av can resolve this. Considering this wasn't the HAL's
+         * responsibility in previous releases it is recommended to use said
+         * patch instead of this, but the code is left for reference. */
+        native_handle_close(videoMetadataBuffer->pHandle);
+        native_handle_delete(videoMetadataBuffer->pHandle);
+#endif
         }
     else
         {

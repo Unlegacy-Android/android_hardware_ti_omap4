@@ -17,15 +17,37 @@
 #ifndef VIDEO_METADATA_H
 #define VIDEO_METADATA_H
 
+#include <MetadataBufferType.h>
+
+#ifdef __cplusplus
+using namespace android;
+#endif
+
+#ifdef ANDROID_API_N_OR_LATER
+#define CAMERA_METADATA_BUFFER_TYPE kMetadataBufferTypeNativeHandleSource
+#else
+#define CAMERA_METADATA_BUFFER_TYPE kMetadataBufferTypeCameraSource
+#endif
+
 /* This structure is used to pass buffer offset from Camera-Hal to Encoder component
  * for specific algorithms like VSTAB & VNF
+ *
+ * With mediaserver hardening, Camera-Hal and Encoder are in separate processes.
+ * These must use VideoNativeHandleMetadata. Ideally, we'd just do something like:
+ *     #include <HardwareAPI.h>
+ *     typedef struct VideoNativeHandleMetadata video_metadata_t;"
+ * But HardwareAPI.h can't be included from C code like domx.
+ *
+ * So: REMEMBER TO ENSURE video_metadata_t MATCHES VideoNativeHandleMetadata!
  */
 
 typedef struct
 {
-    int metadataBufferType;
-    void* handle;
+    MetadataBufferType eType;
+    native_handle_t* pHandle;
+#ifndef ANDROID_API_N_OR_LATER
     int offset;
+#endif
 }
 video_metadata_t;
 
