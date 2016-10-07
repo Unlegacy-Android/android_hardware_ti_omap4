@@ -269,7 +269,7 @@ static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
             goto EXIT;
         }
         nMetadataBufferType = *pTempBuffer;
-        if( nMetadataBufferType == kMetadataBufferTypeCameraSource ) {
+        if( nMetadataBufferType == CAMERA_METADATA_BUFFER_TYPE ) {
             eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
             if( eError != OMX_ErrorNone ) {
                 DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d - Non Fatal Error", eError);
@@ -745,13 +745,13 @@ OMX_ERRORTYPE LOCAL_PROXY_H264SVCE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
         pTempBuffer = (OMX_U32 *) (pBufferHdr->pBuffer);
         nMetadataBufferType = *pTempBuffer;
 
-        if( nMetadataBufferType == kMetadataBufferTypeCameraSource ) {
+        if( nMetadataBufferType == CAMERA_METADATA_BUFFER_TYPE ) {
 #ifdef ENABLE_GRALLOC_BUFFERS
             video_metadata_t   *pVideoMetadataBuffer;
-            DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeCameraSource");
+            DOMX_DEBUG("MetadataBufferType is CAMERA_METADATA_BUFFER_TYPE");
 
             pVideoMetadataBuffer = (video_metadata_t *) ((OMX_U32 *)(pBufferHdr->pBuffer));
-            pGrallocHandle = (IMG_native_handle_t *) (pVideoMetadataBuffer->handle);
+            pGrallocHandle = (IMG_native_handle_t *) (pVideoMetadataBuffer->pHandle);
             DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x", pGrallocHandle);
             if( pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 && pProxy->gralloc_handle[0] == NULL ) {
                 DOMX_DEBUG("Allocating NV12 buffers internally within DOMX actual count: %d", pCompPrv->nAllocatedBuffers);
@@ -769,7 +769,9 @@ OMX_ERRORTYPE LOCAL_PROXY_H264SVCE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
             DOMX_DEBUG("%s Gralloc=0x%x, Y-fd=%d, UV-fd=%d", __FUNCTION__, pGrallocHandle,
                        pGrallocHandle->fd[0], pGrallocHandle->fd[1]);
 
+#ifndef ANDROID_API_N_OR_LATER
             pBufferHdr->nOffset = pVideoMetadataBuffer->offset;
+#endif
 #endif
         } else if( nMetadataBufferType == kMetadataBufferTypeGrallocSource ) {
 #ifdef ENABLE_GRALLOC_BUFFERS
