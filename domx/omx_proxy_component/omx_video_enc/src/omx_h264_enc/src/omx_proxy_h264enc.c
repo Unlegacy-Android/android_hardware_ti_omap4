@@ -267,7 +267,7 @@ static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			goto EXIT;
 	        }
 		nMetadataBufferType = *pTempBuffer;
-		if(nMetadataBufferType == kMetadataBufferTypeCameraSource) {
+		if(nMetadataBufferType == CAMERA_METADATA_BUFFER_TYPE) {
 			eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
 			if( eError != OMX_ErrorNone)
 				DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d - Non Fatal Error",eError);
@@ -769,11 +769,11 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		pTempBuffer = (OMX_U32 *) (pBufferHdr->pBuffer);
 		nMetadataBufferType = *pTempBuffer;
 
-		if(nMetadataBufferType == kMetadataBufferTypeCameraSource)
+		if(nMetadataBufferType == CAMERA_METADATA_BUFFER_TYPE)
 		{
 #ifdef ENABLE_GRALLOC_BUFFERS
 			video_metadata_t* pVideoMetadataBuffer;
-			DOMX_DEBUG("MetadataBufferType is kMetadataBufferTypeCameraSource");
+			DOMX_DEBUG("MetadataBufferType is CAMERA_METADATA_BUFFER_TYPE");
 
 			pVideoMetadataBuffer = (video_metadata_t*) ((OMX_U32 *)(pBufferHdr->pBuffer));
 			pGrallocHandle = (IMG_native_handle_t*) (pVideoMetadataBuffer->handle);
@@ -794,7 +794,11 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			DOMX_DEBUG("%s Gralloc=0x%x, Y-fd=%d, UV-fd=%d", __FUNCTION__, pGrallocHandle,
 			            pGrallocHandle->fd[0], pGrallocHandle->fd[1]);
 
+#ifdef ANDROID_API_N_OR_LATER
+			pBufferHdr->nOffset = 0;
+#else
 			pBufferHdr->nOffset = pVideoMetadataBuffer->offset;
+#endif
 #endif
 		}
 		else if(nMetadataBufferType == kMetadataBufferTypeGrallocSource)

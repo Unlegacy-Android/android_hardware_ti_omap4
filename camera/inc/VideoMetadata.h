@@ -17,6 +17,26 @@
 #ifndef VIDEO_METADATA_H
 #define VIDEO_METADATA_H
 
+/* HACK: Camera HAL and DOMX have different visibilities here.
+ *       Piggyback off of common DOMX CFLAGS to figure out what we need. */
+#if defined(ENABLE_GRALLOC_BUFFERS) || defined(ANDROID_CUSTOM_OPAQUECOLORFORMAT)
+
+#ifdef ANDROID_API_N_OR_LATER
+#define CAMERA_METADATA_BUFFER_TYPE kMetadataBufferTypeNativeHandleSource
+#else
+#define CAMERA_METADATA_BUFFER_TYPE kMetadataBufferTypeCameraSource
+#endif
+
+#else
+
+#ifdef ANDROID_API_N_OR_LATER
+#define CAMERA_METADATA_BUFFER_TYPE android::kMetadataBufferTypeNativeHandleSource
+#else
+#define CAMERA_METADATA_BUFFER_TYPE android::kMetadataBufferTypeCameraSource
+#endif
+
+#endif
+
 /* This structure is used to pass buffer offset from Camera-Hal to Encoder component
  * for specific algorithms like VSTAB & VNF
  */
@@ -25,7 +45,9 @@ typedef struct
 {
     int metadataBufferType;
     void* handle;
+#ifndef ANDROID_API_N_OR_LATER
     int offset;
+#endif
 }
 video_metadata_t;
 
