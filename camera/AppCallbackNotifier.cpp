@@ -1224,16 +1224,24 @@ void AppCallbackNotifier::notifyFrame()
                                 if (mExternalLocking) {
                                     unlockBufferAndUpdatePtrs(frame);
                                 }
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                videoMetadataBuffer->eType = CAMERA_METADATA_BUFFER_TYPE;
+#ifdef ANDROID_API_N_OR_LATER
+                                videoMetadataBuffer->pHandle = vBuf->handle_native;
+#else
                                 /* FIXME remove cast */
-                                videoMetadataBuffer->handle = (void *)vBuf->opaque;
+                                videoMetadataBuffer->pHandle = (void *)vBuf->opaque;
                                 videoMetadataBuffer->offset = 0;
+#endif
                               }
                             else
                               {
-                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = camera_buffer_get_omx_ptr(frame->mBuffer);
+                                videoMetadataBuffer->eType = CAMERA_METADATA_BUFFER_TYPE;
+#ifdef ANDROID_API_N_OR_LATER
+                                videoMetadataBuffer->pHandle = (native_handle_t *)camera_buffer_get_omx_ptr(frame->mBuffer);
+#else
+                                videoMetadataBuffer->pHandle = camera_buffer_get_omx_ptr(frame->mBuffer);
                                 videoMetadataBuffer->offset = frame->mOffset;
+#endif
                               }
 
                             CAMHAL_LOGVB("mDataCbTimestamp : frame->mBuffer=0x%x, videoMetadataBuffer=0x%x, videoMedatadaBufferMemory=0x%x",
@@ -1861,7 +1869,10 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
         /* FIXME remove cast */
         frame = mVideoMetadataBufferReverseMap.valueFor(videoMetadataBuffer);
         CAMHAL_LOGVB("Releasing frame with videoMetadataBuffer=0x%x, videoMetadataBuffer->handle=0x%x & frame handle=0x%x\n",
-                       videoMetadataBuffer, videoMetadataBuffer->handle, frame);
+                       videoMetadataBuffer, videoMetadataBuffer->pHandle, frame);
+#ifdef ANDROID_API_N_OR_LATER
+        native_handle_close(videoMetadataBuffer->pHandle);
+#endif
         }
     else
         {

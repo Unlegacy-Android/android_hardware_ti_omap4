@@ -767,7 +767,7 @@ int ANativeWindowDisplayAdapter::getFd()
         // TODO: should we dup the fd? not really necessary and another thing for ANativeWindow
         // to manage and close...
 
-        mFD = dup(img->fd[0]);
+        mFD = img->fd[0]; //dup(img->fd[0]);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -860,7 +860,7 @@ int ANativeWindowDisplayAdapter::freeBufferList(CameraBuffer * buflist)
 
     if( mFD != -1)
     {
-        close(mFD);  // close duped handle
+        //close(mFD);  // close duped handle
         mFD = -1;
     }
 
