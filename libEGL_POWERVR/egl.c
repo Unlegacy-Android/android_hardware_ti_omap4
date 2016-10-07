@@ -1,5 +1,47 @@
 #include "egl.h"
 
+void *handle;
+
+void libEvtLoading(void) __attribute__((constructor))
+{
+	handle = dlopen("libIMGegl_SGX540_120.so", RTLD_NOW);
+
+	IMGeglGetError = dlsym(handle, "IMGeglGetError");
+	IMGeglGetDisplay = dlsym(handle, "IMGeglGetDisplay");
+	IMGeglInitialize = dlsym(handle, "IMGeglInitialize");
+	IMGeglTerminate = dlsym(handle, "IMGeglTerminate");
+	IMGeglQueryString = dlsym(handle, "IMGeglQueryString");
+	IMGeglGetProcAddress = dlsym(handle, "IMGeglGetProcAddress");
+	IMGeglGetConfigs = dlsym(handle, "IMGeglGetConfigs");
+	IMGeglChooseConfig = dlsym(handle, "IMGeglChooseConfig");
+	IMGeglGetConfigAttrib = dlsym(handle, "IMGeglGetConfigAttrib");
+	IMGeglCreateWindowSurface = dlsym(handle, "IMGeglCreateWindowSurface");
+	IMGeglCreatePixmapSurface = dlsym(handle, "IMGeglCreatePixmapSurface");
+	IMGeglCreatePbufferSurface = dlsym(handle, "IMGeglCreatePbufferSurface");
+	IMGeglDestroySurface = dlsym(handle, "IMGeglDestroySurface");
+	IMGeglQuerySurface = dlsym(handle, "IMGeglQuerySurface");
+	IMGeglCreateContext = dlsym(handle, "IMGeglCreateContext");
+	IMGeglDestroyContext = dlsym(handle, "IMGeglDestroyContext");
+	IMGeglMakeCurrent = dlsym(handle, "IMGeglMakeCurrent");
+	IMGeglGetCurrentContext = dlsym(handle, "IMGeglGetCurrentContext");
+	IMGeglGetCurrentSurface = dlsym(handle, "IMGeglGetCurrentSurface");
+	IMGeglGetCurrentDisplay = dlsym(handle, "IMGeglGetCurrentDisplay");
+	IMGeglQueryContext = dlsym(handle, "IMGeglQueryContext");
+	IMGeglWaitGL = dlsym(handle, "IMGeglWaitGL");
+	IMGeglWaitNative = dlsym(handle, "IMGeglWaitNative");
+	IMGeglSwapBuffers = dlsym(handle, "IMGeglSwapBuffers");
+	IMGeglCopyBuffers = dlsym(handle, "IMGeglCopyBuffers");
+	IMGeglSurfaceAttrib = dlsym(handle, "IMGeglSurfaceAttrib");
+	IMGeglBindTexImage = dlsym(handle, "IMGeglBindTexImage");
+	IMGeglReleaseTexImage = dlsym(handle, "IMGeglReleaseTexImage");
+	IMGeglSwapInterval = dlsym(handle, "IMGeglSwapInterval");
+	IMGeglCreatePbufferFromClientBuffer = dlsym(handle, "IMGeglCreatePbufferFromClientBuffer");
+	IMGeglBindAPI = dlsym(handle, "IMGeglBindAPI");
+	IMGeglQueryAPI = dlsym(handle, "IMGeglQueryAPI");
+	IMGeglWaitClient = dlsym(handle, "IMGeglWaitClient");
+	IMGeglReleaseThread = dlsym(handle, "IMGeglReleaseThread");
+}
+
 EGLint eglGetError(void)
 {
 	return IMGeglGetError();
