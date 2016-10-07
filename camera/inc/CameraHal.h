@@ -335,7 +335,10 @@ typedef struct _CameraBuffer {
     CameraBufferType type;
     /* opaque is the generic drop-in replacement for the pointers
      * that were used previously */
-    void *opaque;
+    union {
+        void *opaque;
+        native_handle_t* handle_native;
+    };
 
     /* opaque has different meanings depending on the buffer type:
      *   GRALLOC - gralloc_handle_t
