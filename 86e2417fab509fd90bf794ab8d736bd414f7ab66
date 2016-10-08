@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba7be1f8_68f843e6",
+        "filename": "camera/inc/CameraHal.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-08T11:14:32Z",
+      "side": 1,
+      "message": "On second thought, this union is a silly way to avoid a cast. These are pointers, not values; behavior is basically the same. But this isn\u0027t well defined in the C or C++ standards.",
+      "revId": "86e2417fab509fd90bf794ab8d736bd414f7ab66",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
