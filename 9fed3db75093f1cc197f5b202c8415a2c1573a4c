@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba7be1f8_68e20305",
+        "filename": "camera/AppCallbackNotifier.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 1875,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-09T22:50:34Z",
+      "side": 1,
+      "message": "This delete call appears to have fixed a small 4k climb I saw between \"top | grep cameraserver\" refreshes while recording.",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
