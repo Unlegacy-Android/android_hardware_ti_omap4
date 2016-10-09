@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba7be1f8_e816f3f0",
+        "filename": "camera/AppCallbackNotifier.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 1874,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-09T22:17:57Z",
+      "side": 1,
+      "message": "This appears to have fixed the fd leakage; recording works fine.\n\nTODO: Is this also leaking memory? Does this need to be freed or deleted?",
+      "revId": "3c53fde3e5c5e6aa3e80c205c415aaf86164eb54",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
