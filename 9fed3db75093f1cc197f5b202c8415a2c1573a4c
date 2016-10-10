@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ba7be1f8_68b923e9",
+        "filename": "camera/ANativeWindowDisplayAdapter.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2016-10-10T11:53:56Z",
+      "side": 1,
+      "message": "Don\u0027t think this was necessary. The cameraserver stays at 97/98 fds while recording, even without this change.\n\nIt\u0027s the native_handle_close that fixes the fd leak, and it\u0027s the native_handle_delete that fixed the memory leak.",
+      "parentUuid": "ba7be1f8_e8ed13f1",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba7be1f8_08ba67e1",
         "filename": "camera/ANativeWindowDisplayAdapter.cpp",
         "patchSetId": 6
@@ -87,6 +105,24 @@
     },
     {
       "key": {
+        "uuid": "ba7be1f8_88cd7789",
+        "filename": "domx/omx_proxy_component/omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 772,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2016-10-10T11:53:56Z",
+      "side": 1,
+      "message": "There\u0027s so much code duplication in all TI code...it\u0027s actually a depressing story of why this is the case, that I heard from our ex-TI guy... (it\u0027s by \"design\")",
+      "parentUuid": "ba7be1f8_a8e31b04",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba7be1f8_28bf2bd2",
         "filename": "domx/omx_proxy_component/omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c",
         "patchSetId": 6
@@ -98,6 +134,24 @@
       "writtenOn": "2016-10-10T00:16:09Z",
       "side": 1,
       "message": "TODO: Does this even need to be set? It\u0027s not touched with kMetadataBufferTypeGrallocSource...",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba7be1f8_a8ca3b6c",
+        "filename": "domx/omx_proxy_component/omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2016-10-10T11:53:56Z",
+      "side": 1,
+      "message": "I tested without here, nOffset is always 0 in h264enc.",
+      "parentUuid": "ba7be1f8_28bf2bd2",
       "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
