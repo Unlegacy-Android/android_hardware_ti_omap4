@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "ba7be1f8_e8ed13f1",
+        "filename": "camera/ANativeWindowDisplayAdapter.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T00:16:09Z",
+      "side": 1,
+      "message": "Not sure if this change was needed for the fix. Just noticed the TODO and we were leaking fd\u0027s...",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba7be1f8_08ba67e1",
+        "filename": "camera/ANativeWindowDisplayAdapter.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 863,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T00:16:09Z",
+      "side": 1,
+      "message": "Is this close still needed? I\u0027m not familiar with fd dup\u0027ing.",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba7be1f8_68e20305",
         "filename": "camera/AppCallbackNotifier.cpp",
         "patchSetId": 6
@@ -13,6 +47,57 @@
       "writtenOn": "2016-10-09T22:50:34Z",
       "side": 1,
       "message": "This delete call appears to have fixed a small 4k climb I saw between \"top | grep cameraserver\" refreshes while recording.",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba7be1f8_c8f04fcc",
+        "filename": "camera/inc/VideoMetadata.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T00:16:09Z",
+      "side": 1,
+      "message": "Note: VideoNativeHandleMetadata is really the same as VideoGrallocMetadata. GrallocMetadata uses buffer_handle_t instead of native_handle_t*... but buffer_handle_t is just a typedef to native_handle_t*. -_-",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba7be1f8_a8e31b04",
+        "filename": "domx/omx_proxy_component/omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 772,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T00:16:09Z",
+      "side": 1,
+      "message": "I think this can be merged with kMetadataBufferTypeGrallocSource checks. The structs for them are identical, this is just duplicating code.",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba7be1f8_28bf2bd2",
+        "filename": "domx/omx_proxy_component/omx_video_enc/src/omx_h264_enc/src/omx_proxy_h264enc.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T00:16:09Z",
+      "side": 1,
+      "message": "TODO: Does this even need to be set? It\u0027s not touched with kMetadataBufferTypeGrallocSource...",
       "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
