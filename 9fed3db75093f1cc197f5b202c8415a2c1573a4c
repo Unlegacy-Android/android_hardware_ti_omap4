@@ -71,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "ba7be1f8_e89b5370",
+        "filename": "camera/AppCallbackNotifier.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 1875,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-10T19:38:27Z",
+      "side": 1,
+      "message": "This might be a framework issue. On CM this code may need to be ifdef\u0027d out, or we may want to just merge this commit too:\n\nhttps://github.com/CyanogenMod/android_frameworks_av/commit/9501a1e1ff0a173cd85c59723ba458d07e1fca96",
+      "parentUuid": "ba7be1f8_68e20305",
+      "revId": "9fed3db75093f1cc197f5b202c8415a2c1573a4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba7be1f8_c8f04fcc",
         "filename": "camera/inc/VideoMetadata.h",
         "patchSetId": 6
