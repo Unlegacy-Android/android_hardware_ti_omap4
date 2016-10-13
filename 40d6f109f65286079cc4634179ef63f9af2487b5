@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a80dd14_673a3238",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2016-10-13T21:33:33Z",
+      "side": 1,
+      "message": "Just write frameworks/av out in full, better to be specific in case someone new to the AOSP world stumbles upon this :)\n\nThen I\u0027m fine with this.",
+      "revId": "40d6f109f65286079cc4634179ef63f9af2487b5",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
