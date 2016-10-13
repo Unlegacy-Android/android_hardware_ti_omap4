@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a80dd14_c7c75e63",
+        "filename": "camera/AppCallbackNotifier.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2016-10-13T09:25:17Z",
+      "side": 1,
+      "message": "Lets add a comment about this in the commit message, that either they should cherry-pick the necessary commit to frameworks/av, or define CAMERAHAL_FREES_METADATA.",
+      "revId": "70cabc62a0a21a48227854e0f54220dc665d3893",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
