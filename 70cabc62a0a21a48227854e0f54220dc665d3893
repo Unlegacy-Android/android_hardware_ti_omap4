@@ -16,6 +16,24 @@
       "revId": "70cabc62a0a21a48227854e0f54220dc665d3893",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a80dd14_87f7268c",
+        "filename": "camera/AppCallbackNotifier.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 1000037
+      },
+      "writtenOn": "2016-10-13T20:41:49Z",
+      "side": 1,
+      "message": "Good idea.",
+      "parentUuid": "9a80dd14_c7c75e63",
+      "revId": "70cabc62a0a21a48227854e0f54220dc665d3893",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
