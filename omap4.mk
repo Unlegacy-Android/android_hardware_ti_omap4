@@ -43,10 +43,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
     camera2.portability.force_api=1
 
-# GPU producer to CPU consumer not supported
-PRODUCT_PROPERTY_OVERRIDES += \
-    ro.bq.gpu_to_cpu_unsupported=1
-
 # Ensure release of EGL buffer in the ColorFade class
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.egl.destroy_after_detach=true
