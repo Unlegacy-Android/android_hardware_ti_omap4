@@ -22,21 +22,6 @@ typedef int EGLNativeDisplayType;
 typedef void *EGLNativeWindowType;
 typedef void *EGLNativePixmapType;
 
-
-#define EGL_FALSE	0
-#define EGL_TRUE	1
-#define EGL_DONT_CARE	((EGLint)-1)
-
-#define EGL_SURFACE_TYPE	0x3033
-#define EGL_NONE	0x3038
-#define EGL_RENDERABLE_TYPE	0x3040
-#define EGL_RECORDABLE_ANDROID	0x3142
-#define EGL_FRAMEBUFFER_TARGET_ANDROID	0x3147
-
-#define EGL_PBUFFER_BIT	0x0001
-#define EGL_OPENGL_ES2_BIT	0x0004
-
-
 EGLint IMGeglGetError(void);
 EGLDisplay IMGeglGetDisplay(EGLNativeDisplayType display_id);
 EGLBoolean IMGeglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
