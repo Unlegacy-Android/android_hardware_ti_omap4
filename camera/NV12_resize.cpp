@@ -30,37 +30,37 @@
 *
 * Input(s)       : input_img_ptr        -> Input Image Structure
 *                : output_img_ptr       -> Output Image Structure
-*                : cropout             -> crop structure
+*                : cropout              -> crop structure
 *
-* Value Returned : mmBool               -> FALSE on error TRUE on success
+* Value Returned : bool                 -> FALSE on error TRUE on success
 * NOTE:
 *            Not tested for crop funtionallity.
 *            faster version.
 ============================================================================*/
-mmBool
+bool
 VT_resizeFrame_Video_opt2_lp(
-        structConvImage* i_img_ptr,      /* Points to the input image            */
-        structConvImage* o_img_ptr,      /* Points to the output image           */
-        IC_rect_type*  cropout,          /* how much to resize to in final image */
-        mmUint16 dummy                   /* Transparent pixel value              */
+        structConvImage* i_img_ptr, /* Points to the input image            */
+        structConvImage* o_img_ptr, /* Points to the output image           */
+        IC_rect_type*    cropout    /* how much to resize to in final image */
         ) {
     LOG_FUNCTION_NAME;
 
-    mmUint16 row,col;
-    mmUint32 resizeFactorX;
-    mmUint32 resizeFactorY;
+    uint16_t row,col;
+    uint32_t resizeFactorX;
+    uint32_t resizeFactorY;
 
-    mmUint16 x, y;
+    uint16_t x, y;
 
-    mmUchar* ptr8;
-    mmUchar *ptr8Cb, *ptr8Cr;
+    uint8_t* ptr8;
+    uint8_t* ptr8Cb;
+    uint8_t* ptr8Cr;
 
-    mmUint16 xf, yf;
-    mmUchar* inImgPtrY;
-    mmUchar* inImgPtrU;
-    mmUchar* inImgPtrV;
-    mmUint32 cox, coy, codx, cody;
-    mmUint16 idx,idy, idxC;
+    uint16_t xf, yf;
+    uint8_t* inImgPtrY;
+    uint8_t* inImgPtrU;
+    uint8_t* inImgPtrV;
+    uint32_t cox, coy, codx, cody;
+    uint16_t idx, idy, idxC;
 
     if ( i_img_ptr->uWidth == o_img_ptr->uWidth ) {
         if ( i_img_ptr->uHeight == o_img_ptr->uHeight ) {
@@ -77,11 +77,11 @@ VT_resizeFrame_Video_opt2_lp(
         return false;
     }
 
-    inImgPtrY = (mmUchar *) i_img_ptr->imgPtr + i_img_ptr->uOffset;
-    inImgPtrU = (mmUchar *) i_img_ptr->clrPtr + i_img_ptr->uOffset/2;
-    inImgPtrV = (mmUchar*)inImgPtrU + 1;
+    inImgPtrY = (uint8_t*)i_img_ptr->imgPtr + i_img_ptr->uOffset;
+    inImgPtrU = (uint8_t*)i_img_ptr->clrPtr + i_img_ptr->uOffset / 2;
+    inImgPtrV = (uint8_t*)inImgPtrU + 1;
 
-    if ( !cropout ) {
+    if ( cropout != nullptr ) {
         cox = 0;
         coy = 0;
         codx = o_img_ptr->uWidth;
@@ -101,36 +101,30 @@ VT_resizeFrame_Video_opt2_lp(
         return false;
     }
 
-    resizeFactorX = ((idx-1)<<9) / codx;
-    resizeFactorY = ((idy-1)<<9) / cody;
+    resizeFactorX = ((idx - 1) << 9) / codx;
+    resizeFactorY = ((idy - 1) << 9) / cody;
 
-    if( i_img_ptr->eFormat != IC_FORMAT_YCbCr420_lp ||
-            o_img_ptr->eFormat != IC_FORMAT_YCbCr420_lp ) {
-        CAMHAL_LOGE("eFormat not supported");
-        return false;
-    }
-
-    ptr8 = (mmUchar*)o_img_ptr->imgPtr + cox + coy*o_img_ptr->uWidth;
+    ptr8 = (uint8_t*)o_img_ptr->imgPtr + cox + coy * o_img_ptr->uWidth;
 
     ////////////////////////////for Y//////////////////////////
     for ( row = 0; row < cody; row++ ) {
-        mmUchar *pu8Yrow1 = NULL;
-        mmUchar *pu8Yrow2 = NULL;
-        y  = (mmUint16) ((mmUint32) (row*resizeFactorY) >> 9);
-        yf = (mmUchar)  ((mmUint32)((row*resizeFactorY) >> 6) & 0x7);
+        uint8_t* pu8Yrow1 = NULL;
+        uint8_t* pu8Yrow2 = NULL;
+        y  = (uint16_t) ((uint32_t) (row * resizeFactorY) >> 9);
+        yf = (uint8_t)  ((uint32_t)((row * resizeFactorY) >> 6) & 0x7);
         pu8Yrow1 = inImgPtrY + (y) * i_img_ptr->uStride;
         pu8Yrow2 = pu8Yrow1 + i_img_ptr->uStride;
 
         for ( col = 0; col < codx; col++ ) {
-            mmUchar in11, in12, in21, in22;
-            mmUchar *pu8ptr1 = NULL;
-            mmUchar *pu8ptr2 = NULL;
-            mmUchar w;
-            mmUint16 accum_1;
-            //mmUint32 accum_W;
+            uint8_t in11, in12, in21, in22;
+            uint8_t* pu8ptr1 = NULL;
+            uint8_t* pu8ptr2 = NULL;
+            uint8_t w;
+            uint16_t accum_1;
+            //uint32_t accum_W;
 
-            x  = (mmUint16) ((mmUint32)  (col*resizeFactorX) >> 9);
-            xf = (mmUchar)  ((mmUint32) ((col*resizeFactorX) >> 6) & 0x7);
+            x  = (uint16_t) ((uint32_t)  (col * resizeFactorX) >> 9);
+            xf = (uint8_t)  ((uint32_t) ((col * resizeFactorX) >> 6) & 0x7);
 
             //accum_W = 0;
             accum_1 =  0;
@@ -139,7 +133,7 @@ VT_resizeFrame_Video_opt2_lp(
             pu8ptr2 = pu8Yrow2 + (x);
 
             /* A pixel */
-            //in = *(inImgPtrY + (y)*idx + (x));
+            //in = *(inImgPtrY + (y) * idx + (x));
             in11 = *(pu8ptr1);
 
             w = bWeights[xf][yf][0];
@@ -147,31 +141,31 @@ VT_resizeFrame_Video_opt2_lp(
             //accum_W += (w);
 
             /* B pixel */
-            //in = *(inImgPtrY + (y)*idx + (x+1));
-            in12 = *(pu8ptr1+1);
+            //in = *(inImgPtrY + (y) * idx + (x + 1));
+            in12 = *(pu8ptr1 + 1);
             w = bWeights[xf][yf][1];
             accum_1 += (w * in12);
             //accum_W += (w);
 
             /* C pixel */
-            //in = *(inImgPtrY + (y+1)*idx + (x));
+            //in = *(inImgPtrY + (y + 1) * idx + (x));
             in21 = *(pu8ptr2);
             w = bWeights[xf][yf][3];
             accum_1 += (w * in21);
             //accum_W += (w);
 
             /* D pixel */
-            //in = *(inImgPtrY + (y+1)*idx + (x+1));
-            in22 = *(pu8ptr2+1);
+            //in = *(inImgPtrY + (y + 1) * idx + (x + 1));
+            in22 = *(pu8ptr2 + 1);
             w = bWeights[xf][yf][2];
             accum_1 += (w * in22);
             //accum_W += (w);
 
             /* divide by sum of the weights */
             //accum_1 /= (accum_W);
-            //accum_1 = (accum_1/64);
-            accum_1 = (accum_1>>6);
-            *ptr8 = (mmUchar)accum_1 ;
+            //accum_1 = (accum_1 / 64);
+            accum_1 = (accum_1 >> 6);
+            *ptr8 = (uint8_t)accum_1 ;
 
             ptr8++;
         }
@@ -181,53 +175,53 @@ VT_resizeFrame_Video_opt2_lp(
 
     ///////////////////////////////for Cb-Cr//////////////////////
 
-    ptr8Cb = (mmUchar*)o_img_ptr->clrPtr + cox + coy*o_img_ptr->uWidth;
+    ptr8Cb = (uint8_t*)o_img_ptr->clrPtr + cox + coy * o_img_ptr->uWidth;
 
-    ptr8Cr = (mmUchar*)(ptr8Cb+1);
+    ptr8Cr = (uint8_t*)(ptr8Cb + 1);
 
-    idxC = (idx>>1);
-    for ( row = 0; row < (((cody)>>1)); row++ ) {
-        mmUchar *pu8Cbr1 = NULL;
-        mmUchar *pu8Cbr2 = NULL;
-        mmUchar *pu8Crr1 = NULL;
-        mmUchar *pu8Crr2 = NULL;
+    idxC = (idx >> 1);
+    for ( row = 0; row < (cody >> 1); row++ ) {
+        uint8_t* pu8Cbr1 = NULL;
+        uint8_t* pu8Cbr2 = NULL;
+        uint8_t* pu8Crr1 = NULL;
+        uint8_t* pu8Crr2 = NULL;
 
-        y  = (mmUint16) ((mmUint32) (row*resizeFactorY) >> 9);
-        yf = (mmUchar)  ((mmUint32)((row*resizeFactorY) >> 6) & 0x7);
+        y  = (uint16_t) ((uint32_t) (row * resizeFactorY) >> 9);
+        yf = (uint8_t)  ((uint32_t)((row * resizeFactorY) >> 6) & 0x7);
 
         pu8Cbr1 = inImgPtrU + (y) * i_img_ptr->uStride;
         pu8Cbr2 = pu8Cbr1 + i_img_ptr->uStride;
         pu8Crr1 = inImgPtrV + (y) * i_img_ptr->uStride;
         pu8Crr2 = pu8Crr1 + i_img_ptr->uStride;
 
-        for ( col = 0; col < (((codx)>>1)); col++ ) {
-            mmUchar in11, in12, in21, in22;
-            mmUchar *pu8Cbc1 = NULL;
-            mmUchar *pu8Cbc2 = NULL;
-            mmUchar *pu8Crc1 = NULL;
-            mmUchar *pu8Crc2 = NULL;
+        for ( col = 0; col < (codx >> 1); col++ ) {
+            uint8_t in11, in12, in21, in22;
+            uint8_t* pu8Cbc1 = NULL;
+            uint8_t* pu8Cbc2 = NULL;
+            uint8_t* pu8Crc1 = NULL;
+            uint8_t* pu8Crc2 = NULL;
 
-            mmUchar w;
-            mmUint16 accum_1Cb, accum_1Cr;
-            //mmUint32 accum_WCb, accum_WCr;
+            uint8_t w;
+            uint16_t accum_1Cb, accum_1Cr;
+            //uint32_t accum_WCb, accum_WCr;
 
-            x  = (mmUint16) ((mmUint32)  (col*resizeFactorX) >> 9);
-            xf = (mmUchar)  ((mmUint32) ((col*resizeFactorX) >> 6) & 0x7);
+            x  = (uint16_t) ((uint32_t)  (col * resizeFactorX) >> 9);
+            xf = (uint8_t)  ((uint32_t) ((col * resizeFactorX) >> 6) & 0x7);
 
             //accum_WCb = accum_WCr =  0;
             accum_1Cb = accum_1Cr =  0;
 
-            pu8Cbc1 = pu8Cbr1 + (x*2);
-            pu8Cbc2 = pu8Cbr2 + (x*2);
-            pu8Crc1 = pu8Crr1 + (x*2);
-            pu8Crc2 = pu8Crr2 + (x*2);
+            pu8Cbc1 = pu8Cbr1 + (x * 2);
+            pu8Cbc2 = pu8Cbr2 + (x * 2);
+            pu8Crc1 = pu8Crr1 + (x * 2);
+            pu8Crc2 = pu8Crr2 + (x * 2);
 
             /* A pixel */
             w = bWeights[xf][yf][0];
 
             in11 = *(pu8Cbc1);
             accum_1Cb = (w * in11);
-            //    accum_WCb += (w);
+            //accum_WCb += (w);
 
             in11 = *(pu8Crc1);
             accum_1Cr = (w * in11);
@@ -236,11 +230,11 @@ VT_resizeFrame_Video_opt2_lp(
             /* B pixel */
             w = bWeights[xf][yf][1];
 
-            in12 = *(pu8Cbc1+2);
+            in12 = *(pu8Cbc1 + 2);
             accum_1Cb += (w * in12);
             //accum_WCb += (w);
 
-            in12 = *(pu8Crc1+2);
+            in12 = *(pu8Crc1 + 2);
             accum_1Cr += (w * in12);
             //accum_WCr += (w);
 
@@ -258,21 +252,21 @@ VT_resizeFrame_Video_opt2_lp(
             /* D pixel */
             w = bWeights[xf][yf][2];
 
-            in22 = *(pu8Cbc2+2);
+            in22 = *(pu8Cbc2 + 2);
             accum_1Cb += (w * in22);
             //accum_WCb += (w);
 
-            in22 = *(pu8Crc2+2);
+            in22 = *(pu8Crc2 + 2);
             accum_1Cr += (w * in22);
             //accum_WCr += (w);
 
             /* divide by sum of the weights */
             //accum_1Cb /= (accum_WCb);
-            accum_1Cb = (accum_1Cb>>6);
-            *ptr8Cb = (mmUchar)accum_1Cb ;
+            accum_1Cb = (accum_1Cb >> 6);
+            *ptr8Cb = (uint8_t)accum_1Cb ;
 
             accum_1Cr = (accum_1Cr >> 6);
-            *ptr8Cr = (mmUchar)accum_1Cr ;
+            *ptr8Cr = (uint8_t)accum_1Cr ;
 
             ptr8Cb++;
             ptr8Cr++;
@@ -280,11 +274,10 @@ VT_resizeFrame_Video_opt2_lp(
             ptr8Cb++;
             ptr8Cr++;
         }
-        ptr8Cb = ptr8Cb + (o_img_ptr->uStride-codx);
-        ptr8Cr = ptr8Cr + (o_img_ptr->uStride-codx);
+        ptr8Cb = ptr8Cb + (o_img_ptr->uStride - codx);
+        ptr8Cr = ptr8Cr + (o_img_ptr->uStride - codx);
     }
     ///////////////////For Cb- Cr////////////////////////////////////////
 
-    CAMHAL_LOGV("success");
     return true;
 }

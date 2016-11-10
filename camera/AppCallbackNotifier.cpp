@@ -1203,23 +1203,21 @@ void AppCallbackNotifier::notifyFrame()
                                 mapper.lock((buffer_handle_t)vBuf, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
                                 y_uv[1] = (void*)((int)y_uv[0] + mVideoHeight*4096);
 
-                                structConvImage input =  {(mmInt32)frame->mWidth,
-                                                          (mmInt32)frame->mHeight,
+                                structConvImage input =  {(int32_t)frame->mWidth,
+                                                          (int32_t)frame->mHeight,
                                                           4096,
-                                                          IC_FORMAT_YCbCr420_lp,
-                                                          (mmByte *)frame->mYuv[0],
-                                                          (mmByte *)frame->mYuv[1],
-                                                          (mmInt32)frame->mOffset};
+                                                          (uint8_t *)frame->mYuv[0],
+                                                          (uint8_t *)frame->mYuv[1],
+                                                          (int32_t)frame->mOffset};
 
                                 structConvImage output = {mVideoWidth,
                                                           mVideoHeight,
                                                           4096,
-                                                          IC_FORMAT_YCbCr420_lp,
-                                                          (mmByte *)y_uv[0],
-                                                          (mmByte *)y_uv[1],
+                                                          (uint8_t *)y_uv[0],
+                                                          (uint8_t *)y_uv[1],
                                                           0};
 
-                                VT_resizeFrame_Video_opt2_lp(&input, &output, NULL, 0);
+                                VT_resizeFrame_Video_opt2_lp(&input, &output, nullptr);
                                 mapper.unlock((buffer_handle_t)vBuf->opaque);
                                 if (mExternalLocking) {
                                     unlockBufferAndUpdatePtrs(frame);
