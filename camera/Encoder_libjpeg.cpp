@@ -245,7 +245,6 @@ static void resize_nv12(Encoder_libjpeg::params* params, uint8_t* dst_buffer) {
     i_img_ptr.uWidth =  params->in_width;
     i_img_ptr.uStride =  i_img_ptr.uWidth;
     i_img_ptr.uHeight =  params->in_height;
-    i_img_ptr.eFormat = IC_FORMAT_YCbCr420_lp;
     i_img_ptr.imgPtr = (uint8_t*) params->src;
     i_img_ptr.clrPtr = i_img_ptr.imgPtr + (i_img_ptr.uWidth * i_img_ptr.uHeight);
     i_img_ptr.uOffset = 0;
@@ -254,12 +253,11 @@ static void resize_nv12(Encoder_libjpeg::params* params, uint8_t* dst_buffer) {
     o_img_ptr.uWidth = params->out_width;
     o_img_ptr.uStride = o_img_ptr.uWidth;
     o_img_ptr.uHeight = params->out_height;
-    o_img_ptr.eFormat = IC_FORMAT_YCbCr420_lp;
     o_img_ptr.imgPtr = dst_buffer;
     o_img_ptr.clrPtr = o_img_ptr.imgPtr + (o_img_ptr.uWidth * o_img_ptr.uHeight);
     o_img_ptr.uOffset = 0;
 
-    VT_resizeFrame_Video_opt2_lp(&i_img_ptr, &o_img_ptr, NULL, 0);
+    VT_resizeFrame_Video_opt2_lp(&i_img_ptr, &o_img_ptr);
 }
 
 /* public static functions */
