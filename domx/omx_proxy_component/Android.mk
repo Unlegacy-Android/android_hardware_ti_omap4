@@ -157,14 +157,9 @@ LOCAL_SRC_FILES := \
 	omx_camera/src/omx_proxy_camera.c \
 	omx_camera/src/proxy_camera_android_glue.c
 
-ifeq ($(BOARD_USE_TI_LIBION),true)
-	LOCAL_SHARED_LIBRARIES += libion_ti
-	LOCAL_CFLAGS += -DUSE_TI_LIBION
-else
-	LOCAL_SHARED_LIBRARIES += libion
-	LOCAL_SRC_FILES += ../../libion/ion_ti_custom.c
-	LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
-endif
+LOCAL_SHARED_LIBRARIES += libion
+LOCAL_SRC_FILES += ../../libion/ion_ti_custom.c
+LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
 
 ifdef OMAP_ENHANCEMENT_VTC
 	LOCAL_CFLAGS += -DOMAP_ENHANCEMENT_VTC
