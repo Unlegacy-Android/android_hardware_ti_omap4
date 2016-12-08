@@ -24,6 +24,15 @@ TARGET_BOARD_PLATFORM := omap4
 TARGET_BOARD_PLATFORM_VARIANT := omap4-next
 TARGET_ARCH_VARIANT := armv7-a-neon
 
+PVR_MODULES:
+	make clean -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android
+	make -j8 -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android \
+			ARCH=arm CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) KERNELDIR=$(KERNEL_OUT) \
+			TARGET_PRODUCT="blaze_tablet" BUILD=release TARGET_SGX=$(if \
+			$(filter-out 4470,$(TARGET_BOARD_OMAP_CPU)),540,544sc)
+	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm.ko $(KERNEL_MODULES_OUT)
+	$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip --strip-unneeded $(KERNEL_MODULES_OUT)/pvrsrvkm.ko
+
 # Graphics
 USE_OPENGL_RENDERER := true
 BOARD_EGL_WORKAROUND_BUG_10194508 ?= true
