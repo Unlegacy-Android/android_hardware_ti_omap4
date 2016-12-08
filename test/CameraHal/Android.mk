@@ -79,14 +79,9 @@ LOCAL_SHARED_LIBRARIES:= \
 	libEGL \
 	libGLESv2
 
-ifeq ($(BOARD_USE_TI_LIBION),true)
-LOCAL_SHARED_LIBRARIES += libion_ti
-LOCAL_CFLAGS += -DUSE_TI_LIBION
-else
 LOCAL_SHARED_LIBRARIES += libion
 LOCAL_SRC_FILES += ../../libion/ion_ti_custom.c
 LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
-endif
 
 LOCAL_C_INCLUDES += \
     $(HARDWARE_TI_OMAP4_BASE)/include \
