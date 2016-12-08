@@ -7,6 +7,10 @@ on boot
     restorecon /sys/devices/platform/omapdss/manager0/cpr_coef
     restorecon /sys/devices/platform/omapdss/manager0/cpr_enable
 
+on fs
+    # Load PVR module
+    insmod /system/lib/modules/pvrsrvkm.ko
+
 service pvrsrvinit /system/bin/pvrsrvinit
     class core
     user root
