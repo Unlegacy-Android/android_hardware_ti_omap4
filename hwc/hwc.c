@@ -41,12 +41,8 @@
 
 #include <linux/fb.h>
 #include <linux/omapfb.h>
-#ifdef USE_TI_LIBION
-#include <ion_ti/ion.h>
-#else
 #include <ion/ion.h>
 #include "ion_ti_custom.h"
-#endif
 
 #include "hwc_dev.h"
 #include "display.h"
@@ -1586,11 +1582,7 @@ static int free_tiler2d_buffers(omap_hwc_device_t *hwc_dev)
     int i;
 
     for (i = 0 ; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
-#ifdef USE_TI_LIBION
-        ion_free(hwc_dev->ion_fd, hwc_dev->ion_handles[i]);
-#else
         ion_free(hwc_dev->ion_fd, (ion_user_handle_t) hwc_dev->ion_handles[i]);
-#endif
 
         hwc_dev->ion_handles[i] = NULL;
     }
