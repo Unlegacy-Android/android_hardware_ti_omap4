@@ -86,7 +86,7 @@ endif
 
 include $(INTERNAL_KBUILD_MAKEFILES)
 
-$(if $(pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y),,$(error pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y was empty, which could mean that srvkm is missing from $$(KERNEL_COMPONENTS)))
+$(if $(pvrsrvkm-y),,$(error pvrsrvkm-y was empty, which could mean that srvkm is missing from $$(KERNEL_COMPONENTS)))
 pvrsrvkm-y += $(foreach _m,$(INTERNAL_EXTRA_KBUILD_OBJECTS:.o=),$($(_m)-y))
 
 obj-m += $(INTERNAL_KBUILD_OBJECTS)
