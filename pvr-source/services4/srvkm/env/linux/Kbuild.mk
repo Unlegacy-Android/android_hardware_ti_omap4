@@ -38,7 +38,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y += \
+pvrsrvkm-y += \
 	services4/srvkm/env/linux/osfunc.o \
 	services4/srvkm/env/linux/mutils.o \
 	services4/srvkm/env/linux/mmap.o \
@@ -75,9 +75,9 @@ pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y += \
 	services4/system/$(PVR_SYSTEM)/sysconfig.o \
 	services4/system/$(PVR_SYSTEM)/sysutils.o
 
-pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-$(CONFIG_ION_OMAP) += \
+pvrsrvkm-$(CONFIG_ION_OMAP) += \
 	services4/srvkm/env/linux/ion.o
-pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-$(CONFIG_GCBV) += \
+pvrsrvkm-$(CONFIG_GCBV) += \
 	services4/srvkm/env/linux/gc_bvmapping.o
 
 ifeq ($(SUPPORT_ION),1)
@@ -127,7 +127,7 @@ endif
 
 # SUPPORT_SGX==1 only
 
-pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y += \
+pvrsrvkm-y += \
 	services4/srvkm/bridged/sgx/bridged_sgx_bridge.o \
 	services4/srvkm/devices/sgx/sgxinit.o \
 	services4/srvkm/devices/sgx/sgxpower.o \
@@ -152,7 +152,7 @@ endif
 
 ifeq ($(SUPPORT_DRI_DRM),1)
 
-pvrsrvkm_sgx$(SGXCORE)_$(SGX_CORE_REV)-y += \
+pvrsrvkm-y += \
  services4/srvkm/env/linux/pvr_drm.o
 
 ccflags-y += \
