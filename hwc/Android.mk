@@ -10,14 +10,9 @@ LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardwa
 LOCAL_SRC_FILES := hwc.c rgz_2d.c dock_image.c sw_vsync.c display.c
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\" -Wall -Werror
 
-ifeq ($(BOARD_USE_TI_LIBION),true)
-LOCAL_SHARED_LIBRARIES += libion_ti
-LOCAL_CFLAGS += -DUSE_TI_LIBION
-else
 LOCAL_SHARED_LIBRARIES += libion
 LOCAL_SRC_FILES += ../libion/ion_ti_custom.c
 LOCAL_C_INCLUDES += $(HARDWARE_TI_OMAP4_BASE)/libion
-endif
 
 ifdef OMAP_ENHANCEMENT_S3D
 LOCAL_CFLAGS += -DOMAP_ENHANCEMENT_S3D

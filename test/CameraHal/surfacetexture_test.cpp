@@ -73,12 +73,8 @@
 #include <gui/ISurfaceComposer.h>
 #include <gui/ISurfaceComposerClient.h>
 #include <gui/SurfaceComposerClient.h>
-#ifdef USE_TI_LIBION
-#include <ion_ti/ion.h>
-#else
 #include <ion/ion.h>
 #include "ion_ti_custom.h"
-#endif
 #else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
@@ -200,11 +196,7 @@ ion_test (void)
 #define SIZE (10*1024*1024)
     for(i=0;i<10;i++){
         handle = NULL;
-#ifdef USE_TI_LIBION
-        ret = ion_alloc (fd, SIZE, 4096, (1<<0), &handle);
-#else
         ret = ion_alloc (fd, SIZE, 4096, (1<<0), 0, &handle);
-#endif
         if (ret < 0) {
             printf("ion_alloc returned error %d, %s\n", ret, strerror(errno));
             break;
