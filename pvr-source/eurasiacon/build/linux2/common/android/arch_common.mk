@@ -81,10 +81,6 @@ SYS_INCLUDES := \
  -isystem $(ANDROID_ROOT)/external/clang/lib/include
 endif
 
-ifeq ($(USE_TI_LIBION),1)
-SYS_CFLAGS += -DUSE_TI_LIBION
-endif
-
 SYS_EXE_LDFLAGS := \
  -Bdynamic -nostdlib -Wl,-dynamic-linker,/system/bin/linker \
  -lc -ldl -lcutils

@@ -39,14 +39,6 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-# ION can support dma-buf.
-# Use this toggle to determine how ion functions should work.
-ifeq ($(BOARD_USE_TI_LIBION),false)
- USE_TI_LIBION := 0
-else
- USE_TI_LIBION := 1
-endif
-
 # If a TARGET_PRODUCT is specified but not a TARGET_DEVICE, try to
 # derive the TARGET_DEVICE from TARGET_PRODUCT.
 #
