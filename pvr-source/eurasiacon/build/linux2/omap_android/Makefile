@@ -100,8 +100,6 @@ endif
 
 PVR_SYSTEM := omap
 
-KERNEL_CROSS_COMPILE ?= arm-none-linux-gnueabi-
-
 # We have more memory on OMAP platforms, so we can spare to make the
 # pool larger, and have higher resolutions which benefit from it.
 #
@@ -184,8 +182,6 @@ ifneq ($(filter tuna maguro toro mysid yakju,$(TARGET_DEVICE)),)
 # These default on in tuna_defconfig
 PVRSRV_USSE_EDM_STATUS_DEBUG ?= 1
 PVRSRV_DUMP_MK_TRACE ?= 1
-# Go back to the old compiler for tuna kernel modules
-KERNEL_CROSS_COMPILE := arm-eabi-
 endif
 
 ifeq ($(NO_HARDWARE),1)
