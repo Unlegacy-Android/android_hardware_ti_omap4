@@ -12,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PVR_MODULES:
-	make clean -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android
-	make -j8 -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android \
-			ARCH=arm $(if $(ARM_CROSS_COMPILE),$(ARM_CROSS_COMPILE),$(KERNEL_CROSS_COMPILE)) \
-			TARGET_SGX=$(if $(filter-out 4470,$(TARGET_BOARD_OMAP_CPU)),540,544sc) \
-			KERNELDIR=$(KERNEL_OUT) BUILD=release
-	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm.ko $(KERNEL_MODULES_OUT)
+PVR_KM_OUT ?= $(KERNEL_OUT)/pvr-km
+PVR_MODULES ?= $(addsuffix .ko,$(addprefix \
+		$(PVR_KM_OUT)/target/,pvrsrvkm omaplfb))
+BUILD_PVR: MK_DIR ?= \
+	$(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap_android
+BUILD_PVR: MK_CMD ?= $(MAKE) -C $(MK_DIR) ARCH=$(KERNEL_ARCH) \
+	KERNELDIR=$(KERNEL_OUT) OUT=$(PVR_KM_OUT)
+
+BUILD_PVR: TARGET_KERNEL_BINARIES
+	$(MK_CMD) clean && $(MK_CMD) $(if $(ARM_CROSS_COMPILE),\
+		$(ARM_CROSS_COMPILE),$(KERNEL_CROSS_COMPILE)) \
+		TARGET_DEVICE=blaze$(if $(filter-out 4470,\
+		$(TARGET_BOARD_OMAP_CPU)),,.4470)
 	$(if $(ARM_EABI_TOOLCHAIN),$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip, \
-			$(KERNEL_TOOLCHAIN_PATH)strip) --strip-unneeded \
-			$(KERNEL_MODULES_OUT)/pvrsrvkm.ko
+		$(KERNEL_TOOLCHAIN_PATH)strip) --strip-unneeded $(PVR_MODULES)
+
+$(PVR_MODULES): BUILD_PVR
+
+PVR_MODULES: $(PVR_MODULES)
+	mv $(PVR_MODULES) $(KERNEL_MODULES_OUT)
 
 TARGET_KERNEL_MODULES += PVR_MODULES
