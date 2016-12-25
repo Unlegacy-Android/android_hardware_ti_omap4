@@ -198,9 +198,10 @@ JAVA ?= java
 JAVAC ?= javac
 ZIP ?= zip
 
-ifeq ($(USE_CCACHE),1)
-CCACHE ?= ccache
-endif
+# Don't override/interfere with Android ccache
+# ifeq ($(USE_CCACHE),1)
+# CCACHE ?= ccache
+# endif
 
 # Define CHMOD and CC_CHECK first so we can use cc-is-clang
 #
@@ -213,19 +214,19 @@ override CC_CHECK	:= $(if $(V),,@)$(MAKE_TOP)/tools/cc-check.sh
 #
 ifneq ($(CROSS_COMPILE),)
 ifeq ($(cc-is-clang),true)
-override CC  := $(if $(V),,@)$(CCACHE) $(CC) \
+override CC  := $(if $(V),,@)$(CC) \
  -target $(patsubst %-,%,$(CROSS_COMPILE)) \
  -B$(dir $(shell which $(CROSS_COMPILE)gcc))
-override CXX := $(if $(V),,@)$(CCACHE) $(CXX) \
+override CXX := $(if $(V),,@)$(CXX) \
  -target $(patsubst %-,%,$(CROSS_COMPILE)) \
  -B$(dir $(shell which $(CROSS_COMPILE)gcc))
 else
-override CC  := $(if $(V),,@)$(CCACHE) $(CROSS_COMPILE)$(CC)
-override CXX := $(if $(V),,@)$(CCACHE) $(CROSS_COMPILE)$(CXX)
+override CC  := $(if $(V),,@)$(CROSS_COMPILE)$(CC)
+override CXX := $(if $(V),,@)$(CROSS_COMPILE)$(CXX)
 endif
 else
-override CC  := $(if $(V),,@)$(CCACHE) $(CC)
-override CXX := $(if $(V),,@)$(CCACHE) $(CXX)
+override CC  := $(if $(V),,@)$(CC)
+override CXX := $(if $(V),,@)$(CXX)
 endif
 
 override AR				:= $(if $(V),,@)$(CROSS_COMPILE)ar
@@ -237,8 +238,8 @@ override FLEX			:= $(if $(V),,@)flex
 override GAWK			:= $(if $(V),,@)gawk
 override GREP			:= $(if $(V),,@)grep
 override HOST_AR		:= $(if $(V),,@)ar
-override HOST_CC		:= $(if $(V),,@)$(CCACHE) $(HOST_CC)
-override HOST_CXX		:= $(if $(V),,@)$(CCACHE) $(HOST_CXX)
+override HOST_CC		:= $(if $(V),,@)$(HOST_CC)
+override HOST_CXX		:= $(if $(V),,@)$(HOST_CXX)
 override HOST_STRIP		:= $(if $(V),,@)strip
 override INSTALL		:= $(if $(V),,@)install
 override JAR			:= $(if $(V),,@)$(JAR)
