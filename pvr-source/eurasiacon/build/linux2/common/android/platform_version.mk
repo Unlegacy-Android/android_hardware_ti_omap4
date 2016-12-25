@@ -38,28 +38,44 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-# If there's no build.prop file in the expected location, bail out. Tell the
-# user which file we were trying to read in case TARGET_DEVICE was not set.
-#
-BUILD_PROP := $(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/build.prop
-ifeq ($(wildcard $(BUILD_PROP)),)
-$(warning *** Could not determine Android version.  Did you set ANDROID_ROOT,\
-OUT_DIR and TARGET_DEVICE in your environment correctly?)
-$(error Error reading $(BUILD_PROP))
-endif
-
-# Extract version.release and version.codename from the build.prop file.
-# If either of the values aren't in the build.prop, the Make variables won't
-# be defined, and fallback handling will take place.
-#
 define newline
 
 
 endef
+
+PLATFORM_CODENAME ?= REL
+
+# Figure out the version of Android we're building against.
+#
+ifeq ($(strip $(PLATFORM_RELEASE)),)
+BUILD_PROP := $(ANDROID_PRODUCT_OUT)/system/build.prop
+BUILD_DEFS := $(ANDROID_BUILD_TOP)/build/core/version_defaults.mk
+ifneq ($(wildcard $(BUILD_PROP)),)
+# Extract version.release and version.codename from the build.prop file.
+# If either of the values aren't in the build.prop, the Make variables won't
+# be defined, and fallback handling will take place.
+#
 $(eval $(subst #,$(newline),$(shell cat $(BUILD_PROP) | \
 	grep '^ro.build.version.release=\|^ro.build.version.codename=' | \
-	sed -e 's,ro.build.version.release=,PLATFORM_RELEASE=,' \
-	    -e 's,ro.build.version.codename=,PLATFORM_CODENAME=,' | tr '\n' '#')))
+	sed -e 's,ro.build.version.release=,PLATFORM_RELEASE:=,' \
+	    -e 's,ro.build.version.codename=,PLATFORM_CODENAME:=,' | tr '\n' '#')))
+else ifneq ($(wildcard $(BUILD_DEFS)),)
+$(warning *** No device prop file ($(BUILD_PROP)). Extracting from \
+	build/core/version_defaults.mk)
+# Android version information doesn't permeate here. Set it up manually,
+# but avoid including the whole of core/version_defaults.mk
+$(eval $(subst #,$(newline),$(shell cat $(BUILD_DEFS) | \
+	grep 'PLATFORM_VERSION\s.*=\|PLATFORM_VERSION_CODENAME\s.*=' | \
+	sed -e 's,PLATFORM_VERSION\s.*=,PLATFORM_RELEASE:=,' \
+	    -e 's,PLATFORM_VERSION_CODENAME\s.*=,PLATFORM_CODENAME:=,' | tr '\n' '#')))
+else
+$(warning *** No device prop file ($(BUILD_PROP)) or build env \
+	($(BUILD_DEFS)). Falling back to KitKat default)
+PLATFORM_RELEASE := 4.4
+endif
+endif
+
+$(info PLATFORM_RELEASE=$(PLATFORM_RELEASE) & PLATFORM_CODENAME=$(PLATFORM_CODENAME))
 
 define release-starts-with
 $(shell echo $(PLATFORM_RELEASE) | grep -q ^$(1); \
@@ -118,6 +134,10 @@ endif
 
 # Macros to help categorize support for features and API_LEVEL for tests.
 #
+is_at_least_kitkat := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 4 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 4 && \
+				  test $(PLATFORM_RELEASE_MIN) -ge 4 ) ) && echo 1 || echo 0)
 is_at_least_lollipop := \
 	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 5 ) && echo 1 || echo 0)
 is_at_least_lollipop_mr1 := \
