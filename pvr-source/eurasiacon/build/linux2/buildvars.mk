@@ -103,12 +103,14 @@ TESTED_HOST_USER_FLAGS := \
 # -fcolor-diagnostics force-enables colored error messages which
 # get disabled when ccache is piped through ccache.
 #
-TESTED_TARGET_USER_FLAGS += \
- $(call cc-option,-Qunused-arguments) \
- $(call cc-option,-fcolor-diagnostics)
-TESTED_HOST_USER_FLAGS += \
- $(call host-cc-option,-Qunused-arguments) \
- $(call host-cc-option,-fcolor-diagnostics)
+# Note: disabled since not needed with any recent Clang toolchain
+#
+# TESTED_TARGET_USER_FLAGS += \
+#  $(call cc-option,-Qunused-arguments) \
+#  $(call cc-option,-fcolor-diagnostics)
+# TESTED_HOST_USER_FLAGS += \
+#  $(call host-cc-option,-Qunused-arguments) \
+#  $(call host-cc-option,-fcolor-diagnostics)
 
 ifeq ($(W),1)
 TESTED_TARGET_USER_FLAGS += \
