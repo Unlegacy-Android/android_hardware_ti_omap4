@@ -18,7 +18,6 @@
 OMAP4_NEXT_FOLDER := hardware/ti/omap4
 
 PRODUCT_PACKAGES += \
-    hwcomposer.omap4 \
     power.omap4
 
 PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
