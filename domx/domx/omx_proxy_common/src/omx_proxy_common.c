@@ -200,7 +200,8 @@ RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd1, int fd2,
 #ifdef ENABLE_GRALLOC_BUFFERS
 		struct omx_pvr_data pvr_data;
 
-		pvr_data.fd = fd1;
+		pvr_data.fds[0] = fd1;
+		pvr_data.fds[1] = fd2;
 		memset(pvr_data.handles, 0x0, sizeof(pvr_data.handles));
 		status = ioctl(pRPCCtx->fd_omx, OMX_IOCPVRREGISTER, &pvr_data);
 		if (status < 0) {
