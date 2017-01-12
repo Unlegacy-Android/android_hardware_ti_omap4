@@ -1100,6 +1100,7 @@ IMG_HANDLE SGXRegisterHWRenderContextKM(IMG_HANDLE				hDeviceNode,
     IMG_UINT8 *pDst;
 	PRESMAN_ITEM psResItem;
 	IMG_UINT32 ui32PDDevPAddrInDirListFormat;
+	IMG_UINT8 *pStartPDDevPAddr, *pEndPDDevPAddr;
 
 	eError = OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
 						sizeof(SGX_HW_RENDER_CONTEXT_CLEANUP),
@@ -1134,6 +1135,16 @@ IMG_HANDLE SGXRegisterHWRenderContextKM(IMG_HANDLE				hDeviceNode,
 	{
 		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHWRenderContextKM: Couldn't allocate device memory for HW Render Context"));
 		goto exit1;
+	}
+	/* Ensure that the offset of Page directory dev physical address field is within the allocated context memory */
+	pStartPDDevPAddr = (IMG_UINT8 *)(psCleanup->psHWRenderContextMemInfo->pvLinAddrKM) + ui32OffsetToPDDevPAddr;
+	pEndPDDevPAddr = pStartPDDevPAddr + sizeof(ui32PDDevPAddrInDirListFormat) - 1;
+
+	if (pStartPDDevPAddr < (IMG_UINT8 *)psCleanup->psHWRenderContextMemInfo->pvLinAddrKM || 
+			pEndPDDevPAddr >= (IMG_UINT8 *)(psCleanup->psHWRenderContextMemInfo->pvLinAddrKM) + ui32HWRenderContextSize)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHWRenderContextKM: Offset of page directory device physical address is invalid"));
+		goto exit2;
 	}
 
     eError = OSCopyFromUser(psPerProc,
@@ -1287,6 +1298,7 @@ IMG_HANDLE SGXRegisterHWTransferContextKM(IMG_HANDLE				hDeviceNode,
     IMG_UINT8 *pDst;
 	PRESMAN_ITEM psResItem;
 	IMG_UINT32 ui32PDDevPAddrInDirListFormat;
+	IMG_UINT8 *pStartPDDevPAddr, *pEndPDDevPAddr;
 
 	eError = OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
 						sizeof(SGX_HW_TRANSFER_CONTEXT_CLEANUP),
@@ -1322,6 +1334,17 @@ IMG_HANDLE SGXRegisterHWTransferContextKM(IMG_HANDLE				hDeviceNode,
 	{
 		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHWTransferContextKM: Couldn't allocate device memory for HW Render Context"));
 		goto exit1;
+	}
+
+	/* Ensure that the offset of Page directory dev physical address field is within the allocated context memory */
+	pStartPDDevPAddr = (IMG_UINT8 *)(psCleanup->psHWTransferContextMemInfo->pvLinAddrKM) + ui32OffsetToPDDevPAddr;
+	pEndPDDevPAddr = pStartPDDevPAddr + sizeof(ui32PDDevPAddrInDirListFormat) - 1;
+
+	if (pStartPDDevPAddr < (IMG_UINT8 *)psCleanup->psHWTransferContextMemInfo->pvLinAddrKM || 
+			pEndPDDevPAddr >= (IMG_UINT8 *)(psCleanup->psHWTransferContextMemInfo->pvLinAddrKM) + ui32HWTransferContextSize)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHWTransferContextKM: Offset of page directory device physical address is invalid"));
+		goto exit2;
 	}
 
     eError = OSCopyFromUser(psPerProc,
@@ -1628,6 +1651,7 @@ IMG_HANDLE SGXRegisterHW2DContextKM(IMG_HANDLE				hDeviceNode,
     IMG_UINT8 *pDst;
 	PRESMAN_ITEM psResItem;
 	IMG_UINT32 ui32PDDevPAddrInDirListFormat;
+	IMG_UINT8 *pStartPDDevPAddr, *pEndPDDevPAddr;
 
 	eError = OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
 						sizeof(SGX_HW_2D_CONTEXT_CLEANUP),
@@ -1662,6 +1686,17 @@ IMG_HANDLE SGXRegisterHW2DContextKM(IMG_HANDLE				hDeviceNode,
 	{
 		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHW2DContextKM: Couldn't allocate device memory for HW Render Context"));
 		goto exit1;
+	}
+
+	/* Ensure that the offset of Page directory dev physical address field is within the allocated context memory */
+	pStartPDDevPAddr = (IMG_UINT8 *)(psCleanup->psHW2DContextMemInfo->pvLinAddrKM) + ui32OffsetToPDDevPAddr;
+	pEndPDDevPAddr = pStartPDDevPAddr + sizeof(ui32PDDevPAddrInDirListFormat) - 1;
+
+	if (pStartPDDevPAddr < (IMG_UINT8 *)psCleanup->psHW2DContextMemInfo->pvLinAddrKM || 
+			pEndPDDevPAddr >= (IMG_UINT8 *)(psCleanup->psHW2DContextMemInfo->pvLinAddrKM) + ui32HW2DContextSize)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "SGXRegisterHWTransferContextKM: Offset of page directory device physical address is invalid"));
+		goto exit2;
 	}
 
     eError = OSCopyFromUser(psPerProc,

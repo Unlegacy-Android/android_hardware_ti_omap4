@@ -245,8 +245,8 @@ PVR_ANDROID_HAS_HAL_PIXEL_FORMAT_RAWxx := 1
 endif
 
 ##############################################################################
-# Marshmallow onwards DDK stopped render script accleration using GPU.
-# This flag stops device alloction.
+# Marshmallow onwards DDK stopped render script acceleration using GPU.
+# This flag stops device allocation.
 #
 ifeq ($(is_at_least_marshmallow),1)
 PVR_ANDROID_HAS_GRALLOC_USAGE_RENDERSCRIPT := 1
