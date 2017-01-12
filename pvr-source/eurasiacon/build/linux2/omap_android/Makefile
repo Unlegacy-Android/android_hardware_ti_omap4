@@ -51,10 +51,6 @@ ifeq ($(TARGET_DEVICE),)
 override TARGET_DEVICE := jacinto6evm
 endif
 
-ifeq ($(TARGET_DEVICE),)
-override TARGET_DEVICE := am57xevm
-endif
-
 # Customize this build as per the TARGET_DEVICE setting
 #
 ifneq ($(filter blaze blaze_tablet panda tuna maguro toro mysid yakju,$(TARGET_DEVICE)),)
@@ -81,7 +77,7 @@ VS_PRODUCT_VERSION			:= 5
 # FIXME: Re-enable this ASAP
 SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
 endif
-ifneq ($(filter jacinto6evm am57xevm,$(TARGET_DEVICE)),)
+ifneq ($(filter jacinto6evm am57xxevm,$(TARGET_DEVICE)),)
 SGXCORE						:= 544
 SGX_CORE_REV				:= 116
 SGX_FEATURE_MP				:= 1
@@ -98,9 +94,8 @@ SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
 
 endif
 
-ifneq ($(filter am57xevm,$(TARGET_DEVICE)),)
-HAL_VARIANT                                     := am57x
-
+ifneq ($(filter am57xxevm,$(TARGET_DEVICE)),)
+HAL_VARIANT                                     := am57xxevm
 endif
 
 # Handle any TARGET_DEVICE remapping. Not all DDK TARGET_DEVICEs
