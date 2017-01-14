@@ -761,7 +761,12 @@ PVRSyncIOCTLCreate(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 	struct PVR_SYNC_KERNEL_SYNC_INFO *psProvidedSyncInfo = NULL;
 	struct PVR_ALLOC_SYNC_DATA *psAllocSyncData;
 	struct PVR_SYNC_CREATE_IOCTL_DATA sData;
-	int err = -EFAULT, iFd = get_unused_fd_flags(O_CLOEXEC);
+	int err = -EFAULT;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+	int iFd = get_unused_fd_flags(O_CLOEXEC);
+#else
+	int iFd = get_unused_fd();
+#endif
 	struct sync_fence *psFence;
 	struct sync_pt *psPt;
 
@@ -984,7 +989,12 @@ static long
 PVRSyncIOCTLAlloc(struct PVR_SYNC_TIMELINE *psTimeline, void __user *pvData)
 {
 	struct PVR_ALLOC_SYNC_DATA *psAllocSyncData;
-	int err = -EFAULT, iFd = get_unused_fd_flags(O_CLOEXEC);
+	int err = -EFAULT;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+	int iFd = get_unused_fd_flags(O_CLOEXEC);
+#else
+	int iFd = get_unused_fd();
+#endif
 	struct PVR_SYNC_ALLOC_IOCTL_DATA sData;
 	PVRSRV_SYNC_DATA *psSyncData;
 	struct file *psFile;
