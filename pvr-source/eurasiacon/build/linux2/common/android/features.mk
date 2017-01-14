@@ -53,7 +53,7 @@ SUPPORT_MEMINFO_IDS := 1
 # Enable services ion support by default
 #
 SUPPORT_ION ?= 0
-SUPPORT_DMABUF := 1
+SUPPORT_DMABUF ?= 1
 
 # Need multi-process support in PDUMP
 #
