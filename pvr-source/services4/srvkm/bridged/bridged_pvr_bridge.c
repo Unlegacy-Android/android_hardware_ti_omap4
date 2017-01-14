@@ -89,7 +89,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 #include <linux/fcntl.h>
+#endif
 #include <linux/file.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
@@ -3042,7 +3044,12 @@ PVRSRVSwapToDCBuffer2BW(IMG_UINT32 ui32BridgeID,
 	IMG_UINT32 i;
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-	int iReleaseFd = get_unused_fd_flags(O_CLOEXEC);
+	int iReleaseFd;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+	iReleaseFd = get_unused_fd_flags(O_CLOEXEC);
+#else
+	iReleaseFd = get_unused_fd();
+#endif
 	if(iReleaseFd < 0)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to find unused fd (%d)",
