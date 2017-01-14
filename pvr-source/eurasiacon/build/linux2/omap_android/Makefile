@@ -114,7 +114,8 @@ SUPPORT_LINUX_USING_WORKQUEUES := 1
 
 SUPPORT_PVRSRV_ANDROID_SYSTRACE := 1
 
-SUPPORT_DMABUF := 1
+SUPPORT_ION := 1
+SUPPORT_DMABUF := 0
 
 # Enable PVR_DPF prints for fatal/error
 PVRSRV_NEED_PVR_DPF := 1
@@ -228,8 +229,8 @@ endif
 endif # SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED == 1
 endif # NO_HARDWARE == 1
 
-# we are not using PVR composerhal
-#PVR_ANDROID_COMPOSERHAL ?= omap
+# we are using the PVR composerhal
+PVR_ANDROID_COMPOSERHAL ?= omap
 
 include ../config/core.mk
 include ../common/android/extra_config.mk
