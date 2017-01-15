@@ -1,3 +1,6 @@
 # DOMX
 eventfd2: 1
 pselect6: 1
+
+# SGX
+clock_nanosleep: 1
