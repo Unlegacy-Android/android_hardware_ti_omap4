@@ -189,7 +189,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
             else
             {
                 // for default non tiler (OMAP_ION_HEAP_SECURE_INPUT) retry allocating from tiler 1D
-                DOMX_DEBUG("FAILED to allocate from non tiler space - trying tiler 1d space");
+                DOMX_INFO("FAILED to allocate from non tiler space - trying tiler 1d space");
                 pIonBufferParams->eBuffer_type = TILER1D;
                 pIonBufferParams->eTiler_format = MEMPLUGIN_TILER_FORMAT_PAGE;
                 sIonParams.alloc_flags = OMAP_ION_HEAP_TILER_MASK;
