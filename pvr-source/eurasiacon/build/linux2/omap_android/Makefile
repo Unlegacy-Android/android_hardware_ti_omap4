@@ -77,7 +77,7 @@ VS_PRODUCT_VERSION			:= 5
 # FIXME: Re-enable this ASAP
 SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
 endif
-ifneq ($(filter jacinto6evm am57xxevm,$(TARGET_DEVICE)),)
+ifneq ($(filter jacinto6evm am57xevm,$(TARGET_DEVICE)),)
 SGXCORE						:= 544
 SGX_CORE_REV				:= 116
 SGX_FEATURE_MP				:= 1
@@ -94,8 +94,8 @@ SUPPORT_ACTIVE_POWER_MANAGEMENT := 0
 
 endif
 
-ifneq ($(filter am57xxevm,$(TARGET_DEVICE)),)
-HAL_VARIANT                                     := am57xxevm
+ifneq ($(filter am57xevm,$(TARGET_DEVICE)),)
+HAL_VARIANT                                     := am57xevm
 endif
 
 # Handle any TARGET_DEVICE remapping. Not all DDK TARGET_DEVICEs
