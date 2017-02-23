@@ -39,6 +39,12 @@ PRODUCT_PACKAGES += \
     tf_daemon \
     libtf_crypto_sst
 
+ifdef ANDROID_API_O_OR_LATER
+# Vendor seccomp policy files for media components
+PRODUCT_COPY_FILES += \
+    $(OMAP4_NEXT_FOLDER)/seccomp/mediacodec-seccomp.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediacodec.policy
+endif
+
 PRODUCT_PACKAGES += \
     libion
 
