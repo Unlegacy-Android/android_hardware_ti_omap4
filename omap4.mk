@@ -26,6 +26,10 @@ PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
 PRODUCT_COPY_FILES += \
     $(OMAP4_NEXT_FOLDER)/rootdir/init.omap4.rc:root/init.omap4.rc
 
+# Vendor seccomp policy files for media components
+PRODUCT_COPY_FILES += \
+    $(OMAP4_NEXT_FOLDER)/seccomp/mediacodec-seccomp.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediacodec.policy
+
 # SGX540 is slower with the scissor optimization enabled
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.disable_scissor_opt=true
