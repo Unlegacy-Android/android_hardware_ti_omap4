@@ -46,15 +46,18 @@ $(warning *** No device prop file ($(BUILD_PROP)). Extracting from \
 	build/core/version_defaults.mk)
 # Android version information doesn't permeate here. Set it up manually,
 # but avoid including the whole of core/version_defaults.mk
-$(eval $(shell cat $(ANDROID_BUILD_TOP)/build/core/version_defaults.mk |\
-	grep 'PLATFORM_VERSION\s.*='))
+#
+# $(eval $(shell cat $(ANDROID_BUILD_TOP)/build/core/version_defaults.mk |\
+# 	grep 'PLATFORM_VERSION\s.*='))
+PLATFORM_VERSION ?= $(strip $(shell grep 'PLATFORM_VERSION\s.*=' \
+	$(ANDROID_BUILD_TOP)/build/core/version_defaults.mk | cut -f2 -d'='))
 else
 # Extract version.release from the build.prop file. If it's not in the build.prop,
 # the Make variables won't be defined, and fallback handling will take place.
 #
 # $(eval $(shell cat $(BUILD_PROP) | grep '^ro.build.version.release=' | \
 # 	sed -e 's,ro.build.version.release,PLATFORM_VERSION,'))
-PLATFORM_VERSION := $(shell grep '^ro.build.version.release=' \
+PLATFORM_VERSION ?= $(shell grep '^ro.build.version.release=' \
 	$(BUILD_PROP) | cut -f2 -d'=' | cut -f1 -d'-')
 endif
 
