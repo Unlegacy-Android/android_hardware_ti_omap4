@@ -54,7 +54,7 @@ else
 #
 # $(eval $(shell cat $(BUILD_PROP) | grep '^ro.build.version.release=' | \
 # 	sed -e 's,ro.build.version.release,PLATFORM_VERSION,'))
-PLATFORM_VERSION := $(shell grep '^ro.build.version.release=' \
+PLATFORM_VERSION ?= $(shell grep '^ro.build.version.release=' \
 	$(BUILD_PROP) | cut -f2 -d'=' | cut -f1 -d'-')
 endif
 
