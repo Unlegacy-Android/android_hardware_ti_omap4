@@ -120,6 +120,9 @@ struct omap_hwc_device {
     hwc_composer_device_1_t base;
     hwc_procs_t *procs;
     pthread_t hdmi_thread;
+#ifdef SYSFS_VSYNC_NOTIFICATION
+    pthread_t vsync_thread;
+#endif
     pthread_mutex_t lock;
 
     IMG_framebuffer_device_public_t *fb_dev;
