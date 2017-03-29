@@ -60,6 +60,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/err.h>
 
 #if defined(CONFIG_ION_OMAP)
+#include <linux/omap_ion.h>
 
 /* Real ion with sharing */
 
@@ -490,7 +491,22 @@ PVRSRV_ERROR IonImportBufferAndAcquirePhysAddr(IMG_HANDLE hIonDev,
 
 	for(i = 0, k = 0; i < ui32NumFDs; i++)
 	{
+		u32* tiler_addrs;
+		int tiler_pages;
+
+
+#if defined(CONFIG_ION_OMAP)
+		if (ui32NumFDs == 2 && !omap_tiler_pages(psIonClient, psImportData->apsIonHandle[i], &tiler_pages, &tiler_addrs)) {
+			int tiler_n = 0;
+			for (tiler_n = 0; tiler_n < tiler_pages; tiler_n++) {
+				psImportData->psSysPhysAddr[k].uiAddr = tiler_addrs[tiler_n];
+				k++;
+			}
+		}
+		else if(psScatterList[i])
+#else
 		if(psScatterList[i])
+#endif
 		{
 			for(psTemp = psScatterList[i]; psTemp; psTemp = sg_next(psTemp))
 			{
