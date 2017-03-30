@@ -17,6 +17,10 @@
 
 DEVICE_PACKAGE_OVERLAYS += hardware/ti/omap4/overlay
 
+# Default OMX service to non-Treble
+PRODUCT_PROPERTY_OVERRIDES += \
+    persist.media.treble_omx=false
+
 PRODUCT_PACKAGES += \
     libdomx \
     libOMX_Core \
