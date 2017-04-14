@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "44576cb4_04dd360c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-04-14T15:33:21Z",
+      "side": 1,
+      "message": "I\u0027d change this to sepolicy; I know CM/Lineage wants redundant tagging, but we haven\u0027t really used that.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "297a64dcc67dc6f1cf29b2ab4e6443acf35e6083",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44576cb4_24dab215",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-04-14T15:33:21Z",
+      "side": 1,
+      "message": "s",
+      "revId": "297a64dcc67dc6f1cf29b2ab4e6443acf35e6083",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44576cb4_c405de7c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-04-14T15:33:21Z",
+      "side": 1,
+      "message": "and newer, which",
+      "range": {
+        "startLine": 9,
+        "startChar": 30,
+        "endLine": 9,
+        "endChar": 52
+      },
+      "revId": "297a64dcc67dc6f1cf29b2ab4e6443acf35e6083",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44576cb4_e40a5a8c",
+        "filename": "sepolicy/sepolicy.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-04-14T15:33:21Z",
+      "side": 1,
+      "message": "With -ge 20 above, this is unneeded, right? If you decide to keep it (since you\u0027re adding to it later), could change to -eq 20 above. Not going to make a difference in practice either way, although I vote for a layered approach, i.e., -ge 20, then -ge 24, etc.",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 5
+      },
+      "revId": "297a64dcc67dc6f1cf29b2ab4e6443acf35e6083",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
