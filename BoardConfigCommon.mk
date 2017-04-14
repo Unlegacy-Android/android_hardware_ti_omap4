@@ -54,8 +54,7 @@ BOARD_SECCOMP_POLICY += \
     $(OMAP4_NEXT_FOLDER)/seccomp
 
 # SELinux
-BOARD_SEPOLICY_DIRS += \
-    $(OMAP4_NEXT_FOLDER)/sepolicy
+include $(OMAP4_NEXT_FOLDER)/sepolicy/sepolicy.mk
 
 # Misc
 BOARD_USES_SECURE_SERVICES := true
