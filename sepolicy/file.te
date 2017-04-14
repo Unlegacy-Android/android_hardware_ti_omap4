@@ -1,2 +1,9 @@
 # Hardware tunables
 type sysfs_hardware, fs_type, sysfs_type;
+
+# Support asec containers getting mounted (Android 4.4)
+ifelse(android_api_lp_or_later,  `true', `
+  # not needed on Android >= 5.0'
+, `
+  allow file_type rootfs:filesystem associate;')
+

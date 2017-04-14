@@ -3,6 +3,9 @@ type pvrsrvinit_exec, exec_type, file_type;
 
 init_daemon_domain(pvrsrvinit)
 
-allow pvrsrvinit gpu_device:chr_file rw_file_perms;
+ifdef(`android_api_lp_or_later', `
+  allow pvrsrvinit gpu_device:chr_file rw_file_perms;
+')
+
 allow pvrsrvinit kernel:system module_request;
 allow pvrsrvinit self:capability sys_module;
