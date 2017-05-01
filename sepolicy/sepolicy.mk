@@ -1,16 +1,18 @@
 OMAP4_SEPOLICY_BASE := hardware/ti/omap4/sepolicy
 
-# 4.4
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -eq 19 || echo 1),)
+# <=5.1
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -le 22 || echo 1),)
 BOARD_SEPOLICY_UNION += \
+	defines.te \
 	file.te \
 	file_contexts \
 	init.te \
-	pvrsrvinit.te
+	pvrsrvinit.te \
+	system_server.te
 endif
 
 # >=5.0
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 20 || echo 1),)
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 21 || echo 1),)
 BOARD_SEPOLICY_DIRS += $(OMAP4_SEPOLICY_BASE)/compat/lp
 endif
 
