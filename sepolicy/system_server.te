@@ -1,2 +1,6 @@
 # Hardware tunables
-allow system_server sysfs_hardware:file rw_file_perms;
+ifelse(android_api_lp_or_later,  `true', `
+  allow system_server sysfs_hardware:file rw_file_perms;'
+, `
+  # not needed on Android < 5')
+
