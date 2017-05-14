@@ -33,7 +33,7 @@ ADDITIONAL_BUILD_PROPERTIES += \
 
 # Disable dirty regions invalidation
 ADDITIONAL_BUILD_PROPERTIES += \
-    hwui.render_dirty_regions=false
+    debug.hwui.render_dirty_regions=false
 
 # We don't support eglSwapBuffersWithDamageKHR; this avoids some unnecessary code
 ADDITIONAL_BUILD_PROPERTIES += \
