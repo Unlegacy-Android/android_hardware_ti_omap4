@@ -49,6 +49,10 @@ PRODUCT_PACKAGES += \
     libion_ti
 endif
 
+# RenderScript HAL
+PRODUCT_PACKAGES += \
+    android.hardware.renderscript@1.0-impl
+
 # symlinks and pvr files
 PRODUCT_PACKAGES += \
     libion.so \
