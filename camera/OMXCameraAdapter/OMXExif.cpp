@@ -373,6 +373,7 @@ status_t OMXCameraAdapter::setupEXIF()
              exifTags->eStatusImageHeight = OMX_TI_TagUpdated;
              }
 
+#ifndef CAMERAHAL_PIRANHA
          if ( OMX_TI_TagReadWrite == exifTags->eStatusPixelXDimension &&
               OMX_TI_TagReadWrite == exifTags->eStatusPixelYDimension)
              {
@@ -394,6 +395,7 @@ status_t OMXCameraAdapter::setupEXIF()
              exifTags->usOrientation = 0;
              exifTags->eStatusOrientation = OMX_TI_TagUpdated;
              }
+#endif
 
          if ( ( OMX_TI_TagReadWrite == exifTags->eStatusGpsLatitude ) &&
               ( mEXIFData.mGPSData.mLatValid ) )
@@ -584,18 +586,22 @@ status_t OMXCameraAdapter::setupEXIF_libjpeg(ExifElementsTable* exifTable,
         char temp_value[5];
         snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", (unsigned long)capData->mWidth);
         ret = exifTable->insertElement(TAG_IMAGE_WIDTH, temp_value);
+#ifndef CAMERAHAL_PIRANHA
         if ((NO_ERROR == ret)) {
             ret = exifTable->insertElement(TAG_EXIF_IMAGE_WIDTH, temp_value);
         }
+#endif
      }
 
     if ((NO_ERROR == ret)) {
         char temp_value[5];
         snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", (unsigned long)capData->mHeight);
         ret = exifTable->insertElement(TAG_IMAGE_LENGTH, temp_value);
+#ifndef CAMERAHAL_PIRANHA
         if ((NO_ERROR == ret)) {
             ret = exifTable->insertElement(TAG_EXIF_IMAGE_LENGTH, temp_value);
         }
+#endif
      }
 
     if ((NO_ERROR == ret) && (mEXIFData.mGPSData.mLatValid)) {
