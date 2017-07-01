@@ -47,6 +47,10 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.bq.gpu_to_cpu_unsupported=1
 
+# affects lock screen ColorFader and ensures release of /dev/pvrsrvkm GPU ressources
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    ro.egl.destroy_after_detach=true
+
 $(call inherit-product, hardware/ti/omap4/common.mk)
 $(call inherit-product-if-exists, vendor/ti/omap4/omap4-vendor.mk)
 $(call inherit-product-if-exists, vendor/widevine/arm-generic/widevine-vendor.mk)
