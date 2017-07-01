@@ -47,6 +47,10 @@ ADDITIONAL_BUILD_PROPERTIES += \
 ADDITIONAL_BUILD_PROPERTIES += \
     ro.bq.gpu_to_cpu_unsupported=1
 
+# affects lock screen ColorFader and ensures release of /dev/pvrsrvkm GPU ressources
+ADDITIONAL_BUILD_PROPERTIES += \
+    ro.egl.destroy_after_detach=true
+
 $(call inherit-product, hardware/ti/omap4/common.mk)
 $(call inherit-product-if-exists, vendor/ti/omap4/omap4-vendor.mk)
 $(call inherit-product-if-exists, vendor/widevine/arm-generic/widevine-vendor.mk)
