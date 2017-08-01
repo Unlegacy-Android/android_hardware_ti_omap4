@@ -119,7 +119,6 @@ static OMAPLFB_DEVINFO *gapsDevInfo[OMAPLFB_MAX_NUM_DEVICES];
 /* Top level 'hook ptr' */
 static PFN_DC_GET_PVRJTABLE gpfnGetPVRJTable = NULL;
 
-#if !defined(CONFIG_DSSCOMP)
 /* Round x up to a multiple of y */
 static inline unsigned long RoundUpToMultiple(unsigned long x, unsigned long y)
 {
@@ -149,7 +148,6 @@ static unsigned long LCM(unsigned long x, unsigned long y)
 
 	return (gcd == 0) ? 0 : ((x / gcd) * y);
 }
-#endif
 
 unsigned OMAPLFBMaxFBDevIDPlusOne(void)
 {
@@ -1299,6 +1297,100 @@ static IMG_BOOL ProcessFlip(IMG_HANDLE  hCmdCookie,
 	}
 }
 
+static OMAPLFB_ERROR OMAPLFBInitFBVRAM(OMAPLFB_DEVINFO *psDevInfo,
+                                        struct fb_info *psLINFBInfo,
+                                        OMAPLFB_FBINFO *psPVRFBInfo)
+{
+	struct sgx_omaplfb_config *psFBPlatConfig = GetFBPlatConfig(psDevInfo->uiFBDevID);
+	unsigned long FBSize = psLINFBInfo->fix.smem_len;
+	unsigned long ulLCM;
+	int iMaxSwapChainBuffs;
+	IMG_UINT32 ui32FBAvailableBuffs;
+
+	/* Check if there is VRAM reserved for this FB */
+	if (FBSize == 0 || psLINFBInfo->fix.line_length == 0)
+	{
+		return OMAPLFB_ERROR_INVALID_DEVICE;
+	}
+
+	/* Fail to init this DC device if vram buffers are not set */
+	if (!psFBPlatConfig->vram_buffers)
+	{
+		return OMAPLFB_ERROR_INVALID_PARAMS;
+	}
+
+	if (!psFBPlatConfig->swap_chain_length)
+	{
+		/* Set a default swap chain length if it's not present in the platform data */
+		iMaxSwapChainBuffs = 3;
+		printk(KERN_WARNING DRIVER_PREFIX ": %s: Device %u: Swap chain length missing in "
+			"platform data, defaulting to %d\n", __FUNCTION__, psDevInfo->uiFBDevID,
+			iMaxSwapChainBuffs);
+	}
+	else
+	{
+		iMaxSwapChainBuffs = psFBPlatConfig->swap_chain_length;
+	}
+
+	if (psFBPlatConfig->vram_buffers < iMaxSwapChainBuffs)
+	{
+		printk(KERN_WARNING DRIVER_PREFIX ": %s: Device %u: Trying to use %d vram "
+			"buffers which is less than the swap chain length of %d, maximum "
+			"swap chain length will be set to %d\n", __FUNCTION__, psDevInfo->uiFBDevID,
+			psFBPlatConfig->vram_buffers, iMaxSwapChainBuffs, psFBPlatConfig->vram_buffers);
+		iMaxSwapChainBuffs = psFBPlatConfig->vram_buffers;
+	}
+
+	ulLCM = LCM(psLINFBInfo->fix.line_length, OMAPLFB_PAGE_SIZE);
+	psPVRFBInfo->sSysAddr.uiAddr = psLINFBInfo->fix.smem_start;
+	psPVRFBInfo->sCPUVAddr = psLINFBInfo->screen_base;
+	psPVRFBInfo->ulWidth = psLINFBInfo->var.xres;
+	psPVRFBInfo->ulHeight = psLINFBInfo->var.yres;
+	psPVRFBInfo->ulByteStride =  psLINFBInfo->fix.line_length;
+	psPVRFBInfo->ulFBSize = FBSize;
+	psPVRFBInfo->bIs2D = OMAPLFB_FALSE;
+	psPVRFBInfo->psPageList = IMG_NULL;
+	psPVRFBInfo->ulBufferSize = psPVRFBInfo->ulHeight * psPVRFBInfo->ulByteStride;
+	psPVRFBInfo->ulRoundedBufferSize = RoundUpToMultiple(psPVRFBInfo->ulBufferSize, ulLCM);
+	ui32FBAvailableBuffs = (IMG_UINT32)(psDevInfo->sFBInfo.ulFBSize / psDevInfo->sFBInfo.ulRoundedBufferSize);
+
+	if (!ui32FBAvailableBuffs)
+	{
+		printk(KERN_ERR DRIVER_PREFIX " %s: Device %u: Not enough vram to init swap "
+			"chain buffers\n", __FUNCTION__, psDevInfo->uiFBDevID);
+		return OMAPLFB_ERROR_INIT_FAILURE;
+	}
+	else if (ui32FBAvailableBuffs < psFBPlatConfig->vram_buffers)
+	{
+		printk(KERN_WARNING DRIVER_PREFIX ": %s: Device %u: Not enough vram to hold "
+			"%d buffers (available %d), swap chain length will be set to %d\n",
+			__FUNCTION__, psDevInfo->uiFBDevID, iMaxSwapChainBuffs, ui32FBAvailableBuffs,
+			ui32FBAvailableBuffs);
+		iMaxSwapChainBuffs = ui32FBAvailableBuffs;
+	}
+	else
+	{
+		iMaxSwapChainBuffs = psFBPlatConfig->vram_buffers;
+	}
+
+	psDevInfo->sDisplayInfo.ui32MaxSwapChainBuffers = iMaxSwapChainBuffs;
+
+	printk(KERN_DEBUG DRIVER_PREFIX ": %s: Device %u: Using %d VRAM framebuffers\n", __FUNCTION__,
+		psDevInfo->uiFBDevID, iMaxSwapChainBuffs);
+
+	DEBUG_PRINTK((KERN_INFO DRIVER_PREFIX
+			": Device %u: Framebuffer virtual width: %u\n",
+			psDevInfo->uiFBDevID, psLINFBInfo->var.xres_virtual));
+	DEBUG_PRINTK((KERN_INFO DRIVER_PREFIX
+			": Device %u: Framebuffer virtual height: %u\n",
+			psDevInfo->uiFBDevID, psLINFBInfo->var.yres_virtual));
+	DEBUG_PRINTK((KERN_INFO DRIVER_PREFIX
+			": Device %u: LCM of stride and page size: %lu\n",
+			psDevInfo->uiFBDevID, ulLCM));
+
+	return OMAPLFB_OK;
+}
+
 /*!
 ******************************************************************************
 
@@ -1318,6 +1410,7 @@ static OMAPLFB_ERROR OMAPLFBInitFBDev(OMAPLFB_DEVINFO *psDevInfo)
 	OMAPLFB_FBINFO *psPVRFBInfo = &psDevInfo->sFBInfo;
 	OMAPLFB_ERROR eError = OMAPLFB_ERROR_GENERIC;
 	unsigned uiFBDevID = psDevInfo->uiFBDevID;
+	struct sgx_omaplfb_config *psFBPlatConfig;
 
 	OMAPLFB_CONSOLE_LOCK();
 
@@ -1355,6 +1448,19 @@ static OMAPLFB_ERROR OMAPLFBInitFBDev(OMAPLFB_DEVINFO *psDevInfo)
 
 	psPVRFBInfo->ulWidth = psLINFBInfo->var.xres;
 	psPVRFBInfo->ulHeight = psLINFBInfo->var.yres;
+
+#if !defined(SUPPORT_DRI_DRM)
+	/*
+	 * Abort registering this DC device if no platform data found. This
+	 * shouldn't happen since the FB index must be valid at this point.
+	 */
+	psFBPlatConfig = GetFBPlatConfig(uiFBDevID);
+	if (!psFBPlatConfig)
+	{
+		eError = OMAPLFB_ERROR_INVALID_DEVICE;
+		goto ErrorFBRel;
+	}
+#endif
 
 	if (psPVRFBInfo->ulWidth == 0 || psPVRFBInfo->ulHeight == 0)
 	{
@@ -1395,7 +1501,9 @@ static OMAPLFB_ERROR OMAPLFBInitFBDev(OMAPLFB_DEVINFO *psDevInfo)
 			psDevInfo->uiFBDevID, psPVRFBInfo->ulHeight));
 
 #if defined(CONFIG_DSSCOMP)
+	if (psFBPlatConfig == NULL || psFBPlatConfig->tiler2d_buffers)
 	{
+		/* Use ION to create the flip chain buffers with TILER */
 #if defined(SUPPORT_PVRSRV_GET_DC_SYSTEM_BUFFER)
 		/*
 		 * Assume we need 3 swap buffers, and a separate system
@@ -1479,6 +1587,15 @@ static OMAPLFB_ERROR OMAPLFBInitFBDev(OMAPLFB_DEVINFO *psDevInfo)
 					phys + view.v_inc * y + ((x + i * w) << PAGE_SHIFT);
 				}
 			}
+		}
+	}
+	else if (psFBPlatConfig != NULL)
+	{
+		/* Fall back to allocate flip chain buffers with VRAM */
+		eError = OMAPLFBInitFBVRAM(psDevInfo, psLINFBInfo, psPVRFBInfo);
+		if (eError != OMAPLFB_OK)
+		{
+			goto ErrorModPut;
 		}
 	}
 #else /* defined(CONFIG_DSSCOMP) */

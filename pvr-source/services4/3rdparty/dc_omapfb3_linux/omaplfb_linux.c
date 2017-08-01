@@ -193,6 +193,10 @@ MODULE_SUPPORTED_DEVICE(DEVNAME);
 #endif	/* defined(PVR_OMAPFB3_OMAP5_UEVM) */
 #endif	/* !defined(PVR_OMAPLFB_DRM_FB) */
 
+#if !defined(SUPPORT_DRI_DRM)
+static struct sgx_omaplfb_platform_data *gplatdata;
+#endif
+
 void *OMAPLFBAllocKernelMem(unsigned long ulSize)
 {
 	return kmalloc(ulSize, GFP_KERNEL);
@@ -1247,6 +1251,77 @@ int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Ioctl)(struct drm_device unref__ *dev,
 }
 #endif
 
+#if defined(SUPPORT_DRI_DRM)
+struct sgx_omaplfb_config *GetFBPlatConfig(int fbix)
+{
+	return NULL;
+}
+#else
+struct sgx_omaplfb_config *GetFBPlatConfig(int fbix)
+{
+	if (fbix >= gplatdata->num_configs)
+	{
+		WARN(1, "Invalid FB device index");
+		return NULL;
+	}
+	return &gplatdata->configs[fbix];
+}
+
+static int omaplfb_probe(struct platform_device *pdev)
+{
+	struct omaplfb_device *odev = kzalloc(sizeof(*odev), GFP_KERNEL);
+
+	if (!odev)
+		return -ENOMEM;
+
+	odev->dev = &pdev->dev;
+	platform_set_drvdata(pdev, odev);
+	gplatdata = (struct sgx_omaplfb_platform_data *)odev->dev->platform_data;
+
+	if (!gplatdata)
+	{
+		WARN(1, "Platform data is null");
+		return -ENODEV;
+	}
+
+#if !defined(CONFIG_OMAPLFB)
+	if(OMAPLFBInit() != OMAPLFB_OK)
+	{
+		dev_err(&pdev->dev, "failed to probe omaplfb\n");
+		kfree(odev);
+		return -ENODEV;
+	}
+#endif
+
+	return 0;
+}
+
+static int omaplfb_remove(struct platform_device *pdev)
+{
+	struct omaplfb_device *odev;
+
+	odev = platform_get_drvdata(pdev);
+
+	if(OMAPLFBDeInit() != OMAPLFB_OK)
+	{
+		dev_err(&pdev->dev, "failed to remove omaplfb\n");
+	}
+
+	gplatdata = NULL;
+	kfree(odev);
+	return 0;
+}
+
+static struct platform_driver omaplfb_driver = {
+	.driver = {
+		.name = DRVNAME,
+		.owner  = THIS_MODULE,
+	},
+	.probe = omaplfb_probe,
+	.remove = omaplfb_remove,
+};
+#endif
+
 /* Insert the driver into the kernel */
 #if defined(SUPPORT_DRI_DRM)
 int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Init)(struct drm_device unref__ *dev)
@@ -1254,15 +1329,20 @@ int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Init)(struct drm_device unref__ *dev)
 static int __init OMAPLFB_Init(void)
 #endif
 {
-
+#if defined(SUPPORT_DRI_DRM)
 	if(OMAPLFBInit() != OMAPLFB_OK)
 	{
 		printk(KERN_ERR DRIVER_PREFIX ": %s: OMAPLFBInit failed\n", __FUNCTION__);
 		return -ENODEV;
 	}
-
+#else
+	if (platform_driver_register(&omaplfb_driver))
+	{
+		printk(KERN_ERR DRIVER_PREFIX ": %s: failed to register platform driver\n", __FUNCTION__);
+		return -ENODEV;
+	}
+#endif
 	return 0;
-
 }
 
 /* Remove the driver from the kernel */
@@ -1272,10 +1352,14 @@ void PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Cleanup)(struct drm_device unref__ *d
 static void __exit OMAPLFB_Cleanup(void)
 #endif
 {    
+#if defined(SUPPORT_DRI_DRM)
 	if(OMAPLFBDeInit() != OMAPLFB_OK)
 	{
 		printk(KERN_ERR DRIVER_PREFIX ": %s: OMAPLFBDeInit failed\n", __FUNCTION__);
 	}
+#else
+	platform_driver_unregister(&omaplfb_driver);
+#endif
 }
 
 #if !defined(SUPPORT_DRI_DRM)
