@@ -70,6 +70,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/omap_ion.h>
 #endif /* defined(CONFIG_ION_OMAP) */
 
+#if !defined(SUPPORT_DRI_DRM)
+#include <plat/sgx_omaplfb.h>
+#endif
+
 #define unref__ __attribute__ ((unused))
 
 typedef void *       OMAPLFB_HANDLE;
@@ -237,6 +241,12 @@ typedef struct OMAPLFB_DEVINFO_TAG
 
 }  OMAPLFB_DEVINFO;
 
+#if !defined(SUPPORT_DRI_DRM)
+struct omaplfb_device {
+	struct device *dev;
+};
+#endif
+
 #define	OMAPLFB_PAGE_SIZE 4096
 
 /* DEBUG only printk */
@@ -318,6 +328,10 @@ void OMAPLFBAtomicIntDeInit(OMAPLFB_ATOMIC_INT *psAtomic);
 void OMAPLFBAtomicIntSet(OMAPLFB_ATOMIC_INT *psAtomic, int iVal);
 int OMAPLFBAtomicIntRead(OMAPLFB_ATOMIC_INT *psAtomic);
 void OMAPLFBAtomicIntInc(OMAPLFB_ATOMIC_INT *psAtomic);
+
+#if !defined(SUPPORT_DRI_DRM)
+struct sgx_omaplfb_config *GetFBPlatConfig(int fbidx);
+#endif
 
 #if defined(DEBUG)
 void OMAPLFBPrintInfo(OMAPLFB_DEVINFO *psDevInfo);
