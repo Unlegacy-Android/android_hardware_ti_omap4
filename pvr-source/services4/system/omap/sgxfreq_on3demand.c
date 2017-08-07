@@ -47,13 +47,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static int on3demand_start(struct sgxfreq_sgx_data *data);
 static void on3demand_stop(void);
 static void on3demand_predict(void);
+static void on3demand_frame_done(void);
+static void on3demand_active(void);
+static void on3demand_timeout(struct work_struct *work);
 
 
 static struct sgxfreq_governor on3demand_gov = {
 	.name =	"on3demand",
 	.gov_start = on3demand_start,
 	.gov_stop = on3demand_stop,
-	.sgx_frame_done = on3demand_predict
+	.sgx_frame_done = on3demand_frame_done,
+	.sgx_active = on3demand_active,
 };
 
 static struct on3demand_data {
@@ -64,12 +68,19 @@ static struct on3demand_data {
 	unsigned long prev_total_idle;
 	unsigned long prev_total_active;
 	unsigned int low_load_cnt;
+	unsigned int poll_interval;
+	unsigned long delta_active;
+	unsigned long delta_idle;
+	bool polling_enabled;
+	struct delayed_work work;
 	struct mutex mutex;
 } odd;
 
 #define ON3DEMAND_DEFAULT_UP_THRESHOLD			80
 #define ON3DEMAND_DEFAULT_DOWN_THRESHOLD		30
 #define ON3DEMAND_DEFAULT_HISTORY_SIZE_THRESHOLD	5
+/* For Live wallpaper frame done at interval of ~64ms */
+#define ON3DEMAND_DEFAULT_POLL_INTERVAL			75
 
 /*FIXME: This should be dynamic and queried from platform */
 #define ON3DEMAND_FRAME_DONE_DEADLINE_MS 16
@@ -227,6 +238,10 @@ static int on3demand_start(struct sgxfreq_sgx_data *data)
 	odd.prev_total_active = 0;
 	odd.prev_total_idle = 0;
 	odd.low_load_cnt = 0;
+	odd.poll_interval = ON3DEMAND_DEFAULT_POLL_INTERVAL;
+	odd.polling_enabled = false;
+
+	INIT_DELAYED_WORK(&odd.work, on3demand_timeout);
 
 	ret = sysfs_create_group(sgxfreq_kobj, &on3demand_attr_group);
 	if (ret)
@@ -237,14 +252,14 @@ static int on3demand_start(struct sgxfreq_sgx_data *data)
 
 static void on3demand_stop(void)
 {
+	cancel_delayed_work_sync(&odd.work);
 	sysfs_remove_group(sgxfreq_kobj, &on3demand_attr_group);
 }
 
 static void on3demand_predict(void)
 {
 	static unsigned short first_sample = 1;
-	unsigned long total_active, delta_active;
-	unsigned long total_idle, delta_idle;
+	unsigned long total_active, total_idle;
 	unsigned long freq;
 
 	if (first_sample == 1) {
@@ -259,20 +274,21 @@ static void on3demand_predict(void)
 	total_idle = sgxfreq_get_total_idle_time();
 
 	/* Compute load */
-	delta_active = __delta32(total_active, odd.prev_total_active);
-	delta_idle = __delta32(total_idle, odd.prev_total_idle);
+	odd.delta_active = __delta32(total_active, odd.prev_total_active);
+	odd.delta_idle = __delta32(total_idle, odd.prev_total_idle);
 
 	/*
 	 * If SGX was active for longer than frame display time (1/fps),
 	 * scale to highest possible frequency.
 	 */
-	if (delta_active > ON3DEMAND_FRAME_DONE_DEADLINE_MS) {
+	if (odd.delta_active > ON3DEMAND_FRAME_DONE_DEADLINE_MS) {
 		odd.low_load_cnt = 0;
 		sgxfreq_set_freq_request(sgxfreq_get_freq_max());
 	}
 
-	if ((delta_active + delta_idle))
-		odd.load = (100 * delta_active / (delta_active + delta_idle));
+	if ((odd.delta_active + odd.delta_idle))
+		odd.load = (100 * odd.delta_active / (odd.delta_active + odd.delta_idle));
+
 	odd.prev_total_active = total_active;
 	odd.prev_total_idle = total_idle;
 
@@ -291,5 +307,43 @@ static void on3demand_predict(void)
 		}
 	} else {
 		odd.low_load_cnt = 0;
+	}
+}
+
+
+static void on3demand_active(void)
+{
+	if (!odd.polling_enabled) {
+		sgxfreq_set_freq_request(sgxfreq_get_freq_max());
+		odd.low_load_cnt = 0;
+		odd.polling_enabled = true;
+		schedule_delayed_work(&odd.work, odd.poll_interval * HZ/1000);
+	}
+
+}
+
+static void on3demand_frame_done(void)
+{
+	if (odd.polling_enabled) {
+		cancel_delayed_work_sync(&odd.work);
+		schedule_delayed_work(&odd.work, odd.poll_interval * HZ/1000);
+	}
+	on3demand_predict();
+}
+
+static void on3demand_timeout(struct work_struct *work)
+{
+	/*
+	 * If sgx was idle all throughout timer disable polling and
+	 * enable it on next sgx active event
+	 */
+	if (!odd.delta_active) {
+		sgxfreq_set_freq_request(sgxfreq_get_freq_min());
+		odd.low_load_cnt = 0;
+		odd.polling_enabled = false;
+	} else {
+		on3demand_predict();
+		odd.polling_enabled = true;
+		schedule_delayed_work(&odd.work, odd.poll_interval * HZ/1000);
 	}
 }
