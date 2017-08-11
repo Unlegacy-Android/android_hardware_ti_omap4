@@ -335,6 +335,7 @@ OMX_ERRORTYPE OMX_GetHandle(OMX_HANDLETYPE *pHandle,
         *pHandle = NULL;
         pComponents[i] = NULL;
         dlclose(pModules[i]);
+        pModules[i] = NULL;
         goto EXIT;
     }
     eError = OMX_ErrorNone;
