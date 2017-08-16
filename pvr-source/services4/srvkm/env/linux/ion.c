@@ -58,6 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include SUPPORT_ION_PRIV_HEADER
 
 #if defined(CONFIG_ION_OMAP)
 #include <linux/omap_ion.h>
@@ -143,7 +144,6 @@ IMG_VOID IonDeinit(IMG_VOID)
 
 /* "Reference" ion implementation */
 
-#include SUPPORT_ION_PRIV_HEADER
 #include <linux/version.h>
 #include "ion_sys_private.h"
 #include "lma_heap_ion.h"
@@ -450,10 +450,11 @@ PVRSRV_ERROR IonImportBufferAndAcquirePhysAddr(IMG_HANDLE hIonDev,
 		 *
 		 * Also, ion prints out an error message if the heap doesn't implement
 		 * ->phys(), which we want to avoid, so only use ->phys() if the
-		 * sg_table contains a single span and therefore could plausibly
-		 * be a contiguous allocator.
+		 * sg_table contains a single span and the heap type isn't SYSTEM,
+		 * therefore it could plausibly be a contiguous allocator.
 		 */
-		if(!sg_next(psScatterList[i]))
+		if(!sg_next(psScatterList[i]) &&
+			psImportData->apsIonHandle[i]->buffer->heap->type != ION_HEAP_TYPE_SYSTEM)
 		{
 			ion_phys_addr_t sPhyAddr;
 			size_t sLength;
