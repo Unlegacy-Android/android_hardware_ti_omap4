@@ -12,6 +12,10 @@ LOCAL_CFLAGS := -Wall -Werror
 
 LOCAL_MODULE_TAGS := optional
 
+ifdef ANDROID_API_O_OR_LATER
+LOCAL_SHARED_LIBRARIES := libarect
+endif
+
 LOCAL_MODULE := libI420colorconvert
 
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
