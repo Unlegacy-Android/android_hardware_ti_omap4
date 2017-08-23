@@ -1,5 +1,6 @@
 
 # Makefile variables and C/C++ macros to recognize API level
+ANDROID_API_O_OR_LATER :=
 ANDROID_API_N_MR1_OR_LATER :=
 ANDROID_API_N_OR_LATER :=
 ANDROID_API_MM_OR_LATER :=
@@ -11,6 +12,10 @@ ANDROID_API_JB_OR_LATER :=
 ANDROID_API_ICS_OR_LATER :=
 ANDROID_API_CFLAGS :=
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 || echo 1),)
+    ANDROID_API_O_OR_LATER := true
+    ANDROID_API_CFLAGS += -DANDROID_API_O_OR_LATER
+endif
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 25 || echo 1),)
     ANDROID_API_N_MR1_OR_LATER := true
     ANDROID_API_CFLAGS += -DANDROID_API_N_MR1_OR_LATER
