@@ -18,11 +18,9 @@
 #define DEBUG_UTILS_H
 
 #include <android/log.h>
+#include <cutils/atomic.h>
 #include <utils/threads.h>
 #include <utils/Vector.h>
-
-
-
 
 namespace Ti {
 
