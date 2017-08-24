@@ -53,3 +53,34 @@ PRODUCT_PACKAGES += \
 # compatiblity for older binaries
 PRODUCT_PACKAGES += \
     libcorkscrew
+
+PRDOUCT_PACKAGES += \
+    android.hardware.audio@2.0-service \
+    android.hardware.audio@2.0-impl \
+    android.hardware.audio.effect@2.0-impl
+
+PRDOUCT_PACKAGES += \
+    android.hardware.renderscript@1.0-impl \
+    android.hardware.graphics.allocator@2.0-impl \
+    android.hardware.graphicscomposer@2.1-impl \
+    android.hardware.graphics.mapper@2.0-impl
+
+# Keymaster HAL
+PRDOUCT_PACKAGES += \
+    android.hardware.keymaster@3.0-impl
+
+# USB
+PRDOUCT_PACKAGES += \
+    android.hardware.power@1.0-impl \
+    android.hardware.usb@1.0-service
+
+# OMX service to non-Trebel
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    persist.media.treble_omx=false
+
+# Interface Manifest
+PRODUCT_COPY_FILES += \
+    hardware/ti/omap4/manifest.xml:system/vendor/manifest.xml
+
+PRODUCT_COPY_FILES += \
+    hardware/ti/omap4/seccomp/mediacodec-seccomp.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediacodec.policy
