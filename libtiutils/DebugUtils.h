@@ -21,8 +21,9 @@
 #include <utils/threads.h>
 #include <utils/Vector.h>
 
-
-
+#ifdef ANDROID_API_O_OR_LATER
+#include <cutils/atomic.h>
+#endif
 
 namespace Ti {
 
