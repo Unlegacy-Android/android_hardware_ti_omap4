@@ -49,9 +49,14 @@ TARGET_BOOTANIMATION_PRELOAD := false
 TARGET_BOOTANIMATION_TEXTURE_CACHE := false
 TARGET_BOOTANIMATION_USE_RGB565 := true
 
+ifeq ($(filter 8.0.0,$(PLATFORM_VERSION)),)
 # seccomp
 BOARD_SECCOMP_POLICY += \
     $(OMAP4_NEXT_FOLDER)/seccomp
+else
+SF_START_GRAPHICS_ALLOCATOR_SERVICE := true
+endif
+
 
 # SELinux
 include $(OMAP4_NEXT_FOLDER)/sepolicy/sepolicy.mk
