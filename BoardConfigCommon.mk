@@ -55,6 +55,7 @@ BOARD_SECCOMP_POLICY += \
     $(OMAP4_NEXT_FOLDER)/seccomp
 else
 SF_START_GRAPHICS_ALLOCATOR_SERVICE := true
+BOARD_USE_EGL2 := true
 endif
 
 
