@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 #define LOG_TAG "TI OMAP PowerHAL"
 #include <utils/Log.h>
@@ -257,8 +258,47 @@ static void omap_set_feature(struct power_module *module,
 }
 #endif
 
+#ifdef ANDROID_API_O_OR_LATER
+static int power_open(const hw_module_t* module __unused, const char* name,
+                    hw_device_t** device)
+{
+    ALOGD("%s: enter; name=%s", __FUNCTION__, name);
+
+    if (strcmp(name, POWER_HARDWARE_MODULE_ID)) {
+        return -EINVAL;
+    }
+
+    power_module_t *dev = (power_module_t *)calloc(1,
+            sizeof(power_module_t));
+
+    if (!dev) {
+        ALOGD("%s: failed to allocate memory", __FUNCTION__);
+        return -ENOMEM;
+    }
+
+    dev->common.tag = HARDWARE_MODULE_TAG;
+    dev->common.module_api_version = POWER_MODULE_API_VERSION_0_3;
+    dev->common.hal_api_version = HARDWARE_HAL_API_VERSION;
+
+    dev->init = omap_power_init;
+    dev->powerHint = omap_power_hint;
+    dev->setInteractive = omap_power_set_interactive;
+    dev->setFeature = omap_set_feature;
+
+    *device = (hw_device_t*)dev;
+
+    ALOGD("%s: exit", __FUNCTION__);
+
+    return 0;
+}
+#endif
+
 static struct hw_module_methods_t power_module_methods = {
+#ifdef ANDROID_API_O_OR_LATER
+    .open = power_open,
+#else
     .open = NULL,
+#endif
 };
 
 struct omap_power_module HAL_MODULE_INFO_SYM = {
