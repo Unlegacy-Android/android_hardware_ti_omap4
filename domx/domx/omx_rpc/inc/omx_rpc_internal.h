@@ -81,8 +81,6 @@ extern "C"
  ******************************************************************/
 /* *********************** OMX RPC DEFINES***********************************/
 
-/*This defines the maximum number of remote functions that can be registered*/
-#define RPC_OMX_MAX_FUNCTION_LIST 21
 /*Packet size for each message*/
 #define RPC_PACKET_SIZE 0x12C
 
@@ -129,7 +127,7 @@ extern "C"
 		RPC_OMX_FXN_IDX_EVENTHANDLER = 16,
 		RPC_OMX_FXN_IDX_ALLOCATE_BUFFER = 17,
 		RPC_OMX_FXN_IDX_COMP_TUNNEL_REQUEST = 18,
-		RPC_OMX_FXN_IDX_MAX = RPC_OMX_MAX_FUNCTION_LIST
+		RPC_OMX_FXN_IDX_MAX
 	} RPC_OMX_FXN_IDX_TYPE;
 
 
@@ -177,7 +175,7 @@ extern "C"
 		OMX_S32 fd_omx;
 		OMX_S32 fd_killcb;
 		pthread_t cbThread;
-		OMX_PTR pMsgPipe[RPC_OMX_MAX_FUNCTION_LIST];
+		OMX_PTR pMsgPipe[RPC_OMX_FXN_IDX_MAX];
 		OMX_HANDLETYPE hRemoteHandle;
 		OMX_HANDLETYPE hActualRemoteCompHandle;
 		OMX_PTR pAppData;

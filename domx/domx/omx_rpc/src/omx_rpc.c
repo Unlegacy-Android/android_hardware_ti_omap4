@@ -207,7 +207,7 @@ RPC_OMX_ERRORTYPE RPC_InstanceInit(__unused OMX_STRING cComponentName,
 	    "Can't connect");
 #endif
 
-	for (i = 0; i < RPC_OMX_MAX_FUNCTION_LIST; i++)
+	for (i = 0; i < RPC_OMX_FXN_IDX_MAX; i++)
 	{
 		eError =
 		    TIMM_OSAL_CreatePipe(&(pRPCCtx->pMsgPipe[i]),
@@ -293,7 +293,7 @@ RPC_OMX_ERRORTYPE RPC_InstanceDeInit(OMX_HANDLETYPE hRPCCtx)
 		}
 	}
 
-	for (i = 0; i < RPC_OMX_MAX_FUNCTION_LIST; i++)
+	for (i = 0; i < RPC_OMX_FXN_IDX_MAX; i++)
 	{
 		if (pRPCCtx->pMsgPipe[i])
 		{
@@ -378,7 +378,7 @@ void *RPC_CallbackThread(void *data)
             {
                 if(errno == ENXIO)
                 {
-		    for(nFxnIdx = 0; nFxnIdx < RPC_OMX_MAX_FUNCTION_LIST; nFxnIdx++)
+		    for(nFxnIdx = 0; nFxnIdx < RPC_OMX_FXN_IDX_MAX; nFxnIdx++)
 		    {
 			((struct omx_packet *) pBufferError)->result = OMX_ErrorHardware;
 			TIMM_OSAL_WriteToPipe(pRPCCtx->pMsgPipe[nFxnIdx], &pBuff, RPC_MSG_SIZE_FOR_PIPE, TIMM_OSAL_SUSPEND);
@@ -401,7 +401,7 @@ void *RPC_CallbackThread(void *data)
 			/*Indices from static table will have bit 31 set */
 			if (nFxnIdx & 0x80000000)
 				nFxnIdx &= 0x0FFFFFFF;
-			RPC_assert(nFxnIdx < RPC_OMX_MAX_FUNCTION_LIST,
+			RPC_assert(nFxnIdx < RPC_OMX_FXN_IDX_MAX,
 			    RPC_OMX_ErrorUndefined,
 			    "Bad function index recd");
 			switch (nFxnIdx)
