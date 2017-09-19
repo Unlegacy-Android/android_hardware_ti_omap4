@@ -79,6 +79,8 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
     pIonParams = ((MEMPLUGIN_ION_PARAMS *)pMemPluginHdl->pPluginExtendedInfo);
     MEMPLUGIN_BUFFER_PARAMS_INIT(newBuffer_params);
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
+    MEMPLUGIN_BUFFER_PROPS_INIT(newBuffer_prop);
+    MEMPLUGIN_BUFFER_PROPS_INIT(delBuffer_prop);
     switch ((unsigned int)nParamIndex)
     {
 #ifndef DOMX_TUNA
@@ -129,8 +131,10 @@ OMX_ERRORTYPE GLUE_CameraSetParam(OMX_IN OMX_HANDLETYPE
                    }
                    pCamPrv->gComponentBufferAllocation[port][index] = newBuffer_prop.sBuffer_accessor.pBufferHandle;
                 }
-		close (newBuffer_prop.sBuffer_accessor.bufferFd);
-		newBuffer_prop.sBuffer_accessor.bufferFd = -1;
+                if (newBuffer_prop.sBuffer_accessor.bufferFd >= 0) {
+                       close(newBuffer_prop.sBuffer_accessor.bufferFd);
+                       newBuffer_prop.sBuffer_accessor.bufferFd = -1;
+                }
         }
 #endif
 		goto EXIT;
@@ -170,6 +174,8 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
 
 	MEMPLUGIN_BUFFER_PARAMS_INIT(newBuffer_params);
 	MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
+	MEMPLUGIN_BUFFER_PROPS_INIT(newBuffer_prop);
+	MEMPLUGIN_BUFFER_PROPS_INIT(delBuffer_prop);
 	for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
         pVtcConfig->nInternalBuffers = i;
         newBuffer_params.nWidth = nFrmWidth;
@@ -203,8 +209,10 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
         PROXY_checkRpcError();
         pVtcConfig->IonBufhdl[0] = (OMX_PTR)pCamPrv->sInternalBuffers[i][0].pRegBufferHandle;
         pCamPrv->sInternalBuffers[i][0].pBufferHandle = newBuffer_prop.sBuffer_accessor.pBufferHandle;
-        close (newBuffer_prop.sBuffer_accessor.bufferFd);
-        newBuffer_prop.sBuffer_accessor.bufferFd = -1;
+        if (newBuffer_prop.sBuffer_accessor.bufferFd >= 0) {
+                close(newBuffer_prop.sBuffer_accessor.bufferFd);
+                newBuffer_prop.sBuffer_accessor.bufferFd = -1;
+        }
         DOMX_DEBUG(" DOMX: ION Buffer#%d: Y: 0x%x, eError = 0x%x, eRPCError = 0x%x\n", i, pVtcConfig->IonBufhdl[0], eError, eRPCError);
 
 		MEMPLUGIN_BUFFER_PARAMS_INIT(newBuffer_params);
@@ -235,7 +243,10 @@ OMX_ERRORTYPE GLUE_CameraVtcAllocateMemory(OMX_IN OMX_HANDLETYPE hComponent, OMX
         PROXY_checkRpcError();
         pVtcConfig->IonBufhdl[1] = pCamPrv->sInternalBuffers[i][1].pRegBufferHandle;
         pCamPrv->sInternalBuffers[i][1].pBufferHandle = newBuffer_prop.sBuffer_accessor.pBufferHandle;
-        close (newBuffer_prop.sBuffer_accessor.bufferFd);
+        if (newBuffer_prop.sBuffer_accessor.bufferFd >= 0) {
+                close(newBuffer_prop.sBuffer_accessor.bufferFd);
+                newBuffer_prop.sBuffer_accessor.bufferFd = -1;
+        }
         DOMX_DEBUG("DOMX: ION Buffer#%d: UV: 0x%x, eError: 0x%x eRPCError: 0x%x\n", i, pVtcConfig->IonBufhdl[1],eError,eRPCError);
 
         eError = __PROXY_SetParameter(hComponent,
