@@ -93,7 +93,7 @@ typedef enum MEMPLUGIN_TILER_FORMAT
 typedef struct MEMPLUGIN_BUFFER_ACCESSOR
 {
     OMX_PTR pBufferHandle;
-    OMX_U32 bufferFd;
+    int bufferFd;
     OMX_PTR pRegBufferHandle;
     OMX_PTR pBufferMappedAddress;
 }MEMPLUGIN_BUFFER_ACCESSOR;
