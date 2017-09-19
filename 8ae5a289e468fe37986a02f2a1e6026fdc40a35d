@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8bc09cfd_bf8956ac",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:31:49Z",
+      "side": 1,
+      "message": "We could spell it out: \"Include cutils/atomic.h on Oreo\", then maybe add the relevant build error.",
+      "range": {
+        "startLine": 7,
+        "startChar": 12,
+        "endLine": 7,
+        "endChar": 21
+      },
+      "revId": "8ae5a289e468fe37986a02f2a1e6026fdc40a35d",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
