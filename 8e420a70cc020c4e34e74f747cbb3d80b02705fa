@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a607f35_d375c8b0",
+        "filename": "common.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:43:59Z",
+      "side": 1,
+      "message": "Is this accounting for our different audio HALs?",
+      "range": {
+        "startLine": 57,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 42
+      },
+      "revId": "8e420a70cc020c4e34e74f747cbb3d80b02705fa",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4763cf99_2b85a6b8",
+        "filename": "common.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:43:59Z",
+      "side": 1,
+      "message": "Typo, and maybe: \"DOMX needs non-Treble OMX service\"?",
+      "range": {
+        "startLine": 77,
+        "startChar": 2,
+        "endLine": 77,
+        "endChar": 27
+      },
+      "revId": "8e420a70cc020c4e34e74f747cbb3d80b02705fa",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3c1077b_5258bac0",
+        "filename": "common.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:43:59Z",
+      "side": 1,
+      "message": "Maybe mediacodec-omap4.policy?",
+      "range": {
+        "startLine": 86,
+        "startChar": 101,
+        "endLine": 86,
+        "endChar": 118
+      },
+      "revId": "8e420a70cc020c4e34e74f747cbb3d80b02705fa",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "360a55c0_43315015",
+        "filename": "manifest.xml",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:43:59Z",
+      "side": 1,
+      "message": "32 enough for us?",
+      "range": {
+        "startLine": 15,
+        "startChar": 25,
+        "endLine": 15,
+        "endChar": 30
+      },
+      "revId": "8e420a70cc020c4e34e74f747cbb3d80b02705fa",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2da76b20_8e5e686f",
+        "filename": "manifest.xml",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-09-19T03:43:59Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 24,
+        "startChar": 25,
+        "endLine": 24,
+        "endChar": 30
+      },
+      "revId": "8e420a70cc020c4e34e74f747cbb3d80b02705fa",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
