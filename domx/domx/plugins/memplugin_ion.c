@@ -234,7 +234,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
                                 sIonParams.map_flags,
                                 sIonParams.nOffset,
                                 (unsigned char **) &(pIonBufferProp->sBuffer_accessor.pBufferMappedAddress),
-                                (int *)&(pIonBufferProp->sBuffer_accessor.bufferFd));
+                                &(pIonBufferProp->sBuffer_accessor.bufferFd));
 
         if(ret < 0)
         {
@@ -247,7 +247,7 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
     {
         ret = (OMX_S16) ion_share(nClient,
                                     (ion_user_handle_t)pIonBufferProp->sBuffer_accessor.pBufferHandle,
-                                    (int *)&(pIonBufferProp->sBuffer_accessor.bufferFd));
+                                    &(pIonBufferProp->sBuffer_accessor.bufferFd));
         if(ret < 0)
         {
                 DOMX_ERROR("ION share returned error");
@@ -279,7 +279,10 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Free(__unused void *pMemPluginHandle,OMX_U32 n
     munmap(pIonBufferProp->sBuffer_accessor.pBufferMappedAddress, pIonBufferParams->nHeight * pIonBufferParams->nWidth);
     }
     //close
-    close(pIonBufferProp->sBuffer_accessor.bufferFd);
+    if (pIonBufferProp->sBuffer_accessor.bufferFd >= 0) {
+        close(pIonBufferProp->sBuffer_accessor.bufferFd);
+        pIonBufferProp->sBuffer_accessor.bufferFd = -1;
+    }
     //free
     ion_free(nClient, (ion_user_handle_t)pIonBufferProp->sBuffer_accessor.pBufferHandle);
 
