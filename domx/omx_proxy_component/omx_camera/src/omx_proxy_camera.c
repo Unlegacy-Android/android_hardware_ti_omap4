@@ -112,6 +112,7 @@ OMX_ERRORTYPE OMX_CameraVtcFreeMemory(OMX_IN OMX_HANDLETYPE hComponent)
     pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
 
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
+    MEMPLUGIN_BUFFER_PROPS_INIT(delBuffer_prop);
 
     for(i=0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
         if (pCamPrv->sInternalBuffers[i][0].pBufferHandle != NULL) {
@@ -250,6 +251,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
     RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 
         MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
+        MEMPLUGIN_BUFFER_PROPS_INIT(delBuffer_prop);
 	pCompPrv = (PROXY_COMPONENT_PRIVATE *) hComp->pComponentPrivate;
 
 #ifdef USES_LEGACY_DOMX_DCC
@@ -315,6 +317,7 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
     pCamPrv = (OMX_PROXY_CAM_PRIVATE*)pCompPrv->pCompProxyPrv;
 
     MEMPLUGIN_BUFFER_PARAMS_INIT(delBuffer_params);
+    MEMPLUGIN_BUFFER_PROPS_INIT(delBuffer_prop);
     if ((eCmd == OMX_CommandStateSet) &&
         (nParam == (OMX_STATETYPE) OMX_StateIdle))
     {

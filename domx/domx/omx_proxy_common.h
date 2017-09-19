@@ -152,6 +152,14 @@ extern "C"
         MEMPLUGIN_bufferinfo.eTiler_format = -1;\
 } while(0)
 
+#define MEMPLUGIN_BUFFER_PROPS_INIT(MEMPLUGIN_bufferprops) do {\
+        MEMPLUGIN_bufferprops.sBuffer_accessor.pBufferHandle = NULL;\
+        MEMPLUGIN_bufferprops.sBuffer_accessor.bufferFd = -1;\
+        MEMPLUGIN_bufferprops.sBuffer_accessor.pRegBufferHandle = NULL;\
+        MEMPLUGIN_bufferprops.sBuffer_accessor.pBufferMappedAddress = NULL;\
+        MEMPLUGIN_bufferprops.nStride = -1;\
+} while(0)
+
 	typedef OMX_ERRORTYPE(*PROXY_EMPTYBUFFER_DONE) (OMX_HANDLETYPE
 	    hComponent, OMX_U32 remoteBufHdr, OMX_U32 nfilledLen,
 	    OMX_U32 nOffset, OMX_U32 nFlags);
