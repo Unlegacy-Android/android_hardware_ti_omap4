@@ -308,10 +308,10 @@ RPC_OMX_ERRORTYPE RPC_InstanceDeInit(OMX_HANDLETYPE hRPCCtx)
 	}
 
 	DOMX_DEBUG("Closing the omx fd");
-	if (pRPCCtx->fd_omx)
+	if (pRPCCtx->fd_omx >= 0)
 	{
 		status = close(pRPCCtx->fd_omx);
-		pRPCCtx->fd_omx = 0;
+		pRPCCtx->fd_omx = -1;
 		if (status != 0)
 		{
 			DOMX_ERROR("Close failed on omx fd");
