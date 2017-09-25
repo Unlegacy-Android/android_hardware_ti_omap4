@@ -28,23 +28,23 @@ PRODUCT_COPY_FILES += \
     $(OMAP4_NEXT_FOLDER)/rootdir/init.omap4.rc:root/init.omap4.rc
 
 # SGX540 is slower with the scissor optimization enabled
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.disable_scissor_opt=true
 
 # Disable dirty regions invalidation
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+PRODUCT_PROPERTY_OVERRIDES += \
     debug.hwui.render_dirty_regions=false
 
 # We don't support eglSwapBuffersWithDamageKHR; this avoids some unnecessary code
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+PRODUCT_PROPERTY_OVERRIDES += \
     debug.hwui.swap_with_damage=false
 
 # We don't support the new camera API
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+PRODUCT_PROPERTY_OVERRIDES += \
     camera2.portability.force_api=1
 
 # GPU producer to CPU consumer not supported
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+PRODUCT_PROPERTY_OVERRIDES += \
     ro.bq.gpu_to_cpu_unsupported=1
 
 $(call inherit-product, hardware/ti/omap4/common.mk)
