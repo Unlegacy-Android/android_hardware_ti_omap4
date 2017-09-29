@@ -22,6 +22,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
     persist.media.treble_omx=false
 
 PRODUCT_PACKAGES += \
+    android.hardware.graphics.allocator@2.0-impl \
+    android.hardware.graphics.mapper@2.0-impl \
     libdomx \
     libOMX_Core \
     libOMX.TI.DUCATI1.VIDEO.H264E \

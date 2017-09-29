@@ -18,6 +18,7 @@
 OMAP4_NEXT_FOLDER := hardware/ti/omap4
 
 PRODUCT_PACKAGES += \
+    android.hardware.graphics.composer@2.1-impl \
     hwcomposer.omap4 \
     power.omap4
 
