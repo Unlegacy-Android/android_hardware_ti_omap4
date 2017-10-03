@@ -46,6 +46,9 @@ TARGET_BOOTANIMATION_PRELOAD := false
 TARGET_BOOTANIMATION_TEXTURE_CACHE := false
 TARGET_BOOTANIMATION_USE_RGB565 := true
 
+# Partial HIDL manifest
+DEVICE_MANIFEST_FILE += $(OMAP4_NEXT_FOLDER)/manifest.xml
+
 # SELinux
 include $(OMAP4_NEXT_FOLDER)/sepolicy/sepolicy.mk
 
