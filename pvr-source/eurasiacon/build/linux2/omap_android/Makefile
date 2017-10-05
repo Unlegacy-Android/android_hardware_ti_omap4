@@ -116,6 +116,10 @@ SUPPORT_PVRSRV_ANDROID_SYSTRACE := 1
 
 SUPPORT_DMABUF := 1
 
+# Enable PVR_DPF prints for fatal/error
+PVRSRV_NEED_PVR_DPF := 1
+PVRSRV_NEW_PVR_DPF := 1
+
 # TODO: Set SUPPORT_PVRSVR_DEVICE_CLASS to 0
 #DISPLAY_CONTROLLER should not be used for DRM based display controller
 ifneq ($(SUPPORT_PVRSRV_DEVICE_CLASS),0)
