@@ -37,6 +37,7 @@ PRODUCT_PACKAGES += \
     libstagefrighthw \
     libI420colorconvert \
     libtiutils \
+    android.hardware.keymaster@3.0-impl \
     smc_pa_ctrl \
     tf_daemon \
     libtf_crypto_sst

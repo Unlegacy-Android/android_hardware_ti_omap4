@@ -20,6 +20,7 @@ OMAP4_NEXT_FOLDER := hardware/ti/omap4
 PRODUCT_PACKAGES += \
     android.hardware.graphics.composer@2.1-impl \
     hwcomposer.omap4 \
+    android.hardware.power@1.0-impl \
     power.omap4
 
 PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
