@@ -278,6 +278,7 @@ static int power_open(const hw_module_t* module, const char* name,
     dev->common.tag = HARDWARE_MODULE_TAG;
     dev->common.module_api_version = POWER_MODULE_API_VERSION_0_3;
     dev->common.hal_api_version = HARDWARE_HAL_API_VERSION;
+    dev->common.name = "OMAP Power HAL";
 
     dev->init = omap_power_init;
     dev->powerHint = omap_power_hint;
@@ -316,11 +317,13 @@ struct omap_power_module HAL_MODULE_INFO_SYM = {
             .methods = &power_module_methods,
         },
 
+#ifndef ANDROID_API_O_OR_LATER
        .init = omap_power_init,
        .setInteractive = omap_power_set_interactive,
        .powerHint = omap_power_hint,
 #ifdef ANDROID_API_LP_MR1_OR_LATER
        .setFeature = omap_set_feature,
+#endif
 #endif
     },
 
