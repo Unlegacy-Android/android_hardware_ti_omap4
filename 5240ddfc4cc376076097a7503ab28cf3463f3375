@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c4c03bd_10bfee5f",
+        "filename": "libI420colorconvert/Android.mk",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-10-24T13:13:40Z",
+      "side": 1,
+      "message": "Does this have to be static? Need to investigate if libarect is used in other places.",
+      "range": {
+        "startLine": 16,
+        "startChar": 6,
+        "endLine": 16,
+        "endChar": 12
+      },
+      "revId": "5240ddfc4cc376076097a7503ab28cf3463f3375",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
