@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f57f4f1e_b05789d6",
+        "filename": "omap4.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-11-18T20:11:37Z",
+      "side": 1,
+      "message": "I\u0027d like a cleaner description here. This affects more than lock screen. What about something like:\n# Ensure release of EGL buffer in the ColorFade class",
+      "revId": "923d64f0c3f813a6f367d46173f427a904fb9ccf",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
