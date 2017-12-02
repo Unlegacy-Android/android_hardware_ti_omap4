@@ -18,7 +18,7 @@ PVR_MODULES:
 			ARCH=arm $(if $(ARM_CROSS_COMPILE),$(ARM_CROSS_COMPILE),$(KERNEL_CROSS_COMPILE)) \
 			TARGET_SGX=$(if $(filter-out 4470,$(TARGET_BOARD_OMAP_CPU)),540,544sc) \
 			KERNELDIR=$(KERNEL_OUT) BUILD=release
-	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm.ko $(KERNEL_MODULES_OUT)
+	mv $(KERNELDIR)/../../target/kbuild/pvrsrvkm.ko $(KERNEL_MODULES_OUT)
 	$(if $(ARM_EABI_TOOLCHAIN),$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip, \
 			$(KERNEL_TOOLCHAIN_PATH)strip) --strip-unneeded \
 			$(KERNEL_MODULES_OUT)/pvrsrvkm.ko
