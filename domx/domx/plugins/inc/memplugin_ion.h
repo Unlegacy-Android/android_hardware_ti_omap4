@@ -68,9 +68,9 @@ typedef struct MEMPLUGIN_ION_PARAMS {
  *   MACROS DEFINITION
  ******************************************************************/
 #define MEMPLUGIN_ION_PARAMS_INIT(buffer_ion_params) do {\
-        (buffer_ion_params)->alloc_flags = 1 << OMAP_ION_HEAP_SECURE_INPUT;\
+        (buffer_ion_params)->alloc_flags = OMAP_ION_HEAP_TILER_MASK;\
         (buffer_ion_params)->map_flags = MAP_SHARED;\
-        (buffer_ion_params)->nAlign = 0x1000;\
+        (buffer_ion_params)->nAlign = -1;\
         (buffer_ion_params)->prot = PROT_READ | PROT_WRITE;\
         (buffer_ion_params)->nOffset = 0;\
 }while(0)
