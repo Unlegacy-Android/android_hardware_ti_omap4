@@ -157,42 +157,6 @@ MEMPLUGIN_ERRORTYPE MemPlugin_ION_Alloc(void *pMemPluginHandle, OMX_U32 nClient,
     {
         MEMPLUGIN_ION_PARAMS_COPY(((MEMPLUGIN_ION_PARAMS *)pMemPluginHdl->pPluginExtendedInfo),sIonParams);
     }
-    if(pIonBufferParams->eBuffer_type == DEFAULT)
-    {
-        ret = (OMX_S16)ion_alloc(nClient,
-                                    pIonBufferParams->nWidth,
-                                    sIonParams.nAlign,
-                                    sIonParams.alloc_flags,
-                                    0,
-                                    (ion_user_handle_t *)&temp);
-        if(ret || (int)temp == -ENOMEM)
-        {
-            if(sIonParams.alloc_flags != (1 << OMAP_ION_HEAP_SECURE_INPUT))
-            {
-               //for non default types of allocation - no retry with tiler 1d - throw error
-//STARGO: ducati secure heap is too small, need to allocate from heap
-#ifdef DOMX_LOW_SECURE_HEAP
-               pIonBufferParams->eBuffer_type = TILER1D;
-               pIonBufferParams->eTiler_format = MEMPLUGIN_TILER_FORMAT_PAGE;
-               sIonParams.alloc_flags = OMAP_ION_HEAP_TILER_MASK;
-               sIonParams.nAlign = -1;
-#else
-               DOMX_ERROR("FAILED to allocate secure buffer of size=%d. ret=0x%x",pIonBufferParams->nWidth, ret);
-               eError = MEMPLUGIN_ERROR_NORESOURCES;
-               goto EXIT;
-#endif
-            }
-            else
-            {
-                // for default non tiler (OMAP_ION_HEAP_SECURE_INPUT) retry allocating from tiler 1D
-                DOMX_DEBUG("FAILED to allocate from non tiler space - trying tiler 1d space");
-                pIonBufferParams->eBuffer_type = TILER1D;
-                pIonBufferParams->eTiler_format = MEMPLUGIN_TILER_FORMAT_PAGE;
-                sIonParams.alloc_flags = OMAP_ION_HEAP_TILER_MASK;
-                sIonParams.nAlign = -1;
-            }
-        }
-    }
     if(pIonBufferParams->eBuffer_type == TILER1D)
     {
         ret = (OMX_S16)ion_alloc_tiler(nClient,

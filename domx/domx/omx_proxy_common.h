@@ -145,11 +145,11 @@ extern "C"
 } while(0)
 
 #define MEMPLUGIN_BUFFER_PARAMS_INIT(MEMPLUGIN_bufferinfo) do {\
-        MEMPLUGIN_bufferinfo.eBuffer_type = DEFAULT;\
+        MEMPLUGIN_bufferinfo.eBuffer_type = TILER1D;\
         MEMPLUGIN_bufferinfo.nHeight = 1;\
         MEMPLUGIN_bufferinfo.nWidth  = -1;\
         MEMPLUGIN_bufferinfo.bMap   = OMX_FALSE;\
-        MEMPLUGIN_bufferinfo.eTiler_format = -1;\
+        MEMPLUGIN_bufferinfo.eTiler_format = MEMPLUGIN_TILER_FORMAT_PAGE;\
 } while(0)
 
 #define MEMPLUGIN_BUFFER_PROPS_INIT(MEMPLUGIN_bufferprops) do {\
