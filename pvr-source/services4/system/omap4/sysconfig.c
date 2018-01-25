@@ -574,7 +574,7 @@ PVRSRV_ERROR SysInitialise(IMG_VOID)
 	return PVRSRV_OK;
 }
 
-#if defined(CONFIG_OMAPLFB)
+#if defined(CONFIG_OMAPLFB) || defined(CONFIG_OMAPLFB_MODULE)
 int OMAPLFBRegisterPVRDriver(void * pfnFuncTable);
 #endif
 
@@ -640,7 +640,7 @@ PVRSRV_ERROR SysFinalise(IMG_VOID)
 	DisableSGXClocks(gpsSysData);
 #endif	/* SUPPORT_ACTIVE_POWER_MANAGEMENT */
 
-#if defined(CONFIG_OMAPLFB)
+#if defined(CONFIG_OMAPLFB) || defined(CONFIG_OMAPLFB_MODULE)
 	if (OMAPLFBRegisterPVRDriver((void *)&PVRGetDisplayClassJTable) != 0)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"SysFinalise: Failed to register PVR driver with omaplfb"));

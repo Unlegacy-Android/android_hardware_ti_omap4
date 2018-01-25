@@ -9,6 +9,7 @@ on boot
 
 on fs
     # Load PVR module
+    insmod /system/lib/modules/omaplfb.ko
     insmod /system/lib/modules/pvrsrvkm.ko
 
 service pvrsrvinit /system/bin/pvrsrvinit
