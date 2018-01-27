@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e05ba0d7_3392d3b9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-01-27T20:21:10Z",
+      "side": 1,
+      "message": "in boards",
+      "revId": "e5f8667f056a8bd8c3b5c97afe1893f0a7c8a230",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b280b05_0a9c78ce",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-01-27T20:21:10Z",
+      "side": 1,
+      "message": "main PVR Makefile",
+      "range": {
+        "startLine": 10,
+        "startChar": 42,
+        "endLine": 10,
+        "endChar": 50
+      },
+      "revId": "e5f8667f056a8bd8c3b5c97afe1893f0a7c8a230",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
