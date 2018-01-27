@@ -46,7 +46,6 @@ ifeq ($(BOARD_USE_TI_LIBION),false)
 else
  USE_TI_LIBION := 1
 endif
-export USE_TI_LIBION
 
 ifeq ($(TARGET_SGX),544sc)
  SGXCORE := 544

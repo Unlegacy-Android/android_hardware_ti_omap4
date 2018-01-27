@@ -17,7 +17,8 @@ PVR_MODULES:
 	make -j8 -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android \
 			ARCH=arm $(if $(ARM_CROSS_COMPILE),$(ARM_CROSS_COMPILE),$(KERNEL_CROSS_COMPILE)) \
 			TARGET_SGX=$(if $(filter-out 4470,$(TARGET_BOARD_OMAP_CPU)),540,544sc) \
-			KERNELDIR=$(KERNEL_OUT) BUILD=release
+			KERNELDIR=$(KERNEL_OUT) BOARD_USE_TI_LIBION=$(BOARD_USE_TI_LIBION) \
+			BUILD=release
 	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm.ko $(KERNEL_MODULES_OUT)
 	$(if $(ARM_EABI_TOOLCHAIN),$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip, \
 			$(KERNEL_TOOLCHAIN_PATH)strip) --strip-unneeded \
