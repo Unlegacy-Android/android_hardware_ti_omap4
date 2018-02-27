@@ -18,7 +18,7 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_SHARED_LIBRARIES := libskia
+LOCAL_SHARED_LIBRARIES := libhwui
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libc_common
 
