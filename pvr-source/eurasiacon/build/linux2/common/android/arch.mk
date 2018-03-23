@@ -38,38 +38,70 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-OPTIM := -O2
+include ../common/android/platform_version.mk
 
-ANDROID_ARCH := arm
+# Now we have included the platform_version.mk file, we know we have a
+# correctly configured OUT_DIR and can probe it to figure out our
+# architecture.
+
+$(eval $(subst #,$(newline),$(shell cat $(BUILD_PROP) | \
+    grep '^ro.product.cpu.abilist=\|^ro.product.cpu.abilist32=' | \
+    sed -e 's,ro.product.cpu.abilist=,JNI_CPU_ABI=,' \
+	-e 's,ro.product.cpu.abilist32=,JNI_CPU_ABI_2ND=,' | \
+    tr ',' ' ' | tr '\n' '#')))
+
+# If ARCH is set, use that to remap to an "Android" ARCH..
+ANDROID_ARCH := $(filter arm arm64 x86 x86_64,$(ARCH))
+
+# x86 is special and has another legacy ARCH name which is remapped
+ifeq ($(ARCH),i386)
+TARGET_ARCH := x86
+endif
+
+ifeq ($(ANDROID_ARCH),)
+# ..otherwise, try to use the ABI list to figure it out.
+# We check 64-bit variants before 32, as a 64-build may be backwards compatible,
+# so the abilist contain both 64- and 32-bit variants
+ifneq ($(filter arm64-v8a,$(JNI_CPU_ABI)),)
+TARGET_ARCH=arm64
+else ifneq ($(filter armeabi-v7a armeabi,$(JNI_CPU_ABI)),)
+TARGET_ARCH=arm
+else ifneq ($(filter mips64,$(JNI_CPU_ABI)),)
+TARGET_ARCH=mips64
+else ifneq ($(filter mips,$(JNI_CPU_ABI)),)
+TARGET_ARCH=mips
+else ifneq ($(filter x86_64,$(JNI_CPU_ABI)),)
+TARGET_ARCH=x86_64
+else ifneq ($(filter x86,$(JNI_CPU_ABI)),)
+TARGET_ARCH=x86
+else
+$(error ARCH not set and JNI_CPU_ABI=$(JNI_CPU_ABI) was not remappable)
+endif
+else
+TARGET_ARCH := $(ANDROID_ARCH)
+endif
+
+JNI_CPU_ABI := $(word 1,$(JNI_CPU_ABI))
+JNI_CPU_ABI_2ND := $(word 1,$(JNI_CPU_ABI_2ND))
+
 include ../common/android/arch_common.mk
 
-SYS_CFLAGS += -march=armv7-a
-
-ifneq ($(BUILD),debug)
-SYS_CFLAGS += -mthumb
-endif
-
-SYS_EXE_CRTBEGIN := $(TOOLCHAIN)/lib/crtbegin_dynamic.o
-SYS_EXE_CRTEND := $(TOOLCHAIN)/lib/crtend_android.o
-
-SYS_LIB_CRTBEGIN := $(TOOLCHAIN)/lib/crtbegin_so.o
-SYS_LIB_CRTEND := $(TOOLCHAIN)/lib/crtend_so.o
-
-# Handle the removal of the armelf.x and armelf.xsc linker scripts.
-ifeq ($(strip $(wildcard $(ANDROID_ROOT)/build/core/armelf.x)),)
-# The linker scripts have been removed. We need to use these options
-# instead.
-SYS_EXE_LDFLAGS += -Wl,-z,relro -Wl,-z,now
-SYS_LIB_LDFLAGS += -Wl,-z,relro -Wl,-z,now
-else
-# The linker scripts are still present in the Android tree, so we need to
-# use them.
-SYS_EXE_LDFLAGS += -Wl,-T$(ANDROID_ROOT)/build/core/armelf.x
-SYS_LIB_LDFLAGS += -Wl,-T$(ANDROID_ROOT)/build/core/armelf.xsc
-endif
-
-JNI_CPU_ABI := armeabi
-
-# Android builds are usually GPL
-#
+ifneq ($(filter arm arm64 mips mips64,$(TARGET_ARCH)),)
 LDM_PLATFORM ?= 1
+endif
+
+ifneq ($(filter x86 x86_64,$(TARGET_ARCH)),)
+LDM_PCI ?= 1
+endif
+
+ifneq ($(filter x86 x86_64,$(TARGET_ARCH)),)
+KERNEL_CROSS_COMPILE ?= undef
+endif
+
+ifneq ($(filter arm64 mips64 x86_64,$(TARGET_ARCH)),)
+ifeq ($(MULTIARCH),)
+$(warning *** 64-bit architecture detected. Enabling MULTIARCH=1.)
+$(warning *** If you want a 64-bit only build, use MULTIARCH=64only.)
+export MULTIARCH := 1
+endif
+endif

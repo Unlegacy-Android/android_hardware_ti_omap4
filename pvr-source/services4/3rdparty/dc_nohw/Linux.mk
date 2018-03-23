@@ -41,5 +41,5 @@
 modules := dc_nohw
 
 dc_nohw_type := kernel_module
-dc_nohw_target := dcnohw.ko
+dc_nohw_target := dc_nohw.ko
 dc_nohw_makefile := $(THIS_DIR)/Kbuild.mk

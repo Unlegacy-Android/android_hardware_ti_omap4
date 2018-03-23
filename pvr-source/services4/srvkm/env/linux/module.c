@@ -130,11 +130,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "lock.h"
 #include "linkage.h"
 #include "buffer_manager.h"
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-#include "pvr_sync.h"
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
+#include "pvr_sync_common.h"
 #endif
 
-#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
 #include "systrace.h"
 #endif
 
@@ -219,6 +219,9 @@ static struct file_operations pvrsrv_fops =
 {
 	.owner=THIS_MODULE,
 	.unlocked_ioctl = PVRSRV_BridgeDispatchKM,
+#if defined(CONFIG_COMPAT)
+	.compat_ioctl	= PVRSRV_BridgeCompatDispatchKM,
+#endif
 	.open=PVRSRVOpen,
 	.release=PVRSRVRelease,
 	.mmap=PVRMMap,
@@ -1101,11 +1104,11 @@ static int __init PVRCore_Init(void)
 #endif /* defined(PVR_LDM_DEVICE_CLASS) */
 #endif /* !defined(SUPPORT_DRI_DRM) */
 
-#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
 	SystraceCreateFS();
 #endif
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 	PVRSyncDeviceInit();
 #endif
 	return 0;
@@ -1199,7 +1202,7 @@ static void __exit PVRCore_Cleanup(void)
 	SysAcquireData(&psSysData);
 #endif
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 	PVRSyncDeviceDeInit();
 #endif
 
@@ -1265,7 +1268,7 @@ static void __exit PVRCore_Cleanup(void)
 
 	RemoveProcEntries();
 
-#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
 	SystraceDestroyFS();
 #endif
 

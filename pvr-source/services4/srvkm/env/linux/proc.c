@@ -914,6 +914,13 @@ static void ProcSeqShowVersion(struct seq_file *sfile, void* el)
 	}
 
 	psSysData = SysAcquireDataNoCheck();
+#if defined(SUPPORT_TI_VERSION_STRING)
+	if(psSysData != IMG_NULL && psSysData->szTIVersion != IMG_NULL)
+	{
+		seq_printf( sfile, "UM Services Version: %s\n",
+				psSysData->szTIVersion);
+	}
+#endif
 	if(psSysData != IMG_NULL && psSysData->pszVersionString != IMG_NULL)
 	{
 		pszSystemVersionString = psSysData->pszVersionString;

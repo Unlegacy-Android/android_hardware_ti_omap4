@@ -141,6 +141,11 @@ typedef struct _SGXMKIF_HOST_CTL_
 
 	IMG_UINT32				ui32OpenCLDelayCount;			/* Counter to keep track OpenCL task completion time in units of regular task time out events */
 	IMG_UINT32				ui32InterruptCount;
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
+	volatile IMG_UINT32		ui32SystraceIndex;			/*!< Current index for systrace */
+	volatile IMG_UINT32		ui32SGXPoweredOn;			/*!< if SGX is powered on */
+	volatile IMG_UINT32		ui32TicksAtPowerUp;		/*!< if SGX is powered on */
+#endif
 } SGXMKIF_HOST_CTL;
 
 /*
@@ -382,6 +387,9 @@ typedef struct _SGX_MISCINFO_STRUCT_SIZES_
 	IMG_UINT32	ui32Sizeof_HWTRANSFERCONTEXT;
 	IMG_UINT32	ui32Sizeof_HOST_CTL;
 	IMG_UINT32	ui32Sizeof_COMMAND;
+#if defined(USE_64BIT_COMPAT)
+	IMG_UINT32  ui32Padding;
+#endif
 } SGX_MISCINFO_STRUCT_SIZES;
 
 
@@ -438,6 +446,9 @@ typedef struct _SGXMKIF_HWPERF_CB_ENTRY_
 	IMG_UINT32	ui32Info;
 	IMG_UINT32	ui32TimeWraps;
 	IMG_UINT32	ui32Time;
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
+	IMG_UINT32	ui32SystraceIndex;
+#endif
 	/* NOTE: There should always be at least as many 3D cores as TA cores. */
 	IMG_UINT32	ui32Counters[SGX_FEATURE_MP_CORE_COUNT_3D][PVRSRV_SGX_HWPERF_NUM_COUNTERS];
 	IMG_UINT32	ui32MiscCounters[SGX_FEATURE_MP_CORE_COUNT_3D][PVRSRV_SGX_HWPERF_NUM_MISC_COUNTERS];

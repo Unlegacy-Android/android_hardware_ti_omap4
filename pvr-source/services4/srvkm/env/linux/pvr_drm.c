@@ -504,6 +504,21 @@ static PVRSRV_DRM_PLUGIN sPVRDrmPlugin =
 #else	/* defined(SUPPORT_DRI_DRM_PLUGIN) */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))
+#if defined(CONFIG_COMPAT)
+static long pvr_compat_ioctl(struct file *file, unsigned int cmd,
+			     unsigned long arg)
+{
+	unsigned int nr = DRM_IOCTL_NR(cmd);
+
+	if (nr < DRM_COMMAND_BASE)
+	{
+		return drm_compat_ioctl(file, cmd, arg);
+	}
+
+	return drm_ioctl(file, cmd, arg);
+}
+#endif /* defined(CONFIG_COMPAT) */
+
 static const struct file_operations sPVRFileOps = 
 {
 	.owner = THIS_MODULE,
@@ -514,6 +529,9 @@ static const struct file_operations sPVRFileOps =
 	.release = PVRSRVDrmRelease,
 #endif
 	PVR_DRM_FOPS_IOCTL = drm_ioctl,
+#if defined(CONFIG_COMPAT)
+	.compat_ioctl  = pvr_compat_ioctl,
+#endif
 	.mmap = PVRMMap,
 	.poll = drm_poll,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0))
@@ -593,7 +611,7 @@ static struct drm_driver sPVRDrmDriver =
 #endif
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0))
 #if defined(LDM_PLATFORM)
 	.set_busid = drm_platform_set_busid,
 #else

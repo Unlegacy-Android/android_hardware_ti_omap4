@@ -906,6 +906,8 @@ _AllocPageTableMemory (MMU_HEAP *pMMUHeap,
 		#endif
 	}
 
+	PVR_ASSERT(psPTInfoList->PTPageCpuVAddr != IMG_NULL);
+
 	MakeKernelPageReadWrite(psPTInfoList->PTPageCpuVAddr);
 #if defined(SUPPORT_SGX_MMU_DUMMY_PAGE)
 	{
@@ -1594,14 +1596,13 @@ _DeferredAllocPagetables(MMU_HEAP *pMMUHeap, IMG_DEV_VIRTADDR DevVAddr, IMG_UINT
 	#if defined(FIX_HW_BRN_31620)
 	/* This function might not allocate any new PT's so check before flushing */
 	if (bFlushSystemCache)
-	{
 	#endif
-
-	MMU_InvalidateSystemLevelCache(pMMUHeap->psMMUContext->psDevInfo);
-	#endif /* SGX_FEATURE_SYSTEM_CACHE */
-	#if defined(FIX_HW_BRN_31620)
+	{
+		MMU_InvalidateSystemLevelCache(pMMUHeap->psMMUContext->psDevInfo);
 	}
+	#endif /* SGX_FEATURE_SYSTEM_CACHE */
 
+	#if defined(FIX_HW_BRN_31620)
 	/* Handle the last 4MB roll over */
 	sHighDevVAddr.uiAddr = sHighDevVAddr.uiAddr - 1;
 
@@ -3050,7 +3051,7 @@ MMU_Create (MMU_CONTEXT *psMMUContext,
 									psDevArena->BaseDevVAddr.uiAddr,
 									psDevArena->ui32Size,
 									IMG_NULL,
-									MAX(HOST_PAGESIZE(), pMMUHeap->ui32DataPageSize),
+									MIN(HOST_PAGESIZE(), pMMUHeap->ui32DataPageSize),
 									IMG_NULL,
 									IMG_NULL,
 									&MMU_FreePageTables,
@@ -3605,7 +3606,8 @@ MMU_MapScatter (MMU_HEAP *pMMUHeap,
 #if defined(PDUMP)
 	IMG_DEV_VIRTADDR MapBaseDevVAddr;
 #endif /*PDUMP*/
-	IMG_UINT32 uCount, i;
+	IMG_UINT32 uCount, i, j;
+	IMG_UINT32 ui32NumDevicePages;
 	IMG_DEV_PHYADDR DevPAddr;
 
 	PVR_ASSERT (pMMUHeap != IMG_NULL);
@@ -3616,7 +3618,11 @@ MMU_MapScatter (MMU_HEAP *pMMUHeap,
 	PVR_UNREFERENCED_PARAMETER(hUniqueTag);
 #endif /*PDUMP*/
 
-	for (i=0, uCount=0; uCount<uSize; i++, uCount+=pMMUHeap->ui32DataPageSize)
+	PVR_ASSERT((HOST_PAGESIZE() % pMMUHeap->ui32DataPageSize) == 0);
+
+	ui32NumDevicePages = HOST_PAGESIZE() / pMMUHeap->ui32DataPageSize;
+
+	for (i=0, uCount=0; uCount<uSize; i++, uCount+=HOST_PAGESIZE())
 	{
 		IMG_SYS_PHYADDR sSysAddr;
 
@@ -3626,14 +3632,19 @@ MMU_MapScatter (MMU_HEAP *pMMUHeap,
 		/* check the physical alignment of the memory to map */
 		PVR_ASSERT((sSysAddr.uiAddr & pMMUHeap->ui32DataPageMask) == 0);
 
-		DevPAddr = SysSysPAddrToDevPAddr(PVRSRV_DEVICE_TYPE_SGX, sSysAddr);
+		for(j=0; j< ui32NumDevicePages; j++)
+		{
+			DevPAddr = SysSysPAddrToDevPAddr(PVRSRV_DEVICE_TYPE_SGX, sSysAddr);
 
-		MMU_MapPage (pMMUHeap, DevVAddr, DevPAddr, ui32MemFlags);
-		DevVAddr.uiAddr += pMMUHeap->ui32DataPageSize;
+			MMU_MapPage (pMMUHeap, DevVAddr, DevPAddr, ui32MemFlags);
 
-		PVR_DPF ((PVR_DBG_MESSAGE,
-				 "MMU_MapScatter: devVAddr=%x, SysAddr=" SYSPADDR_FMT ", size=0x%x/0x%" SIZE_T_FMT_LEN "x",
-				  DevVAddr.uiAddr, sSysAddr.uiAddr, uCount, uSize));
+			PVR_DPF ((PVR_DBG_MESSAGE,
+						"MMU_MapScatter: devVAddr=%x, SysAddr=" SYSPADDR_FMT ", size=0x%x/0x%" SIZE_T_FMT_LEN "x",
+						DevVAddr.uiAddr, sSysAddr.uiAddr, (uCount + j*pMMUHeap->ui32DataPageSize), uSize));
+
+			DevVAddr.uiAddr += pMMUHeap->ui32DataPageSize;
+			sSysAddr.uiAddr += pMMUHeap->ui32DataPageSize;
+		}
 	}
 
 #if (SGX_FEATURE_PT_CACHE_ENTRIES_PER_LINE > 1)
@@ -4408,6 +4419,8 @@ PVRSRV_ERROR MMU_BIFResetPDAlloc(PVRSRV_SGXDEV_INFO *psDevInfo)
 			return PVRSRV_ERROR_BAD_MAPPING;
 		}
 	}
+
+	PVR_ASSERT(pui8MemBlock != IMG_NULL);
 
 	psDevInfo->hBIFResetPDOSMemHandle = hOSMemHandle;
 	psDevInfo->sBIFResetPDDevPAddr = SysCpuPAddrToDevPAddr(PVRSRV_DEVICE_TYPE_SGX, sMemBlockCpuPAddr);

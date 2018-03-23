@@ -38,72 +38,121 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-ifeq ($(USE_CLANG),1)
-export CC  := $(OUT_DIR)/host/$(HOST_OS)-$(HOST_ARCH)/bin/clang
-export CXX := $(OUT_DIR)/host/$(HOST_OS)-$(HOST_ARCH)/bin/clang++
-endif
-
-# FIXME: We need to run this early because config/core.mk hasn't been
-# included yet. Use the same variable names as in that makefile.
-#
-_CC		:= $(if $(filter default,$(origin CC)),gcc,$(CC))
-_CLANG	:= $(shell ../tools/cc-check.sh --clang --cc $(_CC))
-
 SYS_CFLAGS := \
  -fno-short-enums \
  -funwind-tables \
  -D__linux__
-SYS_INCLUDES := \
- -isystem $(ANDROID_ROOT)/bionic/libc/arch-$(ANDROID_ARCH)/include \
- -isystem $(ANDROID_ROOT)/bionic/libc/include \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/uapi \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/uapi/asm-$(ANDROID_ARCH) \
- -isystem $(ANDROID_ROOT)/bionic/libm/include \
- -isystem $(ANDROID_ROOT)/bionic/libm/include/$(ANDROID_ARCH) \
- -isystem $(ANDROID_ROOT)/bionic/libthread_db/include \
- -isystem $(ANDROID_ROOT)/external/libunwind/include \
- -isystem $(ANDROID_ROOT)/frameworks/base/include \
- -isystem $(ANDROID_ROOT)/hardware/libhardware/include \
- -isystem $(ANDROID_ROOT)/hardware/libhardware_legacy/include \
- -isystem $(ANDROID_ROOT)/system/core/include \
- -isystem $(ANDROID_ROOT)/system/core/libsync/include \
- -isystem $(ANDROID_ROOT)/system/media/camera/include \
- -isystem $(ANDROID_ROOT)/external/libdrm \
- -isystem $(ANDROID_ROOT)/external/libdrm/include/drm
 
-ifneq ($(wildcard $(ANDROID_ROOT)/external/boringssl/src/include),)
-SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/external/boringssl/src/include
-else
-SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/external/openssl/include
-endif
+SYS_INCLUDES :=
 
-# Obsolete libc includes
-SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/common \
- -isystem $(ANDROID_ROOT)/bionic/libc/kernel/arch-$(ANDROID_ARCH)
+ifneq ($(TARGET_PLATFORM),)
+
+ # Support for building with the Android NDK >= r15b.
+ # The NDK provides only the most basic includes and libraries.
+
+ SYS_INCLUDES += \
+  -isystem $(NDK_PLATFORMS_ROOT)/$(TARGET_PLATFORM)/arch-$(TARGET_ARCH)/usr/include \
+  -isystem $(NDK_SYSROOT)/usr/include/drm \
+  -isystem $(NDK_SYSROOT)/usr/include
+
+else # !TARGET_PLATFORM
+
+ # These libraries are not coming from the NDK now, so we need to include them
+ # from the ANDROID_ROOT source tree.
+
+ SYS_INCLUDES += \
+  -isystem $(ANDROID_ROOT)/bionic/libc/include \
+  -isystem $(ANDROID_ROOT)/bionic/libc/kernel/android/uapi \
+  -isystem $(ANDROID_ROOT)/bionic/libc/kernel/uapi \
+  -isystem $(ANDROID_ROOT)/bionic/libm/include \
+  -isystem $(ANDROID_ROOT)/external/libdrm/include/drm \
+  -isystem $(ANDROID_ROOT)/external/zlib/src \
+  -isystem $(ANDROID_ROOT)/frameworks/native/include
+
+ ifeq ($(is_future_version),1)
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/libnativehelper/include_jni
+ else ifeq ($(is_aosp_master),1)
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/libnativehelper/include_jni
+ else
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/libnativehelper/include/nativehelper
+ endif
+
+endif # !TARGET_PLATFORM
+
+ # These components aren't in the NDK. They *are* in the VNDK. If this is an
+ # NDK or non-NDK build, but not a VNDK build, include the needed bits from
+ # the ANDROID_ROOT source tree. We put libsync first because the NDK copy
+ # of the sync headers have been stripped in an unsupported way.
+
+ SYS_INCLUDES := \
+  -isystem $(ANDROID_ROOT)/system/core/libsync/include \
+  $(SYS_INCLUDES) \
+  -isystem $(ANDROID_ROOT)/external/libdrm \
+  -isystem $(ANDROID_ROOT)/external/libpng \
+  -isystem $(ANDROID_ROOT)/external/libunwind/include \
+  -isystem $(ANDROID_ROOT)/hardware/libhardware/include \
+  -isystem $(ANDROID_ROOT)/system/media/camera/include
+
+ # boringssl replaced openssl from Marshmallow
+ ifeq ($(is_at_least_marshmallow),1)
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/external/boringssl/src/include
+ else
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/external/openssl/include
+ endif
+
+ # libjpeg-turbo replaced libjpeg from Nougat
+ ifeq ($(is_at_least_nougat),1)
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/external/libjpeg-turbo
+ else
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/external/jpeg
+ endif
+
+ # Handle upstream includes refactoring
+ ifeq ($(is_at_least_oreo),1)
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/frameworks/native/libs/nativewindow/include \
+   -isystem $(ANDROID_ROOT)/system/core/libbacktrace/include \
+   -isystem $(ANDROID_ROOT)/system/core/libsystem/include \
+   -isystem $(ANDROID_ROOT)/system/core/libutils/include
+  ifeq ($(NDK_ROOT),)
+   SYS_INCLUDES += \
+    -isystem $(ANDROID_ROOT)/frameworks/native/libs/arect/include \
+    -isystem $(ANDROID_ROOT)/system/core/liblog/include
+  endif
+ else
+  SYS_INCLUDES += \
+   -isystem $(ANDROID_ROOT)/frameworks/base/include \
+   -isystem $(ANDROID_ROOT)/system/core/include
+ endif
 
 # This is comparing PVR_BUILD_DIR to see if it is omap and adding 
-# includes required for it's HWC
+# includes required for it's HWC.
 ifeq ($(notdir $(abspath .)),omap_android)
 SYS_INCLUDES += \
  -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/kernel-headers \
  -isystem $(ANDROID_ROOT)/hardware/ti/omap4xxx/ion
 endif
 
-ifeq ($(_CLANG),true)
-SYS_INCLUDES := \
- -nostdinc $(SYS_INCLUDES) \
- -isystem $(ANDROID_ROOT)/external/clang/lib/include
-endif
+# Always include the NDK compatibility directory, because it allows us to
+# compile in inline versions of simple functions to eliminate dependencies,
+# and we can also constrain the available APIs. Do this last, so we can
+# make sure it is always first on the include list.
 
-SYS_EXE_LDFLAGS := \
- -Bdynamic -nostdlib -Wl,-dynamic-linker,/system/bin/linker \
- -lc -ldl -lcutils
+SYS_INCLUDES := -isystem eurasiacon/android/ndk $(SYS_INCLUDES)
 
-SYS_LIB_LDFLAGS := $(SYS_EXE_LDFLAGS)
+# Android enables build-id sections to allow mapping binaries to debug
+# information for symbol resolution
+SYS_LDFLAGS += -Wl,--build-id=md5
 
 SYS_EXE_LDFLAGS_CXX := -lstdc++
 
 SYS_LIB_LDFLAGS_CXX := $(SYS_EXE_LDFLAGS_CXX)
+
+OPTIM := -O2

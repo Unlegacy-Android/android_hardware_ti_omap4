@@ -38,8 +38,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-modules := dc_omapfb3_linux
+modules := omaplfb
 
-dc_omapfb3_linux_type := kernel_module
-dc_omapfb3_linux_target := omaplfb.ko
-dc_omapfb3_linux_makefile := $(THIS_DIR)/Kbuild.mk
+omaplfb_type := kernel_module
+omaplfb_target := omaplfb.ko
+omaplfb_makefile := $(THIS_DIR)/Kbuild.mk

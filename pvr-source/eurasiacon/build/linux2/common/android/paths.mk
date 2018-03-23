@@ -51,7 +51,8 @@ else
 TARGET_ROOT := $(OUT_DIR)/target
 endif
 
-TOOLCHAIN ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj
-TOOLCHAIN2 ?= $(TARGET_ROOT)/product/$(TARGET_DEVICE)/system
-
-LIBGCC := $(shell $(CROSS_COMPILE)gcc -m32 -print-libgcc-file-name 2>/dev/null)
+ifeq ($(NDK_ROOT),)
+LIBCXX_INCLUDE_PATH := $(ANDROID_ROOT)/external/libcxx/include
+else
+LIBCXX_INCLUDE_PATH := $(NDK_ROOT)/sources/cxx-stl/llvm-libc++/include
+endif

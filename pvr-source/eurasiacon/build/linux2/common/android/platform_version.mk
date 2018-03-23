@@ -43,7 +43,7 @@ define newline
 
 endef
 
-PLATFORM_CODENAME ?= REL
+PLATFORM_BUILDID ?= UNKNOWN
 
 # Figure out the version of Android we're building against.
 #
@@ -56,26 +56,26 @@ ifneq ($(wildcard $(BUILD_PROP)),)
 # be defined, and fallback handling will take place.
 #
 $(eval $(subst #,$(newline),$(shell cat $(BUILD_PROP) | \
-	grep '^ro.build.version.release=\|^ro.build.version.codename=' | \
+	grep '^ro.build.version.release=\|^ro.build.id=' | \
 	sed -e 's,ro.build.version.release=,PLATFORM_RELEASE:=,' \
-	    -e 's,ro.build.version.codename=,PLATFORM_CODENAME:=,' | tr '\n' '#')))
+	    -e 's,ro.build.id=,PLATFORM_BUILDID:=,' | tr '\n' '#')))
 else ifneq ($(wildcard $(BUILD_DEFS)),)
 $(warning *** No device prop file ($(BUILD_PROP)). Extracting from \
 	build/core/version_defaults.mk)
 # Android version information doesn't permeate here. Set it up manually,
 # but avoid including the whole of core/version_defaults.mk
 $(eval $(subst #,$(newline),$(shell cat $(BUILD_DEFS) | \
-	grep '\<PLATFORM_VERSION.*:=\s[1-9]\|\<PLATFORM_VERSION_CODENAME.*:=\s[A-Z]' | \
-	sed -e 's,PLATFORM_VERSION_CODENAME.*=,PLATFORM_CODENAME:=,' \
+	grep '\<PLATFORM_VERSION.*:=\s[1-9]\|\<BUILD_ID.*:=\s[A-Z]' | \
+	sed -e 's,BUILD_ID.*=,PLATFORM_BUILDID:=,' \
 	    -e 's,PLATFORM_VERSION.*=,PLATFORM_RELEASE:=,' | tr '\n' '#')))
 else
 $(warning *** No device prop file ($(BUILD_PROP)) or build env \
-	($(BUILD_DEFS)). Falling back to KitKat default)
-PLATFORM_RELEASE := 4.4
+	($(BUILD_DEFS)). Falling back to LollipopMR1 default)
+PLATFORM_RELEASE := 5.1
 endif
 endif
 
-$(info PLATFORM_RELEASE=$(PLATFORM_RELEASE) & PLATFORM_CODENAME=$(PLATFORM_CODENAME))
+$(info PLATFORM_RELEASE=$(PLATFORM_RELEASE) & PLATFORM_BUILDID=$(PLATFORM_BUILDID))
 
 define release-starts-with
 $(shell echo $(PLATFORM_RELEASE) | grep -q ^$(1); \
@@ -92,33 +92,32 @@ endef
 # ordering. You need to make sure that strings that are sub-strings of other
 # checked strings appear _later_ in this list.
 #
-# e.g. 'KitKatMR' starts with 'KitKat', but it is not KitKat.
+# e.g. 'LollipopMR1' starts with 'Lollipop', but it is not Lollipop.
 #
 # NOTE: The version codenames for Android stopped after KitKat, don't read
 # too much into the below names. They are mostly placeholders/reminders.
 #
-ifeq ($(call release-starts-with,KitKatMR),1)
-PLATFORM_RELEASE := 4.4.1
-else ifeq ($(call release-starts-with,KitKat),1)
-PLATFORM_RELEASE := 4.4
-else ifeq ($(call release-starts-with,LollipopMR1),1)
-PLATFORM_RELEASE := 5.1
-else ifeq ($(call release-starts-with,Lollipop),1)
-PLATFORM_RELEASE := 5.0
+ifeq ($(call release-starts-with,LollipopMR1),1)
+override PLATFORM_RELEASE := 5.1
 else ifeq ($(call release-starts-with,Marshmallow),1)
-PLATFORM_RELEASE := 6.0
-else ifeq ($(PLATFORM_CODENAME),AOSP)
-# AOSP (master) will normally have PLATFORM_CODENAME set to AOSP
-PLATFORM_RELEASE := 6.0.60
+override PLATFORM_RELEASE := 6.0
+else ifeq ($(call release-starts-with,NougatMR),1)
+override PLATFORM_RELEASE := 7.1
+else ifeq ($(call release-starts-with,Nougat),1)
+override PLATFORM_RELEASE := 7.0
+else ifeq ($(call release-starts-with,Oreo),1)
+override PLATFORM_RELEASE := 8.0
+else ifeq ($(PLATFORM_BUILDID),OC)
+override PLATFORM_RELEASE := 8.0.80
 else ifeq ($(shell echo $(PLATFORM_RELEASE) | grep -qE "[A-Za-z]+"; echo $$?),0)
-PLATFORM_RELEASE := 6.1
+override PLATFORM_RELEASE := 8.2
 endif
 
 # Workaround for master. Sometimes there is an AOSP version ahead of
 # the current master version number, but master still has more features.
 #
-ifeq ($(PLATFORM_RELEASE),6.0.60)
-PLATFORM_RELEASE := 6.1
+ifeq ($(PLATFORM_RELEASE),8.0.80)
+override PLATFORM_RELEASE := 8.0
 is_aosp_master := 1
 endif
 
@@ -134,41 +133,69 @@ endif
 
 # Macros to help categorize support for features and API_LEVEL for tests.
 #
-is_at_least_kitkat := \
-	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 4 || \
-				( test $(PLATFORM_RELEASE_MAJ) -eq 4 && \
-				  test $(PLATFORM_RELEASE_MIN) -ge 4 ) ) && echo 1 || echo 0)
-is_at_least_lollipop := \
-	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 5 ) && echo 1 || echo 0)
 is_at_least_lollipop_mr1 := \
 	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 5 || \
 				( test $(PLATFORM_RELEASE_MAJ) -eq 5 && \
 				  test $(PLATFORM_RELEASE_MIN) -gt 0 ) ) && echo 1 || echo 0)
 is_at_least_marshmallow := \
 	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 6 ) && echo 1 || echo 0)
+is_at_least_nougat := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 7 ) && echo 1 || echo 0)
+is_at_least_nougat_mr1 := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 7 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 7 && \
+				  test $(PLATFORM_RELEASE_MIN) -gt 0 ) ) && echo 1 || echo 0)
+is_at_least_oreo := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 8 ) && echo 1 || echo 0)
 
-# Assume "future versions" are >6.0, but we don't really know
+# Assume "future versions" are >7.1, but we don't really know
 is_future_version := \
-	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 6 || \
-				( test $(PLATFORM_RELEASE_MAJ) -eq 6 && \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 8 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 8 && \
 				  test $(PLATFORM_RELEASE_MIN) -gt 0 ) ) && echo 1 || echo 0)
 
 # Picking an exact match of API_LEVEL for the platform we're building
 # against can avoid compatibility theming and affords better integration.
 #
+# This is also a good place to select the right jack toolchain.
+#
 ifeq ($(is_future_version),1)
-API_LEVEL := 23
+JACK_VERSION ?= 4.32.CANDIDATE
+API_LEVEL := 26
+else ifeq ($(is_at_least_oreo),1)
+ifeq ($(is_aosp_master),1)
+override JACK_VERSION :=
+else
+JACK_VERSION ?= 4.31.CANDIDATE
+endif
+API_LEVEL := 26
+else ifeq ($(is_at_least_nougat_mr1),1)
+JACK_VERSION ?= 3.36.CANDIDATE
+API_LEVEL := 25
+else ifeq ($(is_at_least_nougat),1)
+JACK_VERSION ?= 3.36.CANDIDATE
+API_LEVEL := 24
 else ifeq ($(is_at_least_marshmallow),1)
+JACK_VERSION ?= 2.21.RELEASE
 API_LEVEL := 23
 else ifeq ($(is_at_least_lollipop_mr1),1)
+# This early version had no version-file.version.code; fake it
+JACK_VERSION ?= 1.0.RELEASE
 API_LEVEL := 22
-else ifeq ($(is_at_least_lollipop),1)
-API_LEVEL := 21
-#API_LEVEL := 20 was l-preview
-else ifeq ($(is_at_least_kitkat),1)
-API_LEVEL := 19
 else
-$(error Must build against Android >= 4.4)
+$(error Must build against Android >= 5.1)
+endif
+
+# If the NDK is enabled, check it has API_LEVEL support for us
+ifneq ($(NDK_ROOT),)
+ NDK_PLATFORMS_ROOT ?= $(NDK_ROOT)/platforms
+ ifeq ($(strip $(wildcard $(NDK_PLATFORMS_ROOT)/android-*)),)
+  $(error NDK_PLATFORMS_ROOT does not point to a valid location)
+ endif
+ override TARGET_PLATFORM := android-$(API_LEVEL)
+ ifeq ($(strip $(wildcard $(NDK_PLATFORMS_ROOT)/$(TARGET_PLATFORM))),)
+  $(error NDK support for $(TARGET_PLATFORM) is missing)
+ endif
 endif
 
 # Each DDK is tested against only a single version of the platform.
@@ -176,6 +203,6 @@ endif
 #
 ifeq ($(is_future_version),1)
 $(info WARNING: Android version is newer than this DDK supports)
-else ifneq ($(is_at_least_lollipop_mr1),1)
+else ifneq ($(is_at_least_marshmallow),1)
 $(info WARNING: Android version is older than this DDK supports)
 endif
