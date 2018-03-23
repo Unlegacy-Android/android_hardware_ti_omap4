@@ -39,12 +39,6 @@
 ### ###########################################################################
 
 
-# On versions of Android prior to L, remap the use of libc++ to a combination
-# of stlport and libstdc++. Not every module written in C++ in the DDK needs
-# the STL, but linking it should be harmless (and most modules do need it).
-ifneq ($(is_at_least_lollipop),1)
-endif
-
 
 $(eval $(call BothConfigC,ANDROID,))
 
@@ -52,10 +46,14 @@ $(eval $(call BothConfigC,ANDROID,))
 
 $(eval $(call TunableBothConfigC,SUPPORT_PVRSRV_ANDROID_SYSTRACE,))
 
+$(eval $(call TunableBothConfigMake,SUPPORT_ANDROID_PLATFORM,))
 $(eval $(call TunableBothConfigMake,SUPPORT_PVRSRV_ANDROID_SYSTRACE,))
 
 $(eval $(call TunableBothConfigMake,PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC,))
 $(eval $(call TunableBothConfigC,PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC,))
+
+$(eval $(call TunableBothConfigMake,PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE,))
+$(eval $(call TunableBothConfigC,PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE,))
 
 ifeq ($(NO_HARDWARE),1)
  override PVR_ANDROID_COMPOSERHAL := null
@@ -67,5 +65,51 @@ ifneq ($(PVR_ANDROID_COMPOSERHAL),drm)
  endif
 endif
 
+
+# Most development systems will have at least one copy of java, but some may
+# have more. If the build system detected that a specific 'forced' version
+# of java should be used, and the user didn't override JAVAC, try to set it
+# up here. We'll use JAVA_HOME if it's set, falling back to PATH if it is
+# not.
+ifeq ($(JAVAC),)
+ # If JAVA_HOME is unset, implement some assumed paths taken from Android's
+ # build/envsetup.sh script (these are intentionally Ubuntu centric).
+ ifeq ($(JAVA_HOME),)
+  ifeq ($(LEGACY_USE_JAVA7),1)
+   JAVA_HOME ?= /usr/lib/jvm/java-7-openjdk-amd64
+  else
+   JAVA_HOME ?= /usr/lib/jvm/java-8-openjdk-amd64
+  endif
+  ifeq ($(wildcard $(JAVA_HOME)),)
+   JAVA_HOME :=
+  endif
+ endif
+
+ ifeq ($(JAVA_HOME),)
+  JAVA ?= java
+  JAVAC ?= javac
+ else
+  JAVA := $(JAVA_HOME)/bin/java
+  JAVAC := $(JAVA_HOME)/bin/javac
+  ifeq ($(wildcard $(JAVAC)),)
+   $(error JAVA_HOME does not point to a valid java installation)
+  endif
+ endif
+
+ # Test the configured JDK for validity
+ ifeq ($(LEGACY_USE_JAVA6),1)
+  ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'Java(TM).*1\.6\.0' && echo 1 || echo 0),0)
+   $(error '$(JAVA) -version' was not for Oracle JDK 6)
+  endif
+ else ifeq ($(LEGACY_USE_JAVA7),1)
+  ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'OpenJDK.*7u' && echo 1 || echo 0),0)
+   $(error '$(JAVA) -version' was not for OpenJDK 7)
+  endif
+ else
+  ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'OpenJDK.*1\.8\.' && echo 1 || echo 0),0)
+   $(error '$(JAVA) -version' was not for OpenJDK 8)
+  endif
+ endif
+endif
 
 include ../common/ion.mk

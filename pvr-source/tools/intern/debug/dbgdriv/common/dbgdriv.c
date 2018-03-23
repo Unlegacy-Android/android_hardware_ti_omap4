@@ -888,7 +888,7 @@ void MonoOut(const IMG_CHAR * pszString,IMG_BOOL bNewLine)
 		pScreen[g_ui32LOff + (i*2)+1] = 127;
 		i++;
 	}
-	while ((pszString[i] != 0) && (i < 4096));
+	while (i < MAX_STREAM_NAME_LENGTH && (pszString[i] != 0));
 
 	g_ui32LOff += i * 2;
 
@@ -1179,14 +1179,6 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 	psInitStream->ui32InitPhaseWOff = 0;
 	psStream->psInitStream = psInitStream;
 
-	/* Setup last frame buffer */
-	psLFBuffer->psStream = psStream;
-	psLFBuffer->ui32BufLen = 0UL;
-
-	g_bHotkeyMiddump = IMG_FALSE;
-	g_ui32HotkeyMiddumpStart = 0xffffffffUL;
-	g_ui32HotkeyMiddumpEnd = 0xffffffffUL;
-
 	/*
 		Copy buffer name.
 	*/
@@ -1194,12 +1186,19 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 
 	do
 	{
-		psStream->szName[ui32Off] = pszName[ui32Off];
-		psInitStream->szName[ui32Off] = pszName[ui32Off];
+		IMG_CHAR c = pszName[ui32Off];
+		psStream->szName[ui32Off] = c;
+		psInitStream->szName[ui32Off] = c;
 		ui32Off++;
 	}
-	while ((pszName[ui32Off] != 0) && (ui32Off < (4096UL - sizeof(DBG_STREAM))));
-	psStream->szName[ui32Off] = pszName[ui32Off];	/* PRQA S 3689 */
+	while ((ui32Off < MAX_STREAM_NAME_LENGTH) && (pszName[ui32Off] != 0));
+
+	if (ui32Off == MAX_STREAM_NAME_LENGTH)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DBGDrivCreateStream: Stream name too long!\n\r"));
+		goto exit_buffer_name_too_long;
+	}
+	psStream->szName[ui32Off] = '\0';
 
 	/*
 		Append suffix to init phase name
@@ -1211,9 +1210,22 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 		ui32Off++;
 		ui32OffSuffix++;
 	}
-	while (	(pszNameInitSuffix[ui32OffSuffix] != 0) &&
-			(ui32Off < (4096UL - sizeof(DBG_STREAM))));
-	psInitStream->szName[ui32Off] = pszNameInitSuffix[ui32OffSuffix];	/* PRQA S 3689 */
+	while ((ui32Off < MAX_STREAM_NAME_LENGTH) && (ui32OffSuffix < (sizeof(pszNameInitSuffix)/sizeof(IMG_CHAR) - 1)));
+
+	if (ui32Off == MAX_STREAM_NAME_LENGTH)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DBGDrivCreateStream: Init stream name too long!\n\r"));
+		goto exit_buffer_name_too_long;
+	}
+	psInitStream->szName[ui32Off] = '\0';
+
+	/* Setup last frame buffer */
+	psLFBuffer->psStream = psStream;
+	psLFBuffer->ui32BufLen = 0UL;
+
+	g_bHotkeyMiddump = IMG_FALSE;
+	g_ui32HotkeyMiddumpStart = 0xffffffffUL;
+	g_ui32HotkeyMiddumpEnd = 0xffffffffUL;
 
 	/*
 		Insert into list.
@@ -1228,6 +1240,23 @@ IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *		pszName,
 	
 	return((IMG_VOID *) psStream);
 
+exit_buffer_name_too_long:
+	if ((psStream->psCtrl->ui32Flags & DEBUG_FLAGS_USE_NONPAGED_MEM) != 0)
+	{
+		HostNonPageablePageFree(psStream->pvBase);
+	}
+	else
+	{
+		HostPageablePageFree(psStream->pvBase);
+	}
+	if ((psInitStream->psCtrl->ui32Flags & DEBUG_FLAGS_USE_NONPAGED_MEM) != 0)
+	{
+		HostNonPageablePageFree(psInitStream->pvBase);
+	}
+	else
+	{
+		HostPageablePageFree(psInitStream->pvBase);
+	}
 exit_stream_buffer_failed:
 	HostNonPageablePageFree(psCtrl);
 exit_ctrl_alloc_failed:
@@ -1367,10 +1396,11 @@ IMG_VOID * IMG_CALLCONV DBGDrivFindStream(IMG_CHAR * pszName, IMG_BOOL bResetStr
 {
 	PDBG_STREAM	psStream;
 	PDBG_STREAM	psThis;
-	IMG_UINT32	ui32Off;
 	IMG_BOOL	bAreSame;
+	IMG_UINT32	ui32NameLength;
 
 	psStream = 0;
+	ui32NameLength = strlen(pszName);
 
 	PVR_DPF((PVR_DBGDRIV_MESSAGE, "PDump client connecting to %s %s",
 			pszName,
@@ -1382,11 +1412,12 @@ IMG_VOID * IMG_CALLCONV DBGDrivFindStream(IMG_CHAR * pszName, IMG_BOOL bResetStr
 	for (psThis = g_psStreamList; psThis != IMG_NULL; psThis = psThis->psNext)
 	{
 		bAreSame = IMG_TRUE;
-		ui32Off = 0;
 
-		if (strlen(psThis->szName) == strlen(pszName))
+		if (strlen(psThis->szName) == ui32NameLength)
 		{
-			while ((psThis->szName[ui32Off] != 0) && (pszName[ui32Off] != 0) && (ui32Off < 128) && bAreSame)
+			IMG_UINT32 ui32Off = 0;
+
+			while ((ui32Off < ui32NameLength) && (ui32Off < MAX_STREAM_NAME_LENGTH) && bAreSame)
 			{
 				if (psThis->szName[ui32Off] != pszName[ui32Off])
 				{

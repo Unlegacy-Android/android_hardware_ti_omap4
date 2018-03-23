@@ -1,6 +1,7 @@
 /*************************************************************************/ /*!
-@Title          DRM stub functions
+@Title          System Description Header
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@Description    This header provides system-specific declarations and macros
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -39,11 +40,41 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef	__PVR_DRM_MOD_H__
-#define	__PVR_DRM_MOD_H__
+#if !defined(__SOCCONFIG_H__)
+#define __SOCCONFIG_H__
 
-int drm_pvr_dev_add(void);
+#if defined(SUPPORT_EXTERNAL_SYSTEM_CACHE)
+#include "extsyscache.h"
+#endif
 
-void drm_pvr_dev_remove(void);
+#define VS_PRODUCT_NAME	"JZ4780 SGX"
 
-#endif	/* __PVR_DRM_MOD_H__ */
+#define SYS_SGX_USSE_COUNT					(1)
+
+#if defined(NO_HARDWARE)
+#if defined(SGX_FEATURE_MP)
+/* One block for each core plus one for the all-cores bank and one for the master bank.*/
+#define SGX_REG_SIZE 	(0x4000 * (SGX_FEATURE_MP_CORE_COUNT_3D + 2))
+#else
+#define SGX_REG_SIZE 	(0x4000)
+#endif /* SGX_FEATURE_MP */
+#endif /* NO_HARDWARE */
+
+#if defined(SGX_FEATURE_HOST_PORT)
+	/* INTEGRATION_POINT: change these dummy values if host port is needed */
+	#define SYS_SGX_HP_SIZE		0x0
+	/* device virtual address of host port base */
+	#define SYS_SGX_HOSTPORT_BASE_DEVVADDR 0x0
+#endif
+
+#define SYS_SGX_ACTIVE_POWER_LATENCY_MS				2
+
+#define DEVICE_SGX_INTERRUPT		(1<<0)
+
+#define	SYS_SGX_DEV_NAME	"ingenic,jz4780-sgx"
+
+/*****************************************************************************
+ * system specific data structures
+ *****************************************************************************/
+ 
+#endif	/* __SOCCONFIG_H__ */
