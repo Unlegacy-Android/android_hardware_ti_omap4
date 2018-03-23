@@ -76,7 +76,7 @@ PVRSRV_DUMP_MK_TRACE ?= 1
 
 SUPPORT_ANDROID_SUNXI ?= 1
 
-ION_DEFAULT_HEAP_ID_MASK := ION_HEAP_CARVEOUT_MASK
+ION_DEFAULT_HEAP_ID_MASK := (1 << ION_HEAP_TYPE_CARVEOUT)
 
 # We have more memory on the sun6i platform, so we can spare to make
 # the pool larger, and have higher resolutions which benefit from it.
@@ -90,7 +90,7 @@ SUPPORT_PVRSRV_ANDROID_SYSTRACE := 1
 KERNEL_CROSS_COMPILE ?= arm-eabi-
 
 include ../common/android/paths.mk
-include ../common/android/armv7-a.mk
+include ../common/android/arch.mk
 include ../common/android/features.mk
 
 ifneq ($(strip $(KERNELDIR)),)
@@ -103,7 +103,7 @@ ifeq ($(SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED),1)
 $(info WARNING: SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED=1 is incompatible with NO_HARDWARE=1)
 $(info WARNING: Setting SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED=0 and switching to dc_nohw)
 override SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED := 0
-override DISPLAY_CONTROLLER := dcnohw
+override DISPLAY_CONTROLLER := dc_nohw
 KERNEL_COMPONENTS += dc_nohw
 endif
 endif
@@ -123,3 +123,5 @@ $(eval $(call TunableKernelConfigC,SUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAY
 # On sun6i, A31-specific NV12 and NV21 formats are supported.
 #
 $(eval $(call TunableUserConfigMake,SUPPORT_ANDROID_SUNXI,))
+
+$(eval $(call TunableUserConfigC,PVR_MUTEXES_COND_USING_PTHREAD_CONDVARS,1))

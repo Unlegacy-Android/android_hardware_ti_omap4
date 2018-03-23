@@ -1,4 +1,5 @@
 ########################################################################### ###
+#@File
 #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 #@License       Dual MIT/GPLv2
 # 
@@ -38,17 +39,19 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-ifeq ($(PVR_DRM_MODESET_DRIVER_NAME),)
- PVR_SECURE_DRM_AUTH_EXPORT := 1
-endif
+MODULE_HOST_BUILD := true
 
-$(eval $(call TunableKernelConfigC,XPROC_WORKAROUND_NUM_SHAREABLES,4095))
+MODULE_CC := $(HOST_CC)
+MODULE_CXX := $(HOST_CXX)
 
-ifeq ($(SUPPORT_PVR_REMOTE),1)
-else
- ifeq ($(PVR_LWS_NODC),1)
- else
+MODULE_HOST_CFLAGS := $(ALL_HOST_CFLAGS) $($(THIS_MODULE)_cflags)
+MODULE_HOST_CXXFLAGS := $(ALL_HOST_CXXFLAGS) $($(THIS_MODULE)_cxxflags)
+MODULE_HOST_LDFLAGS := $(ALL_HOST_LDFLAGS) -L$(MODULE_OUT) $($(THIS_MODULE)_ldflags)
+
+ifneq ($(BUILD),debug)
+ ifeq ($(USE_LTO),1)
+  MODULE_HOST_LDFLAGS := \
+   $(sort $(filter-out -W% -D%,$(ALL_HOST_CFLAGS) $(ALL_HOST_CXXFLAGS))) \
+   $(MODULE_HOST_LDFLAGS)
  endif
 endif
-
-

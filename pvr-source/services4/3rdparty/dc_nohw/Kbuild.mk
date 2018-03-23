@@ -42,6 +42,6 @@ ccflags-y += \
  -I$(TOP)/services4/3rdparty/dc_nohw \
  -DDC_NOHW_DISCONTIG_BUFFERS -DDC_NOHW_GET_BUFFER_DIMENSIONS
 
-dcnohw-y += \
+dc_nohw-y += \
 	services4/3rdparty/dc_nohw/dc_nohw_displayclass.o \
 	services4/3rdparty/dc_nohw/dc_nohw_linux.o

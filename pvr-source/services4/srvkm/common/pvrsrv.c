@@ -172,6 +172,11 @@ PVRSRV_ERROR FreeDeviceID(SYS_DATA *psSysData, IMG_UINT32 ui32DevID)
 ******************************************************************************/
 IMG_VOID IMG_CALLCONV PVRSRVCompatCheckKM(PVRSRV_BRIDGE_IN_COMPAT_CHECK *psUserModeDDKDetails, PVRSRV_BRIDGE_RETURN *psRetOUT)
 {
+#if defined(SUPPORT_TI_VERSION_STRING)
+	SYS_DATA			*psSysData;
+
+	SysAcquireData(&psSysData);
+#endif
 
 	if(psUserModeDDKDetails->ui32DDKVersion != ((PVRVERSION_MAJ << 16) | (PVRVERSION_MIN << 8))
 		|| (psUserModeDDKDetails->ui32DDKBuild != PVRVERSION_BUILD))
@@ -186,6 +191,14 @@ IMG_VOID IMG_CALLCONV PVRSRVCompatCheckKM(PVRSRV_BRIDGE_IN_COMPAT_CHECK *psUserM
 		PVR_LOG(("UM DDK-(%d) and KM DDK-(%d) match. [ OK ]",
 						psUserModeDDKDetails->ui32DDKBuild ,PVRVERSION_BUILD));
 	}
+
+#if defined(SUPPORT_TI_VERSION_STRING)
+	/* If TI version string is supported, populate it here. This will show
+	 * up in proc entry.
+	 * Probably a bad place to do this. FIXME
+	 */
+	memcpy(psSysData->szTIVersion, psUserModeDDKDetails->szTIVersion, 64);
+#endif
 }
 
 /*!
@@ -1394,7 +1407,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 			PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
 			PVRSRV_PER_PROCESS_DATA *psPerProc;
 
-			if(!psMiscInfo->sCacheOpCtl.u.psKernelMemInfo)
+			if(!psMiscInfo->sCacheOpCtl.u.hKernelMemInfo)
 			{
 				PVR_DPF((PVR_DBG_WARNING, "PVRSRVGetMiscInfoKM: "
 						 "Ignoring non-deferred cache op with no meminfo"));
@@ -1412,7 +1425,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 
 			if(PVRSRVLookupHandle(psPerProc->psHandleBase,
 								  (IMG_PVOID *)&psKernelMemInfo,
-								  psMiscInfo->sCacheOpCtl.u.psKernelMemInfo,
+								  psMiscInfo->sCacheOpCtl.u.hKernelMemInfo,
 								  PVRSRV_HANDLE_TYPE_MEM_INFO) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "PVRSRVGetMiscInfoKM: "
@@ -1460,7 +1473,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 
 		if(PVRSRVLookupHandle(psPerProc->psHandleBase,
 							  (IMG_PVOID *)&psKernelMemInfo,
-							  psMiscInfo->sGetRefCountCtl.u.psKernelMemInfo,
+							  psMiscInfo->sGetRefCountCtl.u.hKernelMemInfo,
 							  PVRSRV_HANDLE_TYPE_MEM_INFO) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "PVRSRVGetMiscInfoKM: "

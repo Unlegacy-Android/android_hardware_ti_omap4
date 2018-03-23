@@ -170,10 +170,9 @@ PVRSRV_ERROR PVRSRVMapDmaBufKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 								  IMG_HANDLE hDevCookie,
 								  IMG_HANDLE hDevMemHeap,
 								  IMG_UINT32 ui32Flags,
-								  IMG_UINT32 ui32NumFDs,
-								  IMG_INT32 *pui32DmaBufFD,
-								  IMG_SIZE_T *puiDmaBufOffset,
-								  IMG_SIZE_T *puiDmaBufSize,
+								  IMG_INT32 ui32DmaBufFD,
+								  IMG_SIZE_T uiDmaBufOffset,
+								  IMG_SIZE_T uiDmaBufSize,
 								  PVRSRV_KERNEL_MEM_INFO **ppsKernelMemInfo,
 								  IMG_SIZE_T *puiSize,
 								  IMG_SIZE_T *puiMemInfoOffset,
@@ -264,7 +263,11 @@ PVRSRV_ERROR PVRSRVCreateDCSwapChainKM(PVRSRV_PER_PROCESS_DATA	*psPerProc,
 									   IMG_UINT32				ui32BufferCount,
 									   IMG_UINT32				ui32OEMFlags,
 									   IMG_HANDLE				*phSwapChain,
-									   IMG_UINT32				*pui32SwapChainID);
+									   IMG_UINT32				*pui32SwapChainID
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
+									  ,IMG_INT32				i32TimelineFd
+#endif
+									  );
 IMG_IMPORT
 PVRSRV_ERROR PVRSRVDestroyDCSwapChainKM(IMG_HANDLE	hSwapChain);
 IMG_IMPORT

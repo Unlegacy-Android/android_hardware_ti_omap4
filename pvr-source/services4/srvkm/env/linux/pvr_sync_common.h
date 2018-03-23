@@ -1,6 +1,9 @@
 /*************************************************************************/ /*!
-@Title          bufferclass_example kernel driver interface
+@File           pvr_sync_common.h
+@Title          Kernel sync driver
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@Description    Version numbers and strings for PVR Consumer services
+				components.
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -38,30 +41,50 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-#ifndef __BC_EXAMPLE_LINUX_H__
-#define __BC_EXAMPLE_LINUX_H__
 
-#include <linux/ioctl.h>
+#ifndef _PVR_SYNC_COMMON_H
+#define _PVR_SYNC_COMMON_H
 
-typedef struct BC_Example_ioctl_package_TAG
-{
-	int inputparam;
-	int outputparam;
+#include <linux/seq_file.h>
+#include <linux/version.h>
 
-}BC_Example_ioctl_package;
+#if !defined(__KERNEL__) || (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
+#include <linux/sync.h>
+#elif !defined(__KERNEL__) || (LINUX_VERSION_CODE < KERNEL_VERSION(4,9,0))
+#include <../drivers/staging/android/sync.h>
+#else
+#include <../drivers/dma-buf/sync_debug.h>
+#endif
 
-/*!< Nov 2006: according to ioctl-number.txt 'g' wasn't in use. */
-#define BC_EXAMPLE_IOC_GID      'g'
+#include "pvr_sync_user.h"
+#include "servicesint.h" // PVRSRV_DEVICE_SYNC_OBJECT
 
-#define BC_EXAMPLE_IOWR(INDEX)  _IOWR(BC_EXAMPLE_IOC_GID, INDEX, BC_Example_ioctl_package)
+/* services4 internal interface */
 
-#define BC_Example_ioctl_fill_buffer		BC_EXAMPLE_IOWR(0)
-#define BC_Example_ioctl_get_buffer_count	BC_EXAMPLE_IOWR(1)
-#define BC_Example_ioctl_reconfigure_buffer BC_EXAMPLE_IOWR(2)
+int PVRSyncDeviceInit(void);
+void PVRSyncDeviceDeInit(void);
+void PVRSyncUpdateAllSyncs(void);
 
-#endif /* __BC_EXAMPLE_H__ */
-
-/******************************************************************************
- End of file (bufferclass_example.h)
-******************************************************************************/
-
+IMG_BOOL
+AddSyncInfoToArray(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo,
+				   IMG_UINT32 ui32SyncPointLimit,
+				   IMG_UINT32 *pui32NumRealSyncs,
+				   PVRSRV_KERNEL_SYNC_INFO *apsSyncInfo[]);
+PVRSRV_ERROR
+PVRSyncPatchCCBKickSyncInfos(IMG_HANDLE    ahSyncs[SGX_MAX_SRC_SYNCS_TA],
+		      PVRSRV_DEVICE_SYNC_OBJECT asDevSyncs[SGX_MAX_SRC_SYNCS_TA],
+							 IMG_UINT32 *pui32NumSrcSyncs);
+PVRSRV_ERROR
+PVRSyncPatchTransferSyncInfos(IMG_HANDLE    ahSyncs[SGX_MAX_SRC_SYNCS_TA],
+			  PVRSRV_DEVICE_SYNC_OBJECT asDevSyncs[SGX_MAX_SRC_SYNCS_TA],
+							 IMG_UINT32 *pui32NumSrcSyncs);
+PVRSRV_ERROR
+PVRSyncFencesToSyncInfos(PVRSRV_KERNEL_SYNC_INFO *apsSyncs[],
+						 IMG_UINT32 *pui32NumSyncs,
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+						 struct sync_fence *apsFence[SGX_MAX_SRC_SYNCS_TA]
+#else
+						 struct fence *apsFence[SGX_MAX_SRC_SYNCS_TA]
+#endif
+						 );
+#endif /* _PVR_SYNC_COMMON_H */
