@@ -100,14 +100,13 @@ struct pvr_fence_frame
 	atomic_t blocking_count;
 	struct fence *fence_to_signal;
 	bool unblock;
+	bool have_blocking_fences;
 };
 
 struct pvr_fence
 {
 	struct fence fence;
 	spinlock_t lock;
-	struct pvr_fence_context *pvr_fence_context;
-	u32 tag;
 };
 
 static LIST_HEAD(fence_context_list);
@@ -170,7 +169,7 @@ static struct fence_ops fence_ops =
 	.release = release_fence
 };
 
-static inline bool is_pvr_fence(struct fence *fence)
+static inline bool is_pvr_fence(const struct fence *fence)
 {
 	return fence->ops == &fence_ops;
 }
@@ -190,9 +189,6 @@ static struct fence *create_fence_to_signal(struct pvr_fence_frame *pvr_fence_fr
 
 	fence_init(&pvr_fence->fence, &fence_ops, &pvr_fence->lock, fence_context, seqno);
 
-	pvr_fence->pvr_fence_context = pvr_fence_frame->pvr_fence_context;
-	pvr_fence->tag = pvr_fence_frame->tag;
-
 	pvr_fence_frame->fence_to_signal = &pvr_fence->fence;
 
 #if defined(DEBUG)
@@ -203,30 +199,24 @@ static struct fence *create_fence_to_signal(struct pvr_fence_frame *pvr_fence_fr
 	return pvr_fence_frame->fence_to_signal;
 }
 
-static inline bool is_blocking_fence(struct fence *fence, struct pvr_fence_frame *pvr_fence_frame)
+static inline bool is_blocking_fence(const struct fence *fence)
 {
-	if (is_pvr_fence(fence))
-	{
-		struct pvr_fence *pvr_fence = container_of(fence, struct pvr_fence, fence);
+	return fence && !is_pvr_fence(fence);
+}
 
-		return pvr_fence->pvr_fence_context != pvr_fence_frame->pvr_fence_context && pvr_fence->tag != pvr_fence_frame->tag;
-	}
-
-	return true;
+static inline bool is_unsignalled_blocking_fence(const struct fence *fence)
+{
+	return is_blocking_fence(fence) && !test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags);
 }
 
 static void signal_and_put_fence(struct pvr_fence_frame *pvr_fence_frame)
 {
 	if (pvr_fence_frame->fence_to_signal)
 	{
-		struct pvr_fence_context *pvr_fence_context = pvr_fence_frame->pvr_fence_context;
-
 		fence_signal(pvr_fence_frame->fence_to_signal);
 		fence_put(pvr_fence_frame->fence_to_signal);
 
 		pvr_fence_frame->fence_to_signal = NULL;
-
-		queue_work(workqueue, &pvr_fence_context->fence_work);
 
 #if defined(DEBUG)
 		atomic_inc(&fences_signalled);
@@ -335,17 +325,51 @@ static int update_reservation_object_fences_dst(struct pvr_fence_frame *pvr_fenc
 	flist = reservation_object_get_list(resv);
 	shared_fence_count = flist ? flist->shared_count : 0;
 
+	/*
+	 * There were not any blocking fences when we originally checked
+	 * the reservation object, but there could be now, as the reservation
+	 * object lock was dropped in the meantime. Check the fences again,
+	 * and don't add our exclusive fence if there are blocking fences
+	 * now.
+	 */
+	if (!pvr_fence_frame->have_blocking_fences)
+	{
+		struct fence *fence;
+
+		fence = reservation_object_get_excl(resv);
+		if (is_unsignalled_blocking_fence(fence))
+		{
+			return 0;
+		}
+
+		for (i = 0; i < shared_fence_count; i++)
+		{
+			fence = rcu_dereference_protected(flist->shared[i], reservation_object_held(resv));
+
+			if (is_unsignalled_blocking_fence(fence))
+			{
+				return 0;
+			}
+		}
+	}
+
 	fence_to_signal = create_fence_to_signal(pvr_fence_frame);
 	if (!fence_to_signal)
 	{
 		return -ENOMEM;
 	}
 
+	if (!pvr_fence_frame->have_blocking_fences)
+	{
+		reservation_object_add_excl_fence(resv, fence_to_signal);
+		return 0;
+	}
+
 	if (!shared_fence_count)
 	{
 		struct fence *fence = reservation_object_get_excl(resv);
 
-		if (fence && is_blocking_fence(fence, pvr_fence_frame))
+		if (is_blocking_fence(fence))
 		{
 			if (allocate_blocking_fence_storage(pvr_fence_frame, 1))
 			{	
@@ -371,7 +395,7 @@ static int update_reservation_object_fences_dst(struct pvr_fence_frame *pvr_fenc
 
 		struct fence *fence = rcu_dereference_protected(flist->shared[i], reservation_object_held(resv));
 
-		if (is_blocking_fence(fence, pvr_fence_frame))
+		if (is_blocking_fence(fence))
 		{
 			blocking_fence_count++;
 		}
@@ -382,13 +406,15 @@ static int update_reservation_object_fences_dst(struct pvr_fence_frame *pvr_fenc
 	{
 		if (allocate_blocking_fence_storage(pvr_fence_frame, blocking_fence_count))
 		{
-			for (i = 0; i < blocking_fence_count; i++)
+			unsigned index = 0;
+
+			for (i = 0; i < shared_fence_count; i++)
 			{
 				struct fence *fence = rcu_dereference_protected(flist->shared[i], reservation_object_held(resv));
 
-				if (is_blocking_fence(fence, pvr_fence_frame))
+				if (is_blocking_fence(fence))
 				{
-					if (!install_and_get_blocking_fence(pvr_fence_frame, i, fence))
+					if (!install_and_get_blocking_fence(pvr_fence_frame, index++, fence))
 					{
 						ret = 0;
 					}
@@ -403,52 +429,21 @@ static int update_reservation_object_fences_dst(struct pvr_fence_frame *pvr_fenc
 	}
 
 	reservation_object_add_excl_fence(resv, fence_to_signal);
+
 	return update_reservation_return_value(ret, false);
 }
 
 static int update_reservation_object_fences_src(struct pvr_fence_frame *pvr_fence_frame,
 						struct reservation_object *resv)
 {
-	struct reservation_object_list *flist;
-	struct fence *fence_to_signal = NULL;
-	struct fence *blocking_fence = NULL;
-	bool reserve = true;
-	unsigned shared_fence_count;
-	unsigned i;
+	struct fence *fence_to_signal;
+	struct fence *fence;
 	int ret;
 
-	flist = reservation_object_get_list(resv);
-	shared_fence_count = flist ? flist->shared_count : 0;
-
-	/*
-	 * There can't be more than one shared fence for a given
-	 * fence context, so if a PVR fence is already in the list,
-	 * we don't need to reserve space for the new one, but need
-	 * to block on it if it isn't ours.
-	 */
-	for (i = 0; i < shared_fence_count; i++)
+	ret = reservation_object_reserve_shared(resv);
+	if (ret)
 	{
-		struct fence *fence = rcu_dereference_protected(flist->shared[i], reservation_object_held(resv));
-
-		if (is_pvr_fence(fence))
-		{
-			reserve = false;
-
-			if (is_blocking_fence(fence, pvr_fence_frame))
-			{
-				blocking_fence = fence;
-			}
-			break;
-		}
-	}
-
-	if (reserve)
-	{
-		ret = reservation_object_reserve_shared(resv);
-		if (ret)
-		{
-			return ret;
-		}
+		return ret;
 	}
 
 	fence_to_signal = create_fence_to_signal(pvr_fence_frame);
@@ -457,27 +452,24 @@ static int update_reservation_object_fences_src(struct pvr_fence_frame *pvr_fenc
 		return -ENOMEM;
 	}
 
-	if (!blocking_fence && !shared_fence_count)
+	if (!pvr_fence_frame->have_blocking_fences)
 	{
-		struct fence *fence = reservation_object_get_excl(resv);
+		reservation_object_add_shared_fence(resv, fence_to_signal);
 
-		if (fence && is_blocking_fence(fence, pvr_fence_frame))
-		{
-			blocking_fence = fence;
-		}
+		return 0;
 	}
 
-	if (blocking_fence)
+	fence = reservation_object_get_excl(resv);
+	if (is_blocking_fence(fence))
 	{
 		if (allocate_blocking_fence_storage(pvr_fence_frame, 1))
 		{	
-			ret = install_and_get_blocking_fence(pvr_fence_frame, 0, blocking_fence);
+			ret = install_and_get_blocking_fence(pvr_fence_frame, 0, fence);
 		}
 		else
 		{
-			ret = -ENOMEM;
 			fence_put(fence_to_signal);
-			return ret;
+			return -ENOMEM;
 		}
 	}
 	else
@@ -487,7 +479,7 @@ static int update_reservation_object_fences_src(struct pvr_fence_frame *pvr_fenc
 
 	reservation_object_add_shared_fence(resv, fence_to_signal);
 
-	return update_reservation_return_value(ret, !shared_fence_count);
+	return update_reservation_return_value(ret, true);
 }
 
 /* Must be called with pvr_fence_context mutex held */
@@ -534,16 +526,32 @@ static bool sync_gpu_read_op_is_complete(struct pvr_fence_frame *pvr_fence_frame
 {
 	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo = pvr_fence_frame->pvr_fence_context->psSyncInfo;
 
-	return sync_GT(psSyncInfo->psSyncData->ui32ReadOpsComplete,
-			pvr_fence_frame->ui32ReadOpsPending);
+	/*
+	 * If there aren't any blocking fences, we will have recorded the
+	 * read ops pending value after it had been updated for the GPU
+	 * op.
+	 */
+	return pvr_fence_frame->have_blocking_fences ?
+			sync_GT(psSyncInfo->psSyncData->ui32ReadOpsComplete,
+				pvr_fence_frame->ui32ReadOpsPending) : 
+			sync_GE(psSyncInfo->psSyncData->ui32ReadOpsComplete,
+				pvr_fence_frame->ui32ReadOpsPending);
 }
 
 static bool sync_gpu_write_op_is_complete(struct pvr_fence_frame *pvr_fence_frame)
 {
 	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo = pvr_fence_frame->pvr_fence_context->psSyncInfo;
 
-	return sync_GT(psSyncInfo->psSyncData->ui32WriteOpsComplete,
-			pvr_fence_frame->ui32WriteOpsPending);
+	/*
+	 * If there aren't any blocking fences, we will have recorded the
+	 * write ops pending value after it had been updated for the GPU
+	 * op.
+	 */
+	return pvr_fence_frame->have_blocking_fences ?
+			sync_GT(psSyncInfo->psSyncData->ui32WriteOpsComplete,
+				pvr_fence_frame->ui32WriteOpsPending) :
+			sync_GE(psSyncInfo->psSyncData->ui32WriteOpsComplete,
+				pvr_fence_frame->ui32WriteOpsPending);
 }
 
 static void sync_complete_read_op(struct pvr_fence_frame *pvr_fence_frame)
@@ -560,12 +568,10 @@ static void sync_complete_write_op(struct pvr_fence_frame *pvr_fence_frame)
 	psSyncInfo->psSyncData->ui32WriteOpsComplete = ++pvr_fence_frame->ui32WriteOpsPending;
 }
 
-static void do_fence_work(struct work_struct *work)
+static bool fence_work(struct pvr_fence_context *pvr_fence_context)
 {
-	struct pvr_fence_context *pvr_fence_context = container_of(work, struct pvr_fence_context, fence_work);
 	bool schedule_device_callbacks = false;
 
-	mutex_lock(&pvr_fence_context->mutex);
 	for(;;)
 	{
 		struct pvr_fence_frame *pvr_fence_frame;
@@ -578,18 +584,18 @@ static void do_fence_work(struct work_struct *work)
 		{
 			if (!atomic_read(&pvr_fence_frame->blocking_count) && sync_is_ready(pvr_fence_frame))
 			{
-				schedule_device_callbacks = true;
-
 				switch (pvr_fence_frame->blocked_on)
 				{
 					case BLOCKED_ON_READ:
 						sync_complete_read_op(pvr_fence_frame);
 						pvr_fence_frame->blocked_on = 0;
+						schedule_device_callbacks = true;
 						reprocess = true;
 						break;
 					case BLOCKED_ON_WRITE:
 						sync_complete_write_op(pvr_fence_frame);
 						pvr_fence_frame->blocked_on = 0;
+						schedule_device_callbacks = true;
 						reprocess = true;
 						break;
 					default:
@@ -597,7 +603,10 @@ static void do_fence_work(struct work_struct *work)
 						break;
 				}
 
-				next_frame |= pvr_fence_frame->unblock;
+				if (pvr_fence_frame->unblock)
+				{
+					next_frame = true;
+				}
 			}
 		}
 
@@ -614,6 +623,17 @@ static void do_fence_work(struct work_struct *work)
 		}
 
 	}
+
+	return schedule_device_callbacks;
+}
+
+static void do_fence_work(struct work_struct *work)
+{
+	struct pvr_fence_context *pvr_fence_context = container_of(work, struct pvr_fence_context, fence_work);
+	bool schedule_device_callbacks;
+
+	mutex_lock(&pvr_fence_context->mutex);
+	schedule_device_callbacks = fence_work(pvr_fence_context);
 	mutex_unlock(&pvr_fence_context->mutex);
 
 	if (schedule_device_callbacks)
@@ -690,7 +710,7 @@ IMG_HANDLE PVRLinuxFenceContextCreate(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, IMG_H
 	return (IMG_HANDLE)pvr_fence_context;
 }
 
-static int process_reservation_object(struct pvr_fence_context *pvr_fence_context, struct reservation_object *resv, bool is_dst, u32 tag)
+static int process_reservation_object(struct pvr_fence_context *pvr_fence_context, struct reservation_object *resv, bool is_dst, u32 tag, bool have_blocking_fences)
 {
 	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo = pvr_fence_context->psSyncInfo;
 	struct pvr_fence_frame *pvr_fence_frame;
@@ -705,6 +725,8 @@ static int process_reservation_object(struct pvr_fence_context *pvr_fence_contex
 	pvr_fence_frame->is_dst = is_dst;
 	pvr_fence_frame->tag = tag;
 	pvr_fence_frame->pvr_fence_context = pvr_fence_context;
+	pvr_fence_frame->have_blocking_fences = have_blocking_fences;
+	atomic_set(&pvr_fence_frame->blocking_count, 0);
 	INIT_LIST_HEAD(&pvr_fence_frame->fence_frame_list);
 
 	ret = is_dst ?
@@ -717,8 +739,17 @@ static int process_reservation_object(struct pvr_fence_context *pvr_fence_contex
 	}
 	else
 	{
+		BUG_ON(ret && !have_blocking_fences);
+
 		pvr_fence_frame->blocked_on = ret;
 
+
+		/*
+		 * If there are no blocking fences, the ops pending values
+		 * are recorded after being updated for the GPU operation,
+		 * rather than before, so the test for completion of the
+		 * operation is different for the two cases.
+		 */
 		pvr_fence_frame->ui32ReadOpsPending = psSyncInfo->psSyncData->ui32ReadOpsPending;
 
 		pvr_fence_frame->ui32ReadOps2Pending = (pvr_fence_frame->blocked_on == BLOCKED_ON_READ) ? SyncTakeReadOp2(psSyncInfo, SYNC_OP_CLASS_LINUX_FENCE) : psSyncInfo->psSyncData->ui32ReadOps2Pending;
@@ -731,12 +762,11 @@ static int process_reservation_object(struct pvr_fence_context *pvr_fence_contex
 	return 0;
 }
 
-static int process_syncinfo(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, bool is_dst, u32 tag)
+static int process_syncinfo(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, bool is_dst, u32 tag, bool have_blocking_fences)
 {
 	struct pvr_fence_context *pvr_fence_context = (struct pvr_fence_context *)psSyncInfo->hFenceContext;
 	struct reservation_object *resv;
-	unsigned buf = 0;
-	int ret;
+	int ret = 0;
 
 	if (!pvr_fence_context)
 	{
@@ -744,13 +774,13 @@ static int process_syncinfo(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, bool is_dst, u3
 	}
 
 	mutex_lock(&pvr_fence_context->mutex);
-	while ((resv = DmaBufGetReservationObject(pvr_fence_context->hNativeSync, buf++)))
+	if ((resv = DmaBufGetReservationObject(pvr_fence_context->hNativeSync)))
 	{
-		ret = process_reservation_object(pvr_fence_context, resv, is_dst, tag);
-		if (ret)
-		{
-			break;
-		}
+		ret = process_reservation_object(pvr_fence_context,
+							resv,
+							is_dst,
+							tag,
+							have_blocking_fences);
 	}
 	mutex_unlock(&pvr_fence_context->mutex);
 
@@ -775,12 +805,73 @@ static inline bool sync_enabled(const IMG_BOOL *pbEnabled,
 	return (!pbEnabled || pbEnabled[index]) && phSyncInfo && phSyncInfo[index];
 }
 
+static bool resv_is_blocking(struct reservation_object *resv, bool is_dst)
+{
+	struct reservation_object_list *flist;
+	struct fence *fence;
+	bool blocking;
+	unsigned shared_count;
+	unsigned seq;
+
+retry:
+	shared_count = 0;
+	blocking = false;
+
+	seq = read_seqcount_begin(&resv->seq);
+	rcu_read_lock();
+
+	flist = rcu_dereference(resv->fence);
+	if (read_seqcount_retry(&resv->seq, seq))
+	{
+		goto unlock_retry;
+	}
+
+	if (flist)
+	{
+		shared_count = flist->shared_count;
+	}
+
+	if (is_dst)
+	{
+		unsigned i;
+
+		for (i = 0; (i < shared_count) && !blocking; i++)
+		{
+			fence = rcu_dereference(flist->shared[i]);
+
+			blocking = is_unsignalled_blocking_fence(fence);
+		}
+	}
+
+	if (!blocking && (!is_dst || !shared_count))
+	{
+		fence = rcu_dereference(resv->fence_excl);
+		if (read_seqcount_retry(&resv->seq, seq))
+		{
+			goto unlock_retry;
+		}
+
+		blocking = is_unsignalled_blocking_fence(fence);
+	}
+
+	rcu_read_unlock();
+
+	return blocking;
+
+unlock_retry:
+	rcu_read_unlock();
+	goto retry;
+}
+
 static unsigned count_reservation_objects(unsigned num_syncs,
 					IMG_HANDLE *phSyncInfo,
-					const IMG_BOOL *pbEnabled)
+					const IMG_BOOL *pbEnabled,
+					bool is_dst,
+					bool *have_blocking_fences)
 {
 	unsigned i;
 	unsigned count = 0;
+	bool blocking_fences = false;
 
 	for (i = 0; i < num_syncs; i++)
 	{
@@ -796,31 +887,23 @@ static unsigned count_reservation_objects(unsigned num_syncs,
 		pvr_fence_context = (struct pvr_fence_context *)psSyncInfo->hFenceContext;
 		if (pvr_fence_context)
 		{
-			unsigned buf = 0;
+			struct reservation_object *resv;
 
-			while (DmaBufGetReservationObject(pvr_fence_context->hNativeSync, buf++))
+			if ((resv = DmaBufGetReservationObject(pvr_fence_context->hNativeSync)))
 			{
 				count++;
+
+				if (!blocking_fences)
+				{
+					blocking_fences = resv_is_blocking(resv,
+								is_dst);
+				}
 			}
 		}
 	}
 
+	*have_blocking_fences = blocking_fences;
 	return count;
-}
-
-static unsigned count_all_reservation_objects(IMG_UINT32 ui32NumSrcSyncs,
-					IMG_HANDLE *phSrcSyncInfo,
-					const IMG_BOOL *pbSrcEnabled,
-					IMG_UINT32 ui32NumDstSyncs,
-					IMG_HANDLE *phDstSyncInfo,
-					const IMG_BOOL *pbDstEnabled)
-{
-	return count_reservation_objects(ui32NumSrcSyncs,
-					phSrcSyncInfo,
-					pbSrcEnabled) +
-			count_reservation_objects(ui32NumDstSyncs,
-						phDstSyncInfo,
-						pbDstEnabled);
 }
 
 static unsigned get_reservation_objects(unsigned num_resvs,
@@ -847,9 +930,8 @@ static unsigned get_reservation_objects(unsigned num_resvs,
 		if (pvr_fence_context)
 		{
 			struct reservation_object *resv;
-			unsigned buf = 0;
 
-			while ((resv = DmaBufGetReservationObject(pvr_fence_context->hNativeSync, buf++)))
+			if ((resv = DmaBufGetReservationObject(pvr_fence_context->hNativeSync)))
 			{
 				BUG_ON(count >= num_resvs);
 				resvs[count++] = resv;
@@ -899,6 +981,7 @@ static void unlock_reservation_objects(unsigned num_resvs,
 }
 
 static int lock_reservation_objects_no_retry(struct ww_acquire_ctx *ww_acquire_ctx,
+						bool interruptible,
 						unsigned num_resvs,
 						struct reservation_object **resvs,
 						struct reservation_object **contended_resv)
@@ -919,7 +1002,9 @@ static int lock_reservation_objects_no_retry(struct ww_acquire_ctx *ww_acquire_c
 			continue;
 		}
 
-		ret = ww_mutex_lock_interruptible(&(resvs[i]->lock), ww_acquire_ctx);
+		ret = interruptible ?
+			ww_mutex_lock_interruptible(&(resvs[i]->lock), ww_acquire_ctx) :
+			ww_mutex_lock(&(resvs[i]->lock), ww_acquire_ctx);
 		if (ret)
 		{
 			if (ret == -EALREADY)
@@ -949,6 +1034,7 @@ static int lock_reservation_objects_no_retry(struct ww_acquire_ctx *ww_acquire_c
 }
 
 static int lock_reservation_objects(struct ww_acquire_ctx *ww_acquire_ctx,
+					bool interruptible,
 					unsigned num_resvs,
 					struct reservation_object **resvs)
 {
@@ -957,15 +1043,25 @@ static int lock_reservation_objects(struct ww_acquire_ctx *ww_acquire_ctx,
 
 	do {
 		ret = lock_reservation_objects_no_retry(ww_acquire_ctx,
+							interruptible,
 							num_resvs,
 							resvs,
 							&contended_resv);
 		if (ret == -EDEADLK)
 		{
-			int res = ww_mutex_lock_slow_interruptible(&(contended_resv->lock), ww_acquire_ctx);
-			if (res)
+			if (interruptible)
 			{
-				return res;
+				int res = ww_mutex_lock_slow_interruptible(
+						&(contended_resv->lock),
+						ww_acquire_ctx);
+				if (res)
+				{
+					return res;
+				}
+			}
+			else
+			{
+				ww_mutex_lock_slow(&(contended_resv->lock), ww_acquire_ctx);
 			}
 		}
 	} while (ret == -EDEADLK);
@@ -975,6 +1071,7 @@ static int lock_reservation_objects(struct ww_acquire_ctx *ww_acquire_ctx,
 
 static int process_syncinfos(u32 tag,
 				bool is_dst,
+				bool have_blocking_fences,
 				IMG_UINT32 ui32NumSyncs,
 				IMG_HANDLE *phSyncInfo,
 				const IMG_BOOL *pbEnabled)
@@ -988,7 +1085,10 @@ static int process_syncinfos(u32 tag,
 			PVRSRV_KERNEL_SYNC_INFO *psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)phSyncInfo[i];
 			int ret;
 				
-			ret = process_syncinfo(psSyncInfo, is_dst, tag);
+			ret = process_syncinfo(psSyncInfo,
+						is_dst,
+						tag,
+						have_blocking_fences);
 			if (ret)
 			{
 				break;
@@ -1005,12 +1105,14 @@ static int process_all_syncinfos(u32 tag,
 				const IMG_BOOL *pbSrcEnabled,
 				IMG_UINT32 ui32NumDstSyncs,
 				IMG_HANDLE *phDstSyncInfo,
-				const IMG_BOOL *pbDstEnabled)
+				const IMG_BOOL *pbDstEnabled,
+				bool have_blocking_fences)
 {
 	int ret;
 
 	ret = process_syncinfos(tag,
 				false,
+				have_blocking_fences,
 				ui32NumSrcSyncs,
 				phSrcSyncInfo,
 				pbSrcEnabled);
@@ -1022,6 +1124,7 @@ static int process_all_syncinfos(u32 tag,
 
 	ret = process_syncinfos(tag,
 				true,
+				have_blocking_fences,
 				ui32NumDstSyncs,
 				phDstSyncInfo,
 				pbDstEnabled);
@@ -1116,7 +1219,38 @@ static u32 new_frame_tag(void)
 	return (++frame_tag) ? frame_tag : ++frame_tag;
 }
 
-PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
+IMG_UINT32 PVRLinuxFenceNumResvObjs(IMG_BOOL *pbBlockingFences,
+				IMG_UINT32 ui32NumSrcSyncs,
+				IMG_HANDLE *phSrcSyncInfo,
+				const IMG_BOOL *pbSrcEnabled,
+				IMG_UINT32 ui32NumDstSyncs,
+				IMG_HANDLE *phDstSyncInfo,
+				const IMG_BOOL *pbDstEnabled)
+{
+	unsigned count;
+	bool blocking_fences_src, blocking_fences_dst;
+
+	count = count_reservation_objects(ui32NumSrcSyncs,
+					phSrcSyncInfo,
+					pbSrcEnabled,
+					false,
+					&blocking_fences_src);
+
+	count += count_reservation_objects(ui32NumDstSyncs,
+						phDstSyncInfo,
+						pbDstEnabled,
+						true,
+						&blocking_fences_dst);
+
+	*pbBlockingFences = (IMG_BOOL) (blocking_fences_src |
+						blocking_fences_dst);
+
+	return count;
+}
+
+PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *pui32Tag,
+				IMG_UINT32 ui32NumResvObjs,
+				IMG_BOOL bBlockingFences,
 				IMG_UINT32 ui32NumSrcSyncs,
 				IMG_HANDLE *phSrcSyncInfo,
 				const IMG_BOOL *pbSrcEnabled,
@@ -1126,32 +1260,25 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 {
 	u32 tag;
 	struct ww_acquire_ctx ww_acquire_ctx;
-	unsigned num_resvs;
 	struct reservation_object **resvs = NULL;
 	int ret;
 
-	num_resvs = count_all_reservation_objects(ui32NumSrcSyncs,
-							phSrcSyncInfo,
-							pbSrcEnabled,
-							ui32NumDstSyncs,
-							phDstSyncInfo,
-							pbDstEnabled);
-	if (!num_resvs)
+	if (!ui32NumResvObjs)
 	{
-		*puTag = 0;
+		*pui32Tag = 0;
 		ret = 0;
 		goto exit;
 	}
 	tag = new_frame_tag();
 
-	resvs = kmalloc(num_resvs * sizeof(*resvs), GFP_KERNEL);
+	resvs = kmalloc(ui32NumResvObjs * sizeof(*resvs), GFP_KERNEL);
 	if (!resvs)
 	{
 		ret = -ENOMEM;
 		goto exit;
 	}
 
-	get_all_reservation_objects(num_resvs,
+	get_all_reservation_objects(ui32NumResvObjs,
 					resvs,
 					ui32NumSrcSyncs,
 					phSrcSyncInfo,
@@ -1162,7 +1289,16 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 
 	ww_acquire_init(&ww_acquire_ctx, &reservation_ww_class);
 
-	ret = lock_reservation_objects(&ww_acquire_ctx, num_resvs, resvs);
+	/*
+	 * If there are no blocking fences, we will be processing
+	 * reservation objects after the GPU operation has been
+	 * started, so returning an error that may result in the
+	 * GPU operation being retried may be inappropriate.
+	 */
+	ret = lock_reservation_objects(&ww_acquire_ctx,
+				       (bool)bBlockingFences,
+				       ui32NumResvObjs,
+				       resvs);
 	if (ret)
 	{
 		ww_acquire_fini(&ww_acquire_ctx);
@@ -1176,9 +1312,10 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 					pbSrcEnabled,
 					ui32NumDstSyncs,
 					phDstSyncInfo,
-					pbDstEnabled);
+					pbDstEnabled,
+					(bool)bBlockingFences);
 
-	unlock_reservation_objects(num_resvs, resvs);
+	unlock_reservation_objects(ui32NumResvObjs, resvs);
 
 	ww_acquire_fini(&ww_acquire_ctx);
 
@@ -1194,7 +1331,7 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 	}
 	else
 	{
-		*puTag = tag;
+		*pui32Tag = tag;
 	}
 
 exit:
@@ -1226,21 +1363,10 @@ void PVRLinuxFenceRelease(IMG_UINT32 uTag,
 	}
 }
 
-static void check_frames(struct pvr_fence_context *pvr_fence_context)
-{
-	if (list_empty(&pvr_fence_context->fence_frame_list))
-	{
-		list_del_init(&pvr_fence_context->fence_context_notify_list);
-	}
-	else
-	{
-		queue_work(workqueue, &pvr_fence_context->fence_work);
-	}
-}
-
 void PVRLinuxFenceCheckAll(void)
 {
 	struct list_head *entry, *temp;
+	bool schedule_device_callbacks = false;
 
 	mutex_lock(&pvr_fence_mutex);
 	list_for_each_safe(entry, temp, &fence_context_notify_list)
@@ -1248,10 +1374,23 @@ void PVRLinuxFenceCheckAll(void)
 		struct pvr_fence_context *pvr_fence_context = list_entry(entry, struct pvr_fence_context, fence_context_notify_list);
 
 		mutex_lock(&pvr_fence_context->mutex);
-		check_frames(pvr_fence_context);
+		if (list_empty(&pvr_fence_context->fence_frame_list))
+		{
+			list_del_init(&pvr_fence_context->fence_context_notify_list);
+		}
+		else
+		{
+			if (fence_work(pvr_fence_context))
+			{
+				schedule_device_callbacks = true;
+			}
+		}
 		mutex_unlock(&pvr_fence_context->mutex);
 	}
 	mutex_unlock(&pvr_fence_mutex);
+
+	if (schedule_device_callbacks)
+		PVRSRVScheduleDeviceCallbacks();
 }
 
 void PVRLinuxFenceDeInit(void)
@@ -1320,7 +1459,7 @@ void PVRLinuxFenceContextDestroy(IMG_HANDLE hFenceContext)
 	(void) hFenceContext;
 }
 
-PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
+IMG_UINT32 PVRLinuxFenceNumResvObjs(IMG_BOOL *pbBlockingFences,
 				IMG_UINT32 ui32NumSrcSyncs,
 				IMG_HANDLE *phSrcSyncInfo,
 				const IMG_BOOL *pbSrcEnabled,
@@ -1328,7 +1467,7 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 				IMG_HANDLE *phDstSyncInfo,
 				const IMG_BOOL *pbDstEnabled)
 {
-	(void) puTag;
+	(void) pbBlockingFences;
 	(void) ui32NumSrcSyncs;
 	(void) phSrcSyncInfo;
 	(void) pbSrcEnabled;
@@ -1339,7 +1478,9 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 	return PVRSRV_OK;
 }
 
-void PVRLinuxFenceRelease(IMG_UINT32 uTag,
+PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *pui32Tag,
+				IMG_UINT32 ui32NumResvObjs,
+				IMG_BOOL bBlockingFences,
 				IMG_UINT32 ui32NumSrcSyncs,
 				IMG_HANDLE *phSrcSyncInfo,
 				const IMG_BOOL *pbSrcEnabled,
@@ -1347,7 +1488,28 @@ void PVRLinuxFenceRelease(IMG_UINT32 uTag,
 				IMG_HANDLE *phDstSyncInfo,
 				const IMG_BOOL *pbDstEnabled)
 {
-	(void) uTag;
+	(void) pui32Tag;
+	(void) ui32NumResvObjs;
+	(void) bBlockingFences;
+	(void) ui32NumSrcSyncs;
+	(void) phSrcSyncInfo;
+	(void) pbSrcEnabled;
+	(void) ui32NumDstSyncs;
+	(void) phDstSyncInfo;
+	(void) pbDstEnabled;
+
+	return PVRSRV_OK;
+}
+
+void PVRLinuxFenceRelease(IMG_UINT32 ui32Tag,
+				IMG_UINT32 ui32NumSrcSyncs,
+				IMG_HANDLE *phSrcSyncInfo,
+				const IMG_BOOL *pbSrcEnabled,
+				IMG_UINT32 ui32NumDstSyncs,
+				IMG_HANDLE *phDstSyncInfo,
+				const IMG_BOOL *pbDstEnabled)
+{
+	(void) ui32Tag;
 	(void) ui32NumSrcSyncs;
 	(void) phSrcSyncInfo;
 	(void) pbSrcEnabled;

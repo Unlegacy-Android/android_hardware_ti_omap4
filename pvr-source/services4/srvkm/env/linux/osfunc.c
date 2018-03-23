@@ -91,8 +91,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "linkage.h"
 #include "pvr_uaccess.h"
 #include "lock.h"
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-#include "pvr_sync.h"
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
+#include "pvr_sync_common.h"
 #endif
 #if defined (SUPPORT_ION)
 #include "ion.h"
@@ -107,7 +107,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ON_EACH_CPU(func, info, wait) on_each_cpu(func, info, 0, wait)
 #endif
 
-#if defined(PVR_LINUX_USING_WORKQUEUES) && !defined(CONFIG_PREEMPT) && !defined(CONFIG_PREEMPT_VOLUNTARY)
+#if defined(PVR_LINUX_USING_WORKQUEUES) && !defined(CONFIG_PREEMPT)
 /* 
  * Services spins at certain points waiting for events (e.g. swap
  * chain destrucion).  If those events rely on workqueues running,
@@ -1167,7 +1167,7 @@ static void MISRWrapper(
 
 	PVRSRVMISR(psSysData);
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 	PVRSyncUpdateAllSyncs();
 #endif
 #if defined(SUPPORT_DMABUF)
@@ -3547,7 +3547,11 @@ PVRSRV_ERROR OSReleasePhysPageAddr(IMG_HANDLE hOSWrapMem)
                         SetPageDirty(psPage);
                     }
 	        }
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0))
                 page_cache_release(psPage);
+#else
+                put_page(psPage);
+#endif
 	    }
             break;
         }
@@ -3729,8 +3733,15 @@ PVRSRV_ERROR OSAcquirePhysPageAddr(IMG_VOID *pvCPUVAddr,
     bMMapSemHeld = IMG_TRUE;
 
     /* Get page list */
-    psInfo->iNumPagesMapped = get_user_pages(current, current->mm, uStartAddr, psInfo->iNumPages, 1, 0, psInfo->ppsPages, NULL);
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0))
+    psInfo->iNumPagesMapped = get_user_pages(
+		current, current->mm,
+		uStartAddr, psInfo->iNumPages, 1, 0, psInfo->ppsPages, NULL);
+#else
+    psInfo->iNumPagesMapped = get_user_pages_remote(
+		current, current->mm,
+		uStartAddr, psInfo->iNumPages, FOLL_WRITE, psInfo->ppsPages, NULL);
+#endif
     if (psInfo->iNumPagesMapped >= 0)
     {
         /* See if we got all the pages we wanted */
@@ -3915,17 +3926,30 @@ PVRSRV_ERROR OSAcquirePhysPageAddr(IMG_VOID *pvCPUVAddr,
 exit:
     PVR_ASSERT(bMMapSemHeld);
     up_read(&current->mm->mmap_sem);
+    bMMapSemHeld = IMG_FALSE;
 
-    /* Return the cookie */
-    *phOSWrapMem = (IMG_HANDLE)psInfo;
+    PVR_ASSERT(psInfo->eType != 0);
 
     if (bHaveNoPageStructs)
     {
+#if defined(PVR_ALLOW_NON_PAGE_STRUCT_MEMORY_IMPORT)
+	/*
+	 * Allowing the GPU to access pages that can't be locked down is
+	 * potentially unsafe. For recent versions of Linux, there are
+	 * safer ways to get access to such memory, such as DMA Buffer
+	 * sharing (DMABUF).
+	 */
         PVR_DPF((PVR_DBG_MESSAGE,
             "OSAcquirePhysPageAddr: Region contains pages which can't be locked down (no page structures)"));
+#else
+        PVR_DPF((PVR_DBG_ERROR,
+            "OSAcquirePhysPageAddr: Region contains pages which can't be locked down (no page structures)"));
+	goto error;
+#endif
     }
 
-    PVR_ASSERT(psInfo->eType != 0);
+    /* Return the cookie */
+    *phOSWrapMem = (IMG_HANDLE)psInfo;
 
     return PVRSRV_OK;
 
@@ -3941,7 +3965,7 @@ error:
     return eError;
 }
 
-#if ! defined(__arm__)
+#if ! (defined(__arm__) || defined(__aarch64__))
 # define USE_VIRTUAL_CACHE_OP
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0)
 # define USE_VIRTUAL_CACHE_OP
@@ -4395,12 +4419,27 @@ IMG_BOOL OSInvalidateCPUCacheRangeKM(IMG_HANDLE hOSMemHandle,
 							   x86_flush_cache_range);
 }
 
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 
 static void per_cpu_cache_flush(void *arg)
 {
 	PVR_UNREFERENCED_PARAMETER(arg);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)) && defined(__aarch64__)
+	/*
+		NOTE: Regarding arm64 global flush support on >= Linux v4.2:
+		- Global cache flush support is deprecated from v4.2 onwards
+		- Cache maintenance is done using UM/KM VA maintenance _only_
+		- If you find that more time is spent in VA cache maintenance
+			- Implement arm64 assembly sequence for global flush here
+				- asm volatile ();
+		- If you do not want to implement the global cache assembly
+			- Disable KM cache maintenance support in UM cache.c
+			- Remove this PVR_LOG message
+	*/
+	PVR_LOG(("arm64: Global d-cache flush assembly not implemented"));
+#else
 	flush_cache_all();
+#endif
 }
 
 IMG_VOID OSCleanCPUCacheKM(IMG_VOID)
@@ -4459,18 +4498,35 @@ static void pvr_dmac_clean_range(const void *pvStart, const void *pvEnd)
 
 static void pvr_flush_range(phys_addr_t pStart, phys_addr_t pEnd)
 {
+#if defined(__aarch64__)
+	struct dma_map_ops *dma_ops = get_dma_ops(PVRLDMGetDevice());
+	dma_ops->sync_single_for_device(NULL, pStart, pEnd - pStart, DMA_TO_DEVICE);
+	dma_ops->sync_single_for_cpu(NULL, pStart, pEnd - pStart, DMA_FROM_DEVICE);
+#else
 	arm_dma_ops.sync_single_for_device(NULL, pStart, pEnd - pStart, DMA_TO_DEVICE);
 	arm_dma_ops.sync_single_for_cpu(NULL, pStart, pEnd - pStart, DMA_FROM_DEVICE);
+#endif
 }
 
 static void pvr_clean_range(phys_addr_t pStart, phys_addr_t pEnd)
 {
+#if defined(__aarch64__)
+	struct dma_map_ops *dma_ops = get_dma_ops(PVRLDMGetDevice());
+	dma_ops->sync_single_for_device(NULL, pStart, pEnd - pStart, DMA_TO_DEVICE);
+#else
 	arm_dma_ops.sync_single_for_device(NULL, pStart, pEnd - pStart, DMA_TO_DEVICE);
+#endif
+
 }
 
 static void pvr_invalidate_range(phys_addr_t pStart, phys_addr_t pEnd)
 {
+#if defined(__aarch64__)
+	struct dma_map_ops *dma_ops = get_dma_ops(PVRLDMGetDevice());
+	dma_ops->sync_single_for_cpu(NULL, pStart, pEnd - pStart, DMA_FROM_DEVICE);
+#else
 	arm_dma_ops.sync_single_for_cpu(NULL, pStart, pEnd - pStart, DMA_FROM_DEVICE);
+#endif
 }
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0) */

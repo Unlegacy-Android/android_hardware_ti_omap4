@@ -53,11 +53,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sgxutils.h"
 #include "ttrace.h"
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-#include "pvr_sync.h"
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
+#include "pvr_sync_common.h"
 #endif
 
-#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
 #include "systrace.h"
 #endif
 
@@ -88,10 +88,13 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 	SGXMKIF_CMDTA_SHARED *psTACmd;
 	IMG_UINT32 i;
 	IMG_HANDLE hDevMemContext = IMG_NULL;
+	IMG_HANDLE *pahDstSyncHandles;
 #if defined(SUPPORT_DMABUF)
 	IMG_UINT32 ui32FenceTag = 0;
+	IMG_UINT32 ui32NumResvObjs = 0;
+	IMG_BOOL bBlockingFences = IMG_FALSE;
 #endif
-#if  defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if  (defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER))
 	PVRSRV_DEVICE_NODE      *psDeviceNode;
 	PVRSRV_SGXDEV_INFO      *psDevInfo;
 
@@ -218,7 +221,7 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 
 
 	/* texture dependencies */
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 	eError = PVRSyncPatchCCBKickSyncInfos(psCCBKick->ahSrcKernelSyncInfo,
 										  psTACmd->asSrcSyncs,
 										  &psCCBKick->ui32NumSrcSyncs);
@@ -254,16 +257,33 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 	}
 #else /* defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) */
 #if defined(SUPPORT_DMABUF)
-	eError = PVRLinuxFenceProcess(&ui32FenceTag,
+	ui32NumResvObjs = PVRLinuxFenceNumResvObjs(&bBlockingFences,
 			psCCBKick->ui32NumSrcSyncs,
 			psCCBKick->ahSrcKernelSyncInfo,
 			NULL,
 			psCCBKick->bFirstKickOrResume ? psCCBKick->ui32NumDstSyncObjects : 0,
-			psCCBKick->pahDstSyncHandles,
+			(IMG_HANDLE*)psCCBKick->hDstSyncHandles,
 			NULL);
-	if (eError != PVRSRV_OK)
+	/*
+	 * If there are no blocking fences, the GPU need not wait whilst
+	 * the reservation objects are being processed. They can be processed
+	 * later, after the kick.
+	 */
+	if (ui32NumResvObjs && bBlockingFences)
 	{
-		return eError;
+		eError = PVRLinuxFenceProcess(&ui32FenceTag,
+				ui32NumResvObjs,
+				bBlockingFences,
+				psCCBKick->ui32NumSrcSyncs,
+				psCCBKick->ahSrcKernelSyncInfo,
+				NULL,
+				psCCBKick->bFirstKickOrResume ? psCCBKick->ui32NumDstSyncObjects : 0,
+				(IMG_HANDLE*)psCCBKick->hDstSyncHandles,
+				NULL);
+		if (eError != PVRSRV_OK)
+		{
+			return eError;
+		}
 	}
 #endif
 	for (i=0; i<psCCBKick->ui32NumSrcSyncs; i++)
@@ -307,10 +327,10 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 					 MAKEUNIQUETAG(psHWDstSyncListMemInfo));
 		}
 #endif
-
+		pahDstSyncHandles = psCCBKick->hDstSyncHandles;
 		for (i=0; i<ui32NumDstSyncs; i++)
 		{
-			psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)psCCBKick->pahDstSyncHandles[i];
+			psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)pahDstSyncHandles[i];
 
 			if (psSyncInfo)
 			{
@@ -598,20 +618,24 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 	if (eError == PVRSRV_ERROR_RETRY)
 	{
 #if defined(SUPPORT_DMABUF)
-		PVRLinuxFenceRelease(ui32FenceTag,
-			psCCBKick->ui32NumSrcSyncs,
-			psCCBKick->ahSrcKernelSyncInfo,
-			NULL,
-			psCCBKick->bFirstKickOrResume ? psCCBKick->ui32NumDstSyncObjects : 0,
-			psCCBKick->pahDstSyncHandles,
-			NULL);
+		if (ui32NumResvObjs && bBlockingFences)
+		{
+			PVRLinuxFenceRelease(ui32FenceTag,
+				psCCBKick->ui32NumSrcSyncs,
+				psCCBKick->ahSrcKernelSyncInfo,
+				NULL,
+				psCCBKick->bFirstKickOrResume ? psCCBKick->ui32NumDstSyncObjects : 0,
+				(IMG_HANDLE*)psCCBKick->hDstSyncHandles,
+				NULL);
+		}
 #endif
 		if (psCCBKick->bFirstKickOrResume && psCCBKick->ui32NumDstSyncObjects > 0)
 		{
+			pahDstSyncHandles = psCCBKick->hDstSyncHandles;
 			for (i=0; i < psCCBKick->ui32NumDstSyncObjects; i++)
 			{
 				/* Client will retry, so undo the write ops pending increment done above. */
-				psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)psCCBKick->pahDstSyncHandles[i];
+				psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)pahDstSyncHandles[i];
 
 				if (psSyncInfo)
 				{
@@ -669,6 +693,24 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 #endif
 		return eError;
 	}
+#if defined(SUPPORT_DMABUF)
+	else if (ui32NumResvObjs && !bBlockingFences)
+	{
+		eError = PVRLinuxFenceProcess(&ui32FenceTag,
+				ui32NumResvObjs,
+				bBlockingFences,
+				psCCBKick->ui32NumSrcSyncs,
+				psCCBKick->ahSrcKernelSyncInfo,
+				NULL,
+				psCCBKick->bFirstKickOrResume ? psCCBKick->ui32NumDstSyncObjects : 0,
+				(IMG_HANDLE*)psCCBKick->hDstSyncHandles,
+				NULL);
+		if (eError != PVRSRV_OK)
+		{
+			return eError;
+		}
+	}
+#endif
 
 
 #if defined(NO_HARDWARE)
@@ -728,10 +770,10 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 			PVRSRV_KERNEL_MEM_INFO	*psHWDstSyncListMemInfo =
 								(PVRSRV_KERNEL_MEM_INFO *)psCCBKick->hKernelHWSyncListMemInfo;
 			SGXMKIF_HWDEVICE_SYNC_LIST *psHWDeviceSyncList = psHWDstSyncListMemInfo->pvLinAddrKM;
-
+			pahDstSyncHandles = psCCBKick->hDstSyncHandles;
 			for (i=0; i<psCCBKick->ui32NumDstSyncObjects; i++)
 			{
-				psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)psCCBKick->pahDstSyncHandles[i];
+				psSyncInfo = (PVRSRV_KERNEL_SYNC_INFO *)pahDstSyncHandles[i];
 				if (psSyncInfo)
 					psSyncInfo->psSyncData->ui32WriteOpsComplete = psHWDeviceSyncList->asSyncData[i].ui32WriteOpsPendingVal+1;
 			}
@@ -758,7 +800,7 @@ PVRSRV_ERROR SGXDoKickKM(IMG_HANDLE hDevHandle, SGX_CCB_KICK *psCCBKick)
 #endif
 	PVR_TTRACE(PVRSRV_TRACE_GROUP_KICK, PVRSRV_TRACE_CLASS_FUNCTION_EXIT,
 			KICK_TOKEN_DOKICK);
-#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE)
+#if defined(SUPPORT_PVRSRV_ANDROID_SYSTRACE) && defined(EUR_CR_TIMER)
 	SystraceTAKick(psDevInfo, psCCBKick->ui32FrameNum, psCCBKick->sHWRTDataDevAddr.uiAddr, psCCBKick->bIsFirstKick);
 #endif
 	return eError;

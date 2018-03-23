@@ -54,7 +54,7 @@ extern "C" {
 #if defined(__linux__) && defined(__KERNEL__)
 #include <linux/hardirq.h>
 #include <linux/string.h>
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 #include <asm/memory.h>
 #endif
 #endif
@@ -380,15 +380,15 @@ h(x) = ...
 /*If level 3 wrapper is enabled, we add a PVR_TRACE and call the next level, else just call the next level*/
 #ifdef PVRSRV_LOG_MEMORY_ALLOCS
 	#define OSAllocMem(flags, size, linAddr, blockAlloc, logStr) \
-		(PVR_TRACE(("OSAllocMem(" #flags ", " #size ", " #linAddr ", " #blockAlloc "): " logStr " (size = 0x%lx)", size)), \
+		(PVR_TRACE(("OSAllocMem(" #flags ", " #size ", " #linAddr ", " #blockAlloc "): " logStr " (size = 0x%lx)", (unsigned long)size)), \
 			OSAllocMem_Debug_Wrapper(flags, size, linAddr, blockAlloc, __FILE__, __LINE__))
 
 	#define OSAllocPages(flags, size, pageSize, privdata, privdatalength, bmhandle, linAddr, pageAlloc) \
-		(PVR_TRACE(("OSAllocPages(" #flags ", " #size ", " #pageSize ", " #linAddr ", " #pageAlloc "): (size = 0x%lx)", size)), \
-			OSAllocPages_Impl(flags, size, pageSize, linAddr, privdata, privdatalength, bmhandle, pageAlloc))
+		(PVR_TRACE(("OSAllocPages(" #flags ", " #size ", " #pageSize ", " #linAddr ", " #pageAlloc "): (size = 0x%lx)", (unsigned long)size)), \
+			OSAllocPages_Impl(flags, size, pageSize, privdata, privdatalength, bmhandle, linAddr, pageAlloc))
 		
 	#define OSFreeMem(flags, size, linAddr, blockAlloc) \
-		(PVR_TRACE(("OSFreeMem(" #flags ", " #size ", " #linAddr ", " #blockAlloc "): (pointer = 0x%X)", linAddr)), \
+		(PVR_TRACE(("OSFreeMem(" #flags ", " #size ", " #linAddr ", " #blockAlloc "): (pointer = 0x%p)", linAddr)), \
 			OSFreeMem_Debug_Wrapper(flags, size, linAddr, blockAlloc, __FILE__, __LINE__))
 #else
 	#define OSAllocMem(flags, size, linAddr, blockAlloc, logString) \

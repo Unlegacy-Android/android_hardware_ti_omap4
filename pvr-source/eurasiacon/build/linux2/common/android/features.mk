@@ -38,8 +38,6 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-include ../common/android/platform_version.mk
-
 # Basic support option tuning for Android
 #
 SUPPORT_ANDROID_PLATFORM := 1
@@ -72,10 +70,6 @@ OPK_DEFAULT := libpvrANDROID_WSEGL.so
 #
 KERNEL_COMPONENTS := srvkm
 
-# Kernel modules are always installed here under Android
-#
-PVRSRV_MODULE_BASEDIR := /system/modules/
-
 # Use the new PVR_DPF implementation to allow lower message levels
 # to be stripped from production drivers
 #
@@ -102,6 +96,12 @@ SUPPORT_LARGE_GENERAL_HEAP := 1
 #
 PVR_LINUX_MEM_AREA_POOL_MAX_PAGES ?= 5400
 
+##############################################################################
+# Enable source fortification by default
+#
+FORTIFY ?= 1
+
+##############################################################################
 # Unless overridden by the user, assume the RenderScript Compute API level
 # matches that of the SDK API_LEVEL.
 #
@@ -126,36 +126,35 @@ UNITTEST_INCLUDES := \
  $(ANDROID_ROOT)/frameworks/native/opengl/include \
  $(ANDROID_ROOT)/libnativehelper/include/nativehelper
 
-# But it doesn't have OpenVG headers
-#
 UNITTEST_INCLUDES += eurasiacon/unittests/include
 
 ##############################################################################
 # Future versions moved proprietary libraries to a vendor directory
 #
-SHLIB_DESTDIR := /system/vendor/lib
-DEMO_DESTDIR := /system/vendor/bin
-
-# EGL libraries go in a special place
-#
-EGL_DESTDIR := $(SHLIB_DESTDIR)/egl
+ifeq ($(wildcard $(TARGET_ROOT)/product/$(TARGET_DEVICE)/vendor),)
+PVRSRV_MODULE_BASEDIR := /system/modules/
+BIN_DESTDIR := /system/vendor/bin
+APP_DESTDIR := /data/app
+else
+PVR_ANDROID_FORCE_APP_NATIVE_UNPACKED := 1
+PVRSRV_MODULE_BASEDIR := /vendor/modules/
+BIN_DESTDIR := /vendor/bin
+APP_DESTDIR := /vendor/app
+endif
 
 ##############################################################################
-# In K and older, augment the libstdc++ includes with stlport includes. Any
-# part of the C++ library not implemented by stlport will be handled by
-# linking in libstdc++ too (see extra_config.mk).
+# Android doesn't use these install script variables. They're still in place
+# because the Linux install scripts use them.
 #
-# On L and newer, don't use stlport OR libstdc++ at all; just use libc++.
+SHLIB_DESTDIR := not-used
+EGL_DESTDIR := not-used
+
+# Must give our EGL/GLES libraries a globally unique name
 #
+EGL_BASENAME_SUFFIX := _POWERVR_SGX$(SGXCORE)_$(SGX_CORE_REV)
+
 SYS_CXXFLAGS := -fuse-cxa-atexit $(SYS_CFLAGS)
-ifeq ($(is_at_least_lollipop),1)
-SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/external/libcxx/include
-else
-SYS_INCLUDES += \
- -isystem $(ANDROID_ROOT)/bionic \
- -isystem $(ANDROID_ROOT)/external/stlport/stlport
-endif
+SYS_INCLUDES += -isystem $(LIBCXX_INCLUDE_PATH)
 
 ##############################################################################
 # Support the OES_EGL_image_external extensions in the client drivers.
@@ -177,32 +176,28 @@ EGL_EXTENSION_ANDROID_RECORDABLE := 1
 EGL_EXTENSION_ANDROID_BLOB_CACHE := 1
 
 ##############################################################################
-# JB added a new corkscrew API for userland backtracing.
-#
-ifeq ($(is_at_least_lollipop),0)
-PVR_ANDROID_HAS_CORKSCREW_API := 1
-endif
-
-##############################################################################
 # JB MR1 introduces cross-process syncs associated with a fd.
 # This requires a new enough kernel version to have the base/sync driver.
 #
 EGL_EXTENSION_ANDROID_NATIVE_FENCE_SYNC ?= 1
-PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC ?= 1
 
 ##############################################################################
-# Versions of Android between Cupcake and KitKat MR1 required Java 6.
+# Kernel 4.9 introduces new sync framework for cross-process sync
 #
-ifeq ($(is_at_least_lollipop),0)
-LEGACY_USE_JAVA6 ?= 1
+ifneq ($(strip $(KERNELDIR)),)
+include ../kernel_version.mk
+ifeq ($(call kernel-version-at-least,4,9,27),true)
+PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE ?= 1
+else
+PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC ?= 1
+endif
 endif
 
 ##############################################################################
-# Versions of Android between ICS and KitKat MR1 used ion .heap_mask instead
-# of .heap_id_mask.
+# Versions of Android prior to Nougat required Java 7 (OpenJDK).
 #
-ifeq ($(is_at_least_lollipop),0)
-PVR_ANDROID_HAS_ION_FIELD_HEAP_MASK := 1
+ifeq ($(is_at_least_nougat),0)
+LEGACY_USE_JAVA7 ?= 1
 endif
 
 ##############################################################################
@@ -214,20 +209,12 @@ PVR_ANDROID_BCC_MULTIARCH_SUPPORT := 1
 endif
 
 ##############################################################################
-# Lollipop annotates the cursor allocation with USAGE_CURSOR to enable it to
-# be accelerated with special cursor hardware (rather than wasting an
-# overlay). This flag stops the DDK from blocking the allocation.
+# Versions of Android prior to Nougat required .apk files to be processed with
+# zipalign. Using this tool on Nougat or greater will corrupt the .apk file,
+# as alignment is already done by signapk.jar, so we must disable it.
 #
-ifeq ($(is_at_least_lollipop),1)
-PVR_ANDROID_HAS_GRALLOC_USAGE_CURSOR := 1
-endif
-
-##############################################################################
-# Lollipop changed the camera HAL metadata specification to require that
-# CONTROL_MAX_REGIONS specifies 3 integers (instead of 1).
-#
-ifeq ($(is_at_least_lollipop),1)
-PVR_ANDROID_CAMERA_CONTROL_MAX_REGIONS_HAS_THREE := 1
+ifeq ($(is_at_least_nougat),0)
+LEGACY_USE_ZIPALIGN ?= 1
 endif
 
 ##############################################################################
@@ -250,6 +237,14 @@ endif
 #
 ifeq ($(is_at_least_marshmallow),1)
 PVR_ANDROID_HAS_GRALLOC_USAGE_RENDERSCRIPT := 1
+endif
+
+# On Android O, the <sync/sync.h> file was moved to <android/sync.h> for
+# DDK use. A symlink was left for legacy reasons, but it conflicts with
+# the NDK. Tell the driver to avoid using the symlink compatibility.
+#
+ifeq ($(is_at_least_oreo),1)
+override PVR_ANDROID_HAS_ANDROID_SYNC_H := 1
 endif
 
 # Placeholder for future version handling

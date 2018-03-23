@@ -60,6 +60,8 @@ typedef enum
 
 void SystraceHWPerfPackets(PVRSRV_SGXDEV_INFO *psDevInfo, PVRSRV_SGX_HWPERF_CB_ENTRY* psSGXHWPerf, IMG_UINT32 ui32DataCount, IMG_UINT32 ui32SgxClockspeed);
 void SystraceTAKick(PVRSRV_SGXDEV_INFO *psDevInfo, IMG_UINT32 ui32FrameNum, IMG_UINT32 ui32RTData, IMG_BOOL bIsFirstKick);
+void SystraceInitializeTimeCorr(PVRSRV_SGXDEV_INFO *psDevInfo);
+void SystraceUpdateTimeCorr(PVRSRV_SGXDEV_INFO *psDevInfo, IMG_UINT32 ui32ClockMultiplier);
 
 void SystraceCreateFS(void);
 void SystraceDestroyFS(void);

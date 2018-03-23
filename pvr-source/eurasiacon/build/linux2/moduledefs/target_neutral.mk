@@ -1,4 +1,5 @@
 ########################################################################### ###
+#@File
 #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 #@License       Dual MIT/GPLv2
 # 
@@ -38,8 +39,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-modules := linux_drm
+MODULE_HOST_BUILD :=
 
-linux_drm_type := kernel_module
-linux_drm_target := drm.ko
-linux_drm_makefile := $(THIS_DIR)/Kbuild.mk
+MODULE_BISON_FLAGS := $(ALL_BISON_FLAGS) $($(THIS_MODULE)_bisonflags)
+MODULE_FLEX_FLAGS := $(ALL_FLEX_FLAGS) $($(THIS_MODULE)_flexflags)

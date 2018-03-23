@@ -58,8 +58,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sgxutils.h"
 #include "ttrace.h"
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-#include "pvr_sync.h"
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
+#include "pvr_sync_common.h"
 #endif
 
 #if defined(SUPPORT_DMABUF)
@@ -81,7 +81,9 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 	IMG_UINT32					ui32RealDstSyncNum = 0;
 
 #if defined(SUPPORT_DMABUF)
-	IMG_UINT32					ui32FenceTag;
+	IMG_UINT32			ui32FenceTag = 0;
+	IMG_UINT32			ui32NumResvObjs = 0;
+	IMG_BOOL			bBlockingFences = IMG_FALSE;
 #endif
 
 
@@ -208,17 +210,33 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		IMG_UINT32 i = 0;
 
 #if defined(SUPPORT_DMABUF)
-		eError = PVRLinuxFenceProcess(&ui32FenceTag,
-				psKick->ui32NumSrcSync,
-				psKick->ahSrcSyncInfo,
-				abSrcSyncEnable,
-				psKick->ui32NumDstSync,
-				psKick->ahDstSyncInfo,
-				abDstSyncEnable);
-
-		if (eError != PVRSRV_OK)
+		ui32NumResvObjs = PVRLinuxFenceNumResvObjs(&bBlockingFences,
+					psKick->ui32NumSrcSync,
+					psKick->ahSrcSyncInfo,
+					abSrcSyncEnable,
+					psKick->ui32NumDstSync,
+					psKick->ahDstSyncInfo,
+					abDstSyncEnable);
+		/*
+		 * If there are no blocking fences, the GPU need not wait
+		 * whilst the reservation objects are being processed. They
+		 * can be processed later, after the kick.
+		 */
+		if (ui32NumResvObjs && bBlockingFences)
 		{
-			return eError;
+			eError = PVRLinuxFenceProcess(&ui32FenceTag,
+					ui32NumResvObjs,
+					bBlockingFences,
+					psKick->ui32NumSrcSync,
+					psKick->ahSrcSyncInfo,
+					abSrcSyncEnable,
+					psKick->ui32NumDstSync,
+					psKick->ahDstSyncInfo,
+					abDstSyncEnable);
+			if (eError != PVRSRV_OK)
+			{
+				return eError;
+			}
 		}
 #endif
 		for (loop = 0; loop < psKick->ui32NumSrcSync; loop++)
@@ -287,14 +305,14 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 			}
 		}
 
-#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
+#if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 		if (ui32RealDstSyncNum <= (SGX_MAX_DST_SYNCS_TQ - 1) && psKick->iFenceFd > 0)
 		{
 			IMG_HANDLE ahSyncInfo[SGX_MAX_SRC_SYNCS_TA];
 			PVRSRV_DEVICE_SYNC_OBJECT *apsDevSyncs = &psSharedTransferCmd->asDstSyncs[ui32RealDstSyncNum];
 			IMG_UINT32 ui32NumSrcSyncs = 1;
 			IMG_UINT32 i;
-			ahSyncInfo[0] = (IMG_HANDLE)(psKick->iFenceFd - 1);
+			ahSyncInfo[0] = (IMG_HANDLE)(uintptr_t)(psKick->iFenceFd - 1);
 
 			eError = PVRSyncPatchTransferSyncInfos(ahSyncInfo, apsDevSyncs, &ui32NumSrcSyncs);
 			if (eError != PVRSRV_OK)
@@ -569,13 +587,16 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		if ((psKick->ui32Flags & SGXMKIF_TQFLAGS_KEEPPENDING) == 0UL)
 		{
 #if defined(SUPPORT_DMABUF)
-			PVRLinuxFenceRelease(ui32FenceTag,
+				if (ui32NumResvObjs && bBlockingFences)
+				{
+					PVRLinuxFenceRelease(ui32FenceTag,
 						psKick->ui32NumSrcSync,
 						psKick->ahSrcSyncInfo,
 						abSrcSyncEnable,
 						psKick->ui32NumDstSync,
 						psKick->ahDstSyncInfo,
 						abDstSyncEnable);
+				}
 #endif
 			for (loop = 0; loop < psKick->ui32NumSrcSync; loop++)
 			{
@@ -633,7 +654,24 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 #endif
 		return eError;
 	}
-
+#if defined(SUPPORT_DMABUF)
+	else if (ui32NumResvObjs && !bBlockingFences)
+	{
+		eError = PVRLinuxFenceProcess(&ui32FenceTag,
+				ui32NumResvObjs,
+				bBlockingFences,
+				psKick->ui32NumSrcSync,
+				psKick->ahSrcSyncInfo,
+				abSrcSyncEnable,
+				psKick->ui32NumDstSync,
+				psKick->ahDstSyncInfo,
+				abDstSyncEnable);
+		if (eError != PVRSRV_OK)
+		{
+			return eError;
+		}
+	}
+#endif
 
 #if defined(NO_HARDWARE)
 	if ((psKick->ui32Flags & SGXMKIF_TQFLAGS_NOSYNCUPDATE) == 0)

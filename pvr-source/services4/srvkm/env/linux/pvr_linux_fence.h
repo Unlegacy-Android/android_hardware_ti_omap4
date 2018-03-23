@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 IMG_HANDLE PVRLinuxFenceContextCreate(PVRSRV_KERNEL_SYNC_INFO *psSyncInfo, IMG_HANDLE hImport);
 void PVRLinuxFenceContextDestroy(IMG_HANDLE hFenceContext);
 
-PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
+IMG_UINT32 PVRLinuxFenceNumResvObjs(IMG_BOOL *pbBlockingFences,
 				IMG_UINT32 ui32NumSrcSyncs,
 				IMG_HANDLE *phSrcSyncInfo,
 				const IMG_BOOL *pbSrcEnabled,
@@ -55,7 +55,17 @@ PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *puTag,
 				IMG_HANDLE *phDstSyncInfo,
 				const IMG_BOOL *pbDstEnabled);
 
-void PVRLinuxFenceRelease(IMG_UINT32 uTag,
+PVRSRV_ERROR PVRLinuxFenceProcess(IMG_UINT32 *pui32Tag,
+				IMG_UINT32 ui32NumResvObjs,
+				IMG_BOOL bBlockingFences,
+				IMG_UINT32 ui32NumSrcSyncs,
+				IMG_HANDLE *phSrcSyncInfo,
+				const IMG_BOOL *pbSrcEnabled,
+				IMG_UINT32 ui32NumDstSyncs,
+				IMG_HANDLE *phDstSyncInfo,
+				const IMG_BOOL *pbDstEnabled);
+
+void PVRLinuxFenceRelease(IMG_UINT32 ui32Tag,
 				IMG_UINT32 ui32NumSrcSyncs,
 				IMG_HANDLE *phSrcSyncInfo,
 				const IMG_BOOL *pbSrcEnabled,
