@@ -1561,8 +1561,7 @@ RA_Alloc (RA_ARENA *pArena,
 	@Description    Validate an arena by checking that adjacent members of the
                     double linked ordered list are compatible. PVR_DBG_BREAK and
                     PVR_DPF messages are used when an error is detected.
-                    NOTE: A DEBUG build is required for PVR_DBG_BREAK and PVR_DPF
-                    to operate.
+                    NOTE: A DEBUG build is required for PVR_DBG_BREAK to operate.
 
 	@Input          pArena - the arena
 

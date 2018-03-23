@@ -1643,6 +1643,8 @@ PVRSRV_ERROR PVRSRVMapIonHandleKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 		mapped virtually continuous so we need to create a new array of
 		addresses based on this chunk data for the actual wrap
 	*/
+	/* OSAllocMem() must be provided non-zero value for size argument */
+    	PVR_ASSERT(sizeof(IMG_SYS_PHYADDR) * (uiMapSize/HOST_PAGESIZE() != 0));
 	if(OSAllocMem(PVRSRV_PAGEABLE_SELECT,
 					sizeof(IMG_SYS_PHYADDR) * (uiMapSize/HOST_PAGESIZE()),
 					(IMG_VOID **)&pasAdjustedSysPhysAddr, IMG_NULL,
@@ -1822,7 +1824,7 @@ PVRSRV_ERROR PVRSRVDmaBufSyncAcquire(IMG_HANDLE hUnique,
 	 * If the import has a unique handle, check the hash to see if we
 	 * already have a sync for the buffer.
 	 */
-	psDmaBufSyncInfo = hUnique ? (PVRSRV_DMABUF_SYNC_INFO *) HASH_Retrieve(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique) : NULL;
+	psDmaBufSyncInfo = (PVRSRV_DMABUF_SYNC_INFO *) HASH_Retrieve(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique);
 	if (!psDmaBufSyncInfo)
 	{
 		/* Create the syncinfo for the import */
@@ -1857,14 +1859,11 @@ PVRSRV_ERROR PVRSRVDmaBufSyncAcquire(IMG_HANDLE hUnique,
 			goto ErrorCreateFenceContext;
 		}
 
-		if (hUnique)
+		bRet = HASH_Insert(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique, (IMG_UINTPTR_T) psDmaBufSyncInfo);
+		if (!bRet)
 		{
-			bRet = HASH_Insert(g_psDmaBufSyncHash, (IMG_UINTPTR_T)hUnique, (IMG_UINTPTR_T) psDmaBufSyncInfo);
-			if (!bRet)
-			{
-				eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-				goto ErrorHashInsert;
-			}
+			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto ErrorHashInsert;
 		}
 	}
 
@@ -1891,16 +1890,17 @@ IMG_VOID PVRSRVDmaBufSyncRelease(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo)
 
 	if (psDmaBufSyncInfo->ui32RefCount == 0)
 	{
+		PVRSRV_DMABUF_SYNC_INFO *psLookup;
+
 		/*
 			If we're holding the last reference to the syncinfo
 			then free it
 		*/
-		if (psDmaBufSyncInfo->hUnique)
-		{
-			PVRSRV_DMABUF_SYNC_INFO *psLookup = (PVRSRV_DMABUF_SYNC_INFO *) HASH_Remove(g_psDmaBufSyncHash, (IMG_UINTPTR_T) psDmaBufSyncInfo->hUnique);
-			(void)psLookup;
-			PVR_ASSERT(psLookup == psDmaBufSyncInfo);
-		}
+
+		psLookup = (PVRSRV_DMABUF_SYNC_INFO *) HASH_Remove(g_psDmaBufSyncHash, (IMG_UINTPTR_T) psDmaBufSyncInfo->hUnique);
+		PVR_ASSERT(psLookup == psDmaBufSyncInfo);
+		(void)psLookup;
+
 		PVRLinuxFenceContextDestroy(psDmaBufSyncInfo->psSyncInfo->hFenceContext);
 		PVRSRVKernelSyncInfoDecRef(psDmaBufSyncInfo->psSyncInfo, IMG_NULL);
 		OSFreeMem(PVRSRV_PAGEABLE_SELECT,
@@ -1922,13 +1922,12 @@ IMG_VOID PVRSRVDmaBufSyncRelease(PVRSRV_DMABUF_SYNC_INFO *psDmaBufSyncInfo)
  @Input	   psPerProc : PerProcess data.
  @Input    hDevCookie : Device node cookie.
  @Input    hDevMemHeap : Heap the buffers are mapped into.
- @Input    ui32NumFDs : Number of DMA Buf FDs.
- @Input    pi32DmaBufFD : Array of DMA Buf FDs.
- @Input    puiDmaBufOffset : Array of offsets into each DMA Buf.
- @Input    puiSize : Array of sizes of each DMA Buf chunk.
  @Input    ui32Flags : Mapping flags.
- @Input    puiDmaBufSize : Size in bytes of resulting device-virtual mapping.
+ @Input    i32DmaBufFD : DMA Buf FD.
+ @Input    uiDmaBufOffset : Offset into DMA Buf.
+ @Input    uiDmaBufSize : Size of DMA Buf chunk.
  @Output   ppsKernelMemInfo: Output kernel meminfo if successful.
+ @Output   puiSize : Size in bytes of resulting device-virtual mapping.
  @Output   puiMemInfoOffset : Array of offsets of each chunk in the meminfo.
 
  @Return   PVRSRV_ERROR  :
@@ -1939,10 +1938,9 @@ PVRSRV_ERROR PVRSRVMapDmaBufKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 								  IMG_HANDLE hDevCookie,
 								  IMG_HANDLE hDevMemHeap,
 								  IMG_UINT32 ui32Flags,
-								  IMG_UINT32 ui32NumFDs,
-								  IMG_INT32 *pi32DmaBufFD,
-								  IMG_SIZE_T *puiDmaBufOffset,
-								  IMG_SIZE_T *puiDmaBufSize,
+								  IMG_INT32 i32DmaBufFD,
+								  IMG_SIZE_T uiDmaBufOffset,
+								  IMG_SIZE_T uiDmaBufSize,
 								  PVRSRV_KERNEL_MEM_INFO **ppsKernelMemInfo,
 								  IMG_SIZE_T *puiSize,
 								  IMG_SIZE_T *puiMemInfoOffset,
@@ -1980,16 +1978,15 @@ PVRSRV_ERROR PVRSRVMapDmaBufKM(PVRSRV_PER_PROCESS_DATA *psPerProc,
 	OSMemSet(psNewKernelMemInfo, 0, sizeof(PVRSRV_KERNEL_MEM_INFO));
 
 	/* Import the DMA Buffer */
-	eError = DmaBufImportAndAcquirePhysAddr(ui32NumFDs,
-											   pi32DmaBufFD,
-											   puiDmaBufOffset,
-											   puiDmaBufSize,
-											   &ui32PageCount,
-											   &pasSysPhysAddr,
-											   puiMemInfoOffset,
-											   &psNewKernelMemInfo->pvLinAddrKM,
-											   &hPriv,
-											   &hUnique);
+	eError = DmaBufImportAndAcquirePhysAddr(i32DmaBufFD,
+											uiDmaBufOffset,
+											uiDmaBufSize,
+											&ui32PageCount,
+											&pasSysPhysAddr,
+											puiMemInfoOffset,
+											&psNewKernelMemInfo->pvLinAddrKM,
+											&hPriv,
+											&hUnique);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to get dma-buf phys addr", __FUNCTION__));

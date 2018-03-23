@@ -91,11 +91,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* Decide whether or not DevMem allocs need __GFP_DMA32 */
 #ifndef SGX_FEATURE_36BIT_MMU
-#	ifdef CONFIG_ZONE_DMA
-#		if defined CONFIG_X86_PAE || defined CONFIG_ARM_LPAE || defined CONFIG_64BIT
-#			define PVR_USE_DMA32_FOR_DEVMEM_ALLOCS
-#		endif
-#	endif
+	#if defined CONFIG_X86_PAE || defined CONFIG_ARM_LPAE || defined CONFIG_XPA || defined CONFIG_64BIT
+		#define PVR_USE_DMA32_FOR_DEVMEM_ALLOCS
+	#endif
 #endif
 
 /*
@@ -522,7 +520,11 @@ _VMallocWrapper(IMG_SIZE_T uiBytes,
 	gfp_mask = GFP_KERNEL;
 
 #if defined(PVR_USE_DMA32_FOR_DEVMEM_ALLOCS)
+#ifdef CONFIG_ZONE_DMA32
 	gfp_mask |= __GFP_DMA32;
+#else
+	gfp_mask |= __GFP_DMA;
+#endif
 #else
 	gfp_mask |= __GFP_HIGHMEM;
 #endif
@@ -690,12 +692,21 @@ AllocPageFromLinux(void)
 	gfp_mask = GFP_KERNEL;
 
 #if defined(PVR_USE_DMA32_FOR_DEVMEM_ALLOCS)
+#ifdef CONFIG_ZONE_DMA32
 	gfp_mask |= __GFP_DMA32;
+#else
+	gfp_mask |= __GFP_DMA;
+#endif
 #else
 	gfp_mask |= __GFP_HIGHMEM;
 #endif
 
+	/* PF_DUMPCORE is treated by the VM as if the OOM killer was disabled */
+	WARN_ON(current->flags & PF_DUMPCORE);
+	current->flags |= PF_DUMPCORE;
+
 	psPage = alloc_pages(gfp_mask, 0);
+	current->flags &= ~PF_DUMPCORE;
 	if (!psPage)
 	{
 		return NULL;
@@ -1679,6 +1690,7 @@ NewSubLinuxMemArea(LinuxMemArea *psParentLinuxMemArea,
     {
         DEBUG_LINUX_MEM_AREA_REC *psParentRecord;
         psParentRecord = DebugLinuxMemAreaRecordFind(psParentLinuxMemArea);
+        PVR_ASSERT(psParentRecord != IMG_NULL);
         DebugLinuxMemAreaRecordAdd(psLinuxMemArea, psParentRecord->ui32Flags);
     }
 #endif
