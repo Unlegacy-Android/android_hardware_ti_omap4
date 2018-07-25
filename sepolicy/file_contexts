@@ -1,6 +1,10 @@
 # Device nodes
 /dev/tiler                   u:object_r:video_device:s0
 /dev/dsscomp                 u:object_r:graphics_device:s0
+ifelse(android_api_lp_or_later,  `true', `
+  /dev/pvr_sync                u:object_r:gpu_device:s0'
+, `
+  /dev/pvr_sync                u:object_r:powervr_device:s0')
 
 # System binaries
 /system/bin/pvrsrvinit       u:object_r:pvrsrvinit_exec:s0
