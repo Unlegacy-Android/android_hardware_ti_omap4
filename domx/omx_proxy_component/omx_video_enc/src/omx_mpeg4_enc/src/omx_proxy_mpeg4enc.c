@@ -703,6 +703,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 #endif
 #ifdef ENABLE_GRALLOC_BUFFERS
 	OMX_PTR pAuxBuf0 = NULL, pAuxBuf1 = NULL;
+	int fds[2] = { -1, -1 };
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	OMX_ERRORTYPE eCompReturn = OMX_ErrorNone;
 #endif
@@ -761,6 +762,8 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			pVideoMetadataBuffer = (video_metadata_t*) ((OMX_U32 *)(pBufferHdr->pBuffer));
 			pGrallocHandle = (IMG_native_handle_t*) (pVideoMetadataBuffer->pHandle);
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
+			fds[0] = pGrallocHandle->fd[0];
+			fds[1] = pGrallocHandle->fd[1];
 
 			pBufferHdr->pBuffer = (OMX_U8 *)(pGrallocHandle->fd[0]);
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->
@@ -785,6 +788,8 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			pGrallocHandle = (IMG_native_handle_t*) tBufHandle;
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
 
+			fds[0] = pGrallocHandle->fd[0];
+			fds[1] = pGrallocHandle->fd[1];
 			pBufferHdr->pBuffer = (OMX_U8 *)(pGrallocHandle->fd[0]);
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->
 			pAuxBuf1 = (OMX_PTR) pGrallocHandle->fd[1];
@@ -815,6 +820,8 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
                                 DOMX_DEBUG(" --COLORCONVERT_PlatformOpaqueToNV12() ");
 
 				/* Update pBufferHdr with NV12 buffers for OMX component */
+				fds[0] = pProxy->gralloc_handle[nBufIndex]->fd[0];
+				fds[1] = pProxy->gralloc_handle[nBufIndex]->fd[1];
 				pBufferHdr->pBuffer= (OMX_U8 *)(pProxy->gralloc_handle[nBufIndex]->fd[0]);
 				((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1 = (OMX_PTR)(pProxy->gralloc_handle[nBufIndex]->fd[1]);
 			}
@@ -826,7 +833,7 @@ OMX_ERRORTYPE LOCAL_PROXY_MPEG4E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			return OMX_ErrorBadParameter;
 		}
 #ifdef ENABLE_GRALLOC_BUFFERS
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer, -1,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fds[0], fds[1],
 									   &pAuxBuf0, &pAuxBuf1,
 									   GrallocPointers);
 		PROXY_checkRpcError();
