@@ -723,6 +723,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264ESECURE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 #endif
 #ifdef ENABLE_GRALLOC_BUFFERS
 	OMX_PTR pAuxBuf0 = NULL, pAuxBuf1 = NULL;
+	int fds[2] = { -1, -1 };
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	OMX_ERRORTYPE eCompReturn = OMX_ErrorNone;
         IMG_native_handle_t* pGrallocHandle=NULL;
@@ -780,6 +781,8 @@ OMX_ERRORTYPE LOCAL_PROXY_H264ESECURE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			pVideoMetadataBuffer = (video_metadata_t*) ((OMX_U32 *)(pBufferHdr->pBuffer));
 			pGrallocHandle = (IMG_native_handle_t*) (pVideoMetadataBuffer->pHandle);
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
+			fds[0] = pGrallocHandle->fd[0];
+			fds[1] = pGrallocHandle->fd[1];
                         if( pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 && pProxy->gralloc_handle[0] == NULL ) {
                             DOMX_DEBUG("Allocating NV12 buffers internally within DOMX actual count: %d", pCompPrv->nAllocatedBuffers);
                             pProxy->nCurBufIndex = 0;
@@ -811,6 +814,8 @@ OMX_ERRORTYPE LOCAL_PROXY_H264ESECURE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			tBufHandle =  *((buffer_handle_t *)pTempBuffer);
 			pGrallocHandle = (IMG_native_handle_t*) tBufHandle;
 			DOMX_DEBUG("Grallloc buffer recieved in metadata buffer 0x%x",pGrallocHandle );
+			fds[0] = pGrallocHandle->fd[0];
+			fds[1] = pGrallocHandle->fd[1];
                         if( pGrallocHandle->iFormat != HAL_PIXEL_FORMAT_TI_NV12 && pProxy->gralloc_handle[0] == NULL ) {
                             DOMX_DEBUG("Allocating NV12 buffers internally within DOMX actual count: %d", pCompPrv->nAllocatedBuffers);
                             pProxy->nCurBufIndex = 0;
@@ -851,6 +856,8 @@ OMX_ERRORTYPE LOCAL_PROXY_H264ESECURE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 						                     sizeof(OMX_U32), TIMM_OSAL_SUSPEND);
 					    PROXY_assert(0, OMX_ErrorBadParameter, "Color conversion routine failed");
 				    }
+				    fds[0] = pProxy->gralloc_handle[nBufIndex]->fd[0];
+				    fds[1] = pProxy->gralloc_handle[nBufIndex]->fd[1];
 				}
 
 				/* Update pBufferHdr with NV12 buffers for OMX component */
@@ -867,7 +874,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264ESECURE_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 			goto EXIT; //need to restore lenght fields in pBufferHdr
 		}
 #ifdef ENABLE_GRALLOC_BUFFERS
-		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, (int)pBufferHdr->pBuffer, -1,
+		eRPCError = RPC_RegisterBuffer(pCompPrv->hRemoteComp, fds[0], fds[1],
 									   &pAuxBuf0, &pAuxBuf1,
 									   GrallocPointers);
 		PROXY_checkRpcError();
