@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "785c63cf_9e4c26d2",
+        "filename": "omap4.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-07-30T05:23:40Z",
+      "side": 1,
+      "message": "use macro",
+      "range": {
+        "startLine": 32,
+        "startChar": 59,
+        "endLine": 32,
+        "endChar": 65
+      },
+      "revId": "ca9743fcd06a2521ec1353377ffcc9c1b0b98412",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
