@@ -89,7 +89,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
-#include <linux/fcntl.h>
+#include <asm/fcntl.h>
 #include <linux/file.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
