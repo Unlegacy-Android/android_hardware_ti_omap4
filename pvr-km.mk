@@ -17,7 +17,7 @@ PVR_MODULES:
 	make -j8 -C $(OMAP4_NEXT_FOLDER)/pvr-source/eurasiacon/build/linux2/omap_android \
 			ARCH=arm $(if $(ARM_CROSS_COMPILE),$(ARM_CROSS_COMPILE),$(KERNEL_CROSS_COMPILE)) \
 			TARGET_DEVICE=blaze_tablet$(if $(filter-out 4470,$(TARGET_BOARD_OMAP_CPU)),,".4470") \
-			KERNELDIR=$(KERNEL_OUT) BUILD=release
+			KERNELDIR=$(KERNEL_OUT) SUPPORT_ION=1 SUPPORT_DMABUF=0 BUILD=release
 	mv $(KERNEL_OUT)/../../target/kbuild/{pvrsrvkm,omaplfb}.ko $(KERNEL_MODULES_OUT)
 	$(if $(ARM_EABI_TOOLCHAIN),$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip, \
 			$(KERNEL_TOOLCHAIN_PATH)strip) --strip-unneeded \
