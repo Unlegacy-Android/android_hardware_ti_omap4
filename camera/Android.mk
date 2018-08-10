@@ -10,8 +10,8 @@ TI_CAMERAHAL_COMMON_CFLAGS := \
 
 TI_CAMERAHAL_COMMON_CPPFLAGS :=
 
-ifneq ($(ANDROID_API_LP_MR1_OR_LATER),true)
-    # Try to ensure code written in C++ for 5.1 and up compiles on 4.4 and 5.0
+ifneq ($(ANDROID_API_MM_OR_LATER),true)
+    # Try to ensure code written in C++ for 6.0 and up compiles on older versions
     TI_CAMERAHAL_COMMON_CPPFLAGS += -std=gnu++11
 endif
 
