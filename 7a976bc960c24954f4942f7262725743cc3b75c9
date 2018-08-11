@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8443a14b_003f4102",
+        "filename": "libtiutils/DebugUtils.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-11T15:29:15Z",
+      "side": 1,
+      "message": "This header is present even on KitKat, and includes \u0027android_atomic_acquire_store\u0027; pre-Oreo, some other header probably pulls this one in, but we should still include it unconditionally nonetheless, for correctness.",
+      "revId": "7a976bc960c24954f4942f7262725743cc3b75c9",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
