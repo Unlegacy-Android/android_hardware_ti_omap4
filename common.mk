@@ -49,7 +49,3 @@ PRODUCT_PACKAGES += \
     pvrsrvinit \
     libEGL_POWERVR_SGX54X \
     libPVRScopeServices.so
-
-# compatiblity for older binaries
-PRODUCT_PACKAGES += \
-    libcorkscrew
