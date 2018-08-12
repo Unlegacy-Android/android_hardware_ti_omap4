@@ -29,7 +29,7 @@ PRODUCT_PACKAGES += \
     libOMX.TI.DUCATI1.VIDEO.CAMERA \
     libOMX.TI.DUCATI1.MISC.SAMPLE \
     libstagefrighthw \
-    libI420colorconvert \
+    $(if $(ANDROID_API_LP_OR_LATER),,libI420colorconvert) \
     libtiutils \
     smc_pa_ctrl \
     tf_daemon \
