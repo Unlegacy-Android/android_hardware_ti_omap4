@@ -65,9 +65,9 @@ $(warning *** No device prop file ($(BUILD_PROP)). Extracting from \
 # Android version information doesn't permeate here. Set it up manually,
 # but avoid including the whole of core/version_defaults.mk
 $(eval $(subst #,$(newline),$(shell cat $(BUILD_DEFS) | \
-	grep 'PLATFORM_VERSION\s.*=\|PLATFORM_VERSION_CODENAME\s.*=' | \
-	sed -e 's,PLATFORM_VERSION\s.*=,PLATFORM_RELEASE:=,' \
-	    -e 's,PLATFORM_VERSION_CODENAME\s.*=,PLATFORM_CODENAME:=,' | tr '\n' '#')))
+	grep '\<PLATFORM_VERSION.*:=\s[1-9]\|\<PLATFORM_VERSION_CODENAME.*:=\s[A-Z]' | \
+	sed -e 's,PLATFORM_VERSION_CODENAME.*=,PLATFORM_CODENAME:=,' \
+	    -e 's,PLATFORM_VERSION.*=,PLATFORM_RELEASE:=,' | tr '\n' '#')))
 else
 $(warning *** No device prop file ($(BUILD_PROP)) or build env \
 	($(BUILD_DEFS)). Falling back to KitKat default)
