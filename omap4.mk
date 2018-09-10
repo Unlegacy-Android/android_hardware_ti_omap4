@@ -27,10 +27,6 @@ PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4/kernel-headers
 PRODUCT_COPY_FILES += \
     $(OMAP4_NEXT_FOLDER)/rootdir/init.omap4.rc:root/init.omap4.rc
 
-# SGX540 is slower with the scissor optimization enabled
-PRODUCT_PROPERTY_OVERRIDES += \
-    ro.hwui.disable_scissor_opt=true
-
 # Disable dirty regions invalidation
 PRODUCT_PROPERTY_OVERRIDES += \
     debug.hwui.render_dirty_regions=false
