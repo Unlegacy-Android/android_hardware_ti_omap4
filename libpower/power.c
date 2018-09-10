@@ -41,14 +41,14 @@ static char nom_freq[FREQ_BUF_SIZE] = "\0";
 static char max_freq[FREQ_BUF_SIZE] = "\0";
 
 
-struct omap_power_module {
+typedef struct omap_power_module {
     struct power_module base;
     pthread_mutex_t lock;
     int boostpulse_fd;
     int boostpulse_warned;
     int inited;
     int screen_state;
-};
+} omap_power_module_t;
 
 static int str_to_tokens(char *str, char **token, int max_token_idx)
 {
@@ -273,22 +273,28 @@ static int power_open(const hw_module_t* module __unused, const char* name,
         return -EINVAL;
     }
 
-    power_module_t *dev = (power_module_t *)calloc(1,
-            sizeof(power_module_t));
+    omap_power_module_t *dev = (omap_power_module_t *)calloc(1,
+            sizeof(omap_power_module_t));
 
     if (!dev) {
         ALOGD("%s: failed to allocate memory", __FUNCTION__);
         return -ENOMEM;
     }
 
-    dev->common.tag = HARDWARE_MODULE_TAG;
-    dev->common.module_api_version = POWER_MODULE_API_VERSION_0_3;
-    dev->common.hal_api_version = HARDWARE_HAL_API_VERSION;
+    dev->base.common.tag = HARDWARE_MODULE_TAG;
+    dev->base.common.module_api_version = POWER_MODULE_API_VERSION_0_3;
+    dev->base.common.hal_api_version = HARDWARE_HAL_API_VERSION;
 
-    dev->init = omap_power_init;
-    dev->powerHint = omap_power_hint;
-    dev->setInteractive = omap_power_set_interactive;
-    dev->setFeature = omap_set_feature;
+    dev->base.init = omap_power_init;
+    dev->base.powerHint = omap_power_hint;
+    dev->base.setInteractive = omap_power_set_interactive;
+    dev->base.setFeature = omap_set_feature;
+
+    pthread_mutex_init(&dev->lock, NULL);
+    dev->boostpulse_fd = -1;
+    dev->boostpulse_warned = 0;
+    dev->inited = 0;
+    dev->screen_state = -1;
 
     *device = (hw_device_t*)dev;
 
