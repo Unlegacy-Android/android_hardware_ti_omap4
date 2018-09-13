@@ -29,6 +29,8 @@ TI_OMXPROXY_ENCODER_INCLUDES := \
 
 TI_OMXPROXY_COMMON_CFLAGS := \
 	$(ANDROID_API_CFLAGS) \
+	-Wno-unused-variable -Wno-unused-label \
+	-Wno-implicit-function-declaration \
 	-D_Android \
 	-DUSE_ION \
 	-DANDROID_QUIRK_CHANGE_PORT_VALUES \

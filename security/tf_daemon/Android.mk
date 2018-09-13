@@ -19,6 +19,8 @@ LOCAL_CFLAGS += -DS_VERSION_BUILD=$(S_VERSION_BUILD)
 endif
 
 LOCAL_CFLAGS += -I $(LOCAL_PATH)/../tf_sdk/include/
+LOCAL_CFLAGS += -Wno-implicit-function-declaration -Wno-sometimes-uninitialized \
+-Wno-unused-parameter -Wno-unused-function
 
 LOCAL_MODULE:= tf_daemon
 LOCAL_STATIC_LIBRARIES := libtee_client_api_driver

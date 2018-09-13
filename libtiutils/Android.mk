@@ -43,6 +43,7 @@ LOCAL_C_INCLUDES += \
 endif
 
 LOCAL_CFLAGS += -fno-short-enums $(ANDROID_API_CFLAGS)
+LOCAL_CFLAGS += -Wno-unused-function -Wno-instantiation-after-specialization
 
 ifdef TI_UTILS_MESSAGE_QUEUE_DEBUG_ENABLED
     # Enable debug logs
