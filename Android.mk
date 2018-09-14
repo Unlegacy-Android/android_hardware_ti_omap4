@@ -3,7 +3,9 @@ ifeq ($(TARGET_BOARD_PLATFORM_VARIANT),omap4-next)
 
 LOCAL_PATH:= $(call my-dir)
 
+ifndef ANDROID_API_CFLAGS
 include $(LOCAL_PATH)/android-api.mk
+endif
 
 HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)
 OMAP4_DEBUG_MEMLEAK:= false

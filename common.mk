@@ -15,6 +15,10 @@
 # This file lists the modules that are specific to OMAP4 but are used by
 # all OMAP4 devices.
 
+ifndef ANDROID_API_CFLAGS
+include $(LOCAL_PATH)/android-api.mk
+endif
+
 DEVICE_PACKAGE_OVERLAYS += hardware/ti/omap4/overlay
 
 PRODUCT_PACKAGES += \
