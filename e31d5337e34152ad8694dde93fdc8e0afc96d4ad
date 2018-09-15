@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c420043_3a33b677",
+        "filename": "omap4.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-09-15T14:22:46Z",
+      "side": 1,
+      "message": "Is this path recognized by Nougat?",
+      "range": {
+        "startLine": 31,
+        "startChar": 59,
+        "endLine": 31,
+        "endChar": 121
+      },
+      "revId": "e31d5337e34152ad8694dde93fdc8e0afc96d4ad",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
