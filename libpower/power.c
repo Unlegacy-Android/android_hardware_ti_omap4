@@ -31,7 +31,7 @@
 #define SCALINGMAXFREQ_PATH (CPUFREQ_CPU0 "scaling_max_freq")
 
 #define MAX_FREQ_NUMBER 10
-#define NOM_FREQ_INDEX 2
+#define NOM_FREQ_INDEX 3
 #define FREQ_BUF_SIZE 10
 
 static int freq_num;
@@ -124,6 +124,7 @@ static void omap_power_init(struct power_module *module)
                                    (struct omap_power_module *) module;
     int tmp;
     char freq_buf[MAX_FREQ_NUMBER * FREQ_BUF_SIZE];
+    char target_loads[64];
 
     tmp = sysfs_read(CPUFREQ_CPU0 "scaling_available_frequencies",
                                                    freq_buf, sizeof(freq_buf));
@@ -138,11 +139,15 @@ static void omap_power_init(struct power_module *module)
     tmp = (NOM_FREQ_INDEX > freq_num) ? freq_num : NOM_FREQ_INDEX;
     strcpy(nom_freq, freq_list[tmp - 1]);
 
+    snprintf(target_loads, sizeof(target_loads), "70 %s:80 %s:99",
+        freq_list[freq_num - 2], freq_list[freq_num - 1]);
+
     sysfs_write(CPUFREQ_INTERACTIVE "timer_rate", "20000");
     sysfs_write(CPUFREQ_INTERACTIVE "min_sample_time","60000");
     sysfs_write(CPUFREQ_INTERACTIVE "hispeed_freq", nom_freq);
-    sysfs_write(CPUFREQ_INTERACTIVE "go_hispeed_load", "50");
-    sysfs_write(CPUFREQ_INTERACTIVE "above_hispeed_delay", "100000");
+    sysfs_write(CPUFREQ_INTERACTIVE "go_hispeed_load", "99");
+    sysfs_write(CPUFREQ_INTERACTIVE "above_hispeed_delay", "80000");
+    sysfs_write(CPUFREQ_INTERACTIVE "target_loads", target_loads);
 
     ALOGI("Initialized successfully");
     omap_device->inited = 1;
