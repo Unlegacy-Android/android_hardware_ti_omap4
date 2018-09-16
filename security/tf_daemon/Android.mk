@@ -20,6 +20,12 @@ endif
 
 LOCAL_CFLAGS += -I $(LOCAL_PATH)/../tf_sdk/include/
 
+LOCAL_CLANG_CFLAGS := \
+	-Wno-implicit-function-declaration \
+	-Wno-sometimes-uninitialized \
+	-Wno-unused-parameter \
+	-Wno-unused-function
+
 LOCAL_MODULE:= tf_daemon
 LOCAL_STATIC_LIBRARIES := libtee_client_api_driver
 LOCAL_MODULE_TAGS := optional
