@@ -22,6 +22,30 @@
       "revId": "4b1c8b1afa5ad77f38913f9b4c5bac77cd367dad",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e8ca6c1_866ec51b",
+        "filename": "pvr-source/services4/srvkm/env/linux/ion.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-09-16T07:34:01Z",
+      "side": 1,
+      "message": "IIRC, this was needed to be able to check if the heap type is ION_HEAP_TYPE_SYSTEM. If this isn\u0027t included in the scope below, that type is unknown.",
+      "parentUuid": "3baa7b00_b8831615",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 32
+      },
+      "revId": "4b1c8b1afa5ad77f38913f9b4c5bac77cd367dad",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
