@@ -22,6 +22,30 @@
       "revId": "675551e88d9ab06a4ee4a1058bea7135911594b6",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ba5d762_9ba10314",
+        "filename": "BoardConfigCommon.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-09-16T07:27:04Z",
+      "side": 0,
+      "message": "Yes: https://android.googlesource.com/platform/frameworks/av/+/79234e4a1",
+      "parentUuid": "b9c49e55_b112a316",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 20
+      },
+      "revId": "675551e88d9ab06a4ee4a1058bea7135911594b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
