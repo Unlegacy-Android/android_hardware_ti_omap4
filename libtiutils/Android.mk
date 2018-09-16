@@ -54,6 +54,10 @@ ifdef TI_UTILS_MESSAGE_QUEUE_DEBUG_FUNCTION_NAMES
     LOCAL_CFLAGS += -DTI_UTILS_FUNCTION_LOGGER_ENABLE
 endif
 
+LOCAL_CLANG_CFLAGS += \
+    -Wno-unused-function \
+    -Wno-instantiation-after-specialization
+
 LOCAL_MODULE:= libtiutils
 LOCAL_MODULE_TAGS:= optional
 
