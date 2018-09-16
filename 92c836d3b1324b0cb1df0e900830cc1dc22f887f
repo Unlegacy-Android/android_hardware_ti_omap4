@@ -22,6 +22,30 @@
       "revId": "92c836d3b1324b0cb1df0e900830cc1dc22f887f",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "714fb58a_d46f805d",
+        "filename": "domx/domx/plugins/memplugin_ion.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-09-16T11:34:28Z",
+      "side": 0,
+      "message": "Done in https://gerrit.unlegacy-android.org/10555.",
+      "parentUuid": "65edbfaa_15224921",
+      "range": {
+        "startLine": 174,
+        "startChar": 7,
+        "endLine": 174,
+        "endChar": 27
+      },
+      "revId": "92c836d3b1324b0cb1df0e900830cc1dc22f887f",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
