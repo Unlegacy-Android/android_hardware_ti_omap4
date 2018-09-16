@@ -32,6 +32,11 @@ ifdef BOARD_USE_TI_DOMX_LOW_SECURE_HEAP
 LOCAL_CFLAGS += -DDOMX_LOW_SECURE_HEAP
 endif
 
+LOCAL_CLANG_CFLAGS := \
+    -Wno-unused-label \
+    -Wno-unused-variable \
+    -Wno-uninitialized
+
 LOCAL_SHARED_LIBRARIES := \
     libmm_osal \
     liblog \
