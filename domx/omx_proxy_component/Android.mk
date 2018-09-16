@@ -31,6 +31,9 @@ TI_OMXPROXY_COMMON_CFLAGS := \
 	$(ANDROID_API_CFLAGS) \
 	-D_Android \
 	-DUSE_ION \
+	-Wno-unused-label \
+	-Wno-unused-variable \
+	-Wno-implicit-function-declaration \
 	-DANDROID_QUIRK_CHANGE_PORT_VALUES \
 	-DANDROID_QUIRK_LOCK_BUFFER \
 	-DENABLE_GRALLOC_BUFFERS
