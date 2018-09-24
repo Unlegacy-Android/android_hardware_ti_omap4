@@ -70,8 +70,8 @@ $(eval $(subst #,$(newline),$(shell cat $(BUILD_DEFS) | \
 	    -e 's,PLATFORM_VERSION.*=,PLATFORM_RELEASE:=,' | tr '\n' '#')))
 else
 $(warning *** No device prop file ($(BUILD_PROP)) or build env \
-	($(BUILD_DEFS)). Falling back to LollipopMR1 default)
-PLATFORM_RELEASE := 5.1
+	($(BUILD_DEFS)). Falling back to KitKat default)
+PLATFORM_RELEASE := 4.4
 endif
 endif
 
@@ -97,8 +97,14 @@ endef
 # NOTE: The version codenames for Android stopped after KitKat, don't read
 # too much into the below names. They are mostly placeholders/reminders.
 #
-ifeq ($(call release-starts-with,LollipopMR1),1)
+ifeq ($(call release-starts-with,KitKatMR),1)
+override PLATFORM_RELEASE := 4.4.1
+else ifeq ($(call release-starts-with,KitKat),1)
+override PLATFORM_RELEASE := 4.4
+else ifeq ($(call release-starts-with,LollipopMR1),1)
 override PLATFORM_RELEASE := 5.1
+else ifeq ($(call release-starts-with,Lollipop),1)
+override PLATFORM_RELEASE := 5.0
 else ifeq ($(call release-starts-with,Marshmallow),1)
 override PLATFORM_RELEASE := 6.0
 else ifeq ($(call release-starts-with,NougatMR),1)
@@ -133,6 +139,12 @@ endif
 
 # Macros to help categorize support for features and API_LEVEL for tests.
 #
+is_at_least_kitkat := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 4 || \
+				( test $(PLATFORM_RELEASE_MAJ) -eq 4 && \
+				  test $(PLATFORM_RELEASE_MIN) -ge 4 ) ) && echo 1 || echo 0)
+is_at_least_lollipop := \
+	$(shell ( test $(PLATFORM_RELEASE_MAJ) -ge 5 ) && echo 1 || echo 0)
 is_at_least_lollipop_mr1 := \
 	$(shell ( test $(PLATFORM_RELEASE_MAJ) -gt 5 || \
 				( test $(PLATFORM_RELEASE_MAJ) -eq 5 && \
@@ -182,8 +194,13 @@ else ifeq ($(is_at_least_lollipop_mr1),1)
 # This early version had no version-file.version.code; fake it
 JACK_VERSION ?= 1.0.RELEASE
 API_LEVEL := 22
+else ifeq ($(is_at_least_lollipop),1)
+API_LEVEL := 21
+#API_LEVEL := 20 was l-preview
+else ifeq ($(is_at_least_kitkat),1)
+API_LEVEL := 19
 else
-$(error Must build against Android >= 5.1)
+$(error Must build against Android >= 4.4)
 endif
 
 # If the NDK is enabled, check it has API_LEVEL support for us
