@@ -3055,7 +3055,7 @@ PVRSRVSwapToDCBuffer2BW(IMG_UINT32 ui32BridgeID,
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC) || defined(PVR_ANDROID_NATIVE_WINDOW_HAS_FENCE)
 	int iReleaseFd;
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4,2,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 	iReleaseFd = get_unused_fd_flags(0);
 #else
 	iReleaseFd = get_unused_fd();
