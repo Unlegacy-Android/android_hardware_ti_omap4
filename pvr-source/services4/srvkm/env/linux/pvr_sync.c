@@ -621,7 +621,7 @@ PVRSyncIOCTLCreate(struct PVR_SYNC_TIMELINE *psObj, void __user *pvData)
 	struct sync_fence *psFence;
 	struct sync_pt *psPt;
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4,2,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 	iFd = get_unused_fd_flags(0);
 #else
 	iFd = get_unused_fd();
@@ -851,7 +851,7 @@ PVRSyncIOCTLAlloc(struct PVR_SYNC_TIMELINE *psTimeline, void __user *pvData)
 	struct file *psFile;
 	PVRSRV_ERROR eError;
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4,2,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 	iFd = get_unused_fd_flags(0);
 #else
 	iFd = get_unused_fd();
