@@ -62,7 +62,7 @@ kbuild: $(TARGET_PRIMARY_OUT)/kbuild/Makefile
 		TARGET_PRIMARY_ARCH=$(TARGET_PRIMARY_ARCH) \
 		CROSS_COMPILE="$(KERNEL_CROSS_COMPILE)" \
 		EXTRA_CFLAGS="$(ALL_KBUILD_CFLAGS)" \
-		CC=$(if $(KERNEL_CC),$(KERNEL_CC),$(KERNEL_CROSS_COMPILE)gcc) \
+		CC=$(if $(KERNEL_CC),"$(KERNEL_CC)","$(KERNEL_CROSS_COMPILE)gcc") \
 		V=$(V) W=$(W) \
 		TOP=$(TOP)
 	@for kernel_module in $(addprefix $(TARGET_PRIMARY_OUT)/kbuild/,$(INTERNAL_KBUILD_OBJECTS:.o=.ko)); do \
@@ -79,7 +79,7 @@ kbuild_clean: $(TARGET_PRIMARY_OUT)/kbuild/Makefile
 		TARGET_PRIMARY_ARCH=$(TARGET_PRIMARY_ARCH) \
 		CROSS_COMPILE="$(KERNEL_CROSS_COMPILE)" \
 		EXTRA_CFLAGS="$(ALL_KBUILD_CFLAGS)" \
-		CC=$(if $(KERNEL_CC),$(KERNEL_CC),$(KERNEL_CROSS_COMPILE)gcc) \
+		CC=$(if $(KERNEL_CC),"$(KERNEL_CC)","$(KERNEL_CROSS_COMPILE)gcc") \
 		V=$(V) W=$(W) \
 		TOP=$(TOP) clean
 
