@@ -44,11 +44,25 @@ include ../common/android/platform_version.mk
 # correctly configured OUT_DIR and can probe it to figure out our
 # architecture.
 
+JNI_CPU_ABI_2ND ?= $(JNI_CPU_ABI)
+
+ifneq ($(wildcard $(BUILD_PROP)),)
 $(eval $(subst #,$(newline),$(shell cat $(BUILD_PROP) | \
     grep '^ro.product.cpu.abilist=\|^ro.product.cpu.abilist32=' | \
     sed -e 's,ro.product.cpu.abilist=,JNI_CPU_ABI=,' \
 	-e 's,ro.product.cpu.abilist32=,JNI_CPU_ABI_2ND=,' | \
     tr ',' ' ' | tr '\n' '#')))
+else ifneq ($(TARGET_CPU_ABI)$(TARGET_CPU_ABI2),)
+$(warning *** No device prop file. Extracting ro.product.cpu.abilist/32 from \
+	TARGET_CPU_ABI/TARGET_CPU_ABI2)
+JNI_CPU_ABI := $(TARGET_CPU_ABI),$(TARGET_CPU_ABI2)
+else
+$(warning *** No device prop file, or TARGET_CPU_ABI/TARGET_CPU_ABI2 \
+	variables. Falling back to ARMv7-A default)
+JNI_CPU_ABI := armeabi-v7a,armeabi
+endif
+
+$(info JNI_CPU_ABI=$(JNI_CPU_ABI) & JNI_CPU_ABI_2ND=$(JNI_CPU_ABI_2ND))
 
 # If ARCH is set, use that to remap to an "Android" ARCH..
 ANDROID_ARCH := $(filter arm arm64 x86 x86_64,$(ARCH))
