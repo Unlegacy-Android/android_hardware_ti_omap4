@@ -142,9 +142,11 @@ define include-compiler-file
   $$(warning Compiler target '$(1)' not recognised)
   $$(warning (missing $$(compilers)/$(1).mk file))
   $$(warning ******************************************************)
-  $$(error Compiler '$(1)' not recognised)
+  $$(warning Falling back to $$(compilers)/arm-eabi.mk file)
+  include $$(compilers)/arm-eabi.mk
+ else
+  include $$(compilers)/$(1).mk
  endif
- include $$(compilers)/$(1).mk
 endef
 
 # Check the kernel cross compiler to work out which architecture it targets.
