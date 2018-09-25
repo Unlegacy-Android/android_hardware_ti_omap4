@@ -65,6 +65,8 @@ kbuild: $(TARGET_PRIMARY_OUT)/kbuild/Makefile
 		CC=$(if $(KERNEL_CC),"$(KERNEL_CC)","$(KERNEL_CROSS_COMPILE)gcc") \
 		V=$(V) W=$(W) \
 		TOP=$(TOP)
+	@[ -L $(RELATIVE_OUT)/target ] || ln -snf $(TARGET_PRIMARY_ARCH) \
+		$(RELATIVE_OUT)/target
 	@for kernel_module in $(addprefix $(TARGET_PRIMARY_OUT)/kbuild/,$(INTERNAL_KBUILD_OBJECTS:.o=.ko)); do \
 		cp $$kernel_module $(TARGET_PRIMARY_OUT); \
 	done
