@@ -92,22 +92,22 @@ ifeq ($(JAVAC),)
   JAVA := $(JAVA_HOME)/bin/java
   JAVAC := $(JAVA_HOME)/bin/javac
   ifeq ($(wildcard $(JAVAC)),)
-   $(error JAVA_HOME does not point to a valid java installation)
+   $(warning JAVA_HOME does not point to a valid java installation)
   endif
  endif
 
  # Test the configured JDK for validity
  ifeq ($(LEGACY_USE_JAVA6),1)
   ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'Java(TM).*1\.6\.0' && echo 1 || echo 0),0)
-   $(error '$(JAVA) -version' was not for Oracle JDK 6)
+   $(warning '$(JAVA) -version' was not for Oracle JDK 6)
   endif
  else ifeq ($(LEGACY_USE_JAVA7),1)
   ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'OpenJDK.*7u' && echo 1 || echo 0),0)
-   $(error '$(JAVA) -version' was not for OpenJDK 7)
+   $(warning '$(JAVA) -version' was not for OpenJDK 7)
   endif
  else
   ifeq ($(shell $(JAVA) -version 2>&1 | grep -qe 'OpenJDK.*1\.8\.' && echo 1 || echo 0),0)
-   $(error '$(JAVA) -version' was not for OpenJDK 8)
+   $(warning '$(JAVA) -version' was not for OpenJDK 8)
   endif
  endif
 endif
