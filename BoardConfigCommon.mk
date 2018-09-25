@@ -59,3 +59,4 @@ include $(OMAP4_NEXT_FOLDER)/sepolicy/sepolicy.mk
 # Misc
 BOARD_USES_SECURE_SERVICES := true
 
+NEED_KERNEL_MODULE_ROOT := true
