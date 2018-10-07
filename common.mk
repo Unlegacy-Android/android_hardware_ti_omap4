@@ -19,7 +19,9 @@ ifndef ANDROID_API_CFLAGS
 include $(LOCAL_PATH)/android-api.mk
 endif
 
+ifeq ($(ANDROID_API_LP_OR_LATER),true)
 DEVICE_PACKAGE_OVERLAYS += hardware/ti/omap4/overlay
+endif
 
 PRODUCT_PACKAGES += \
     libdomx \
