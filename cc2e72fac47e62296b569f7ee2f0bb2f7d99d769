@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc265f47_a82fac44",
+        "filename": "sepolicy/compat/lp/file_contexts",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2018-11-18T19:29:54Z",
+      "side": 1,
+      "message": "Hmm, does anyone remember if this was duplicated on purpose (see defines.te)?",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 41
+      },
+      "revId": "cc2e72fac47e62296b569f7ee2f0bb2f7d99d769",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
