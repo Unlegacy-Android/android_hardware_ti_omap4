@@ -22,6 +22,30 @@
       "revId": "cc2e72fac47e62296b569f7ee2f0bb2f7d99d769",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd7e178b_90692779",
+        "filename": "sepolicy/compat/lp/file_contexts",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-11-18T21:23:43Z",
+      "side": 1,
+      "message": "On purpose. It needs to be defined in file_contexts separately.",
+      "parentUuid": "dc265f47_a82fac44",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 41
+      },
+      "revId": "cc2e72fac47e62296b569f7ee2f0bb2f7d99d769",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
