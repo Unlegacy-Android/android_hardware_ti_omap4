@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e0f1ba9b_c0d0f000",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-04-02T14:47:21Z",
+      "side": 1,
+      "message": "I\u0027m thinking that something like \"sepolicy: Account for devices that don\u0027t use manager0 sysfs paths\" is a good compromise.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 68
+      },
+      "revId": "56eb42c35b0f06e3d6b92712aaecaeba2bb9852c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c9f0ef9_7164bb11",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-04-02T14:47:21Z",
+      "side": 1,
+      "message": "We should change this Id since it references the original CMHW patch.",
+      "range": {
+        "startLine": 9,
+        "startChar": 11,
+        "endLine": 9,
+        "endChar": 52
+      },
+      "revId": "56eb42c35b0f06e3d6b92712aaecaeba2bb9852c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": true
+    }
+  ]
+}
