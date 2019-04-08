@@ -122,6 +122,20 @@ static ssize_t store_frequency_limit(struct device *dev,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_OMAP4430_GPU_HAS_GPU_384MHZ
+	/*
+	 * tuxafgmur: we can use the frequency list table, but this is a
+	 * specific patch, thus the hardcoded values serve as documentation.
+	 */
+	if ((freq_limit != 153600000L) &&
+		(freq_limit != 307200000L) &&
+		(freq_limit != 384000000L) &&
+		(freq_limit != 512000000L)) {
+		pr_info("sgxfreq: frequency limit value out of range, set to %lu\n", SYS_SGX_CLOCK_SPEED);
+		freq_limit = SYS_SGX_CLOCK_SPEED;
+	}
+#endif
+
 	freq_limit = sgxfreq_set_freq_limit(freq_limit);
 	pr_info("sgxfreq: frequency_limit=%lu\n", freq_limit);
 	return count;
